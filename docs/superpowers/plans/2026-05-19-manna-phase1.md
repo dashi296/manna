@@ -6,7 +6,18 @@
 
 **Architecture:** TanStack Start（SSR + ファイルベースルーティング）がSupabase JS Clientを介してSupabaseに直接接続。公開範囲制御はDB層のRLSで強制。聖典テキストは持たず静的JSONの書誌データのみ同梱し、本文は公式サイトへのディープリンクで参照する。
 
-**Tech Stack:** TanStack Start, TypeScript, TailwindCSS v4, Supabase (PostgreSQL + Auth + Realtime + Storage), Vitest, @testing-library/react, @uiw/react-md-editor, react-markdown
+**Tech Stack:** TanStack Start, TypeScript, TailwindCSS v4, **shadcn/ui** (Radix UI + Tailwind), Supabase (PostgreSQL + Auth + Realtime + Storage), Vitest, @testing-library/react, @uiw/react-md-editor, react-markdown
+
+**shadcn/ui コンポーネント対応表:**
+| 自作コンポーネント | 置き換え先 |
+|---|---|
+| Button 系 | `Button` |
+| Select/Dropdown | `Select` |
+| 公開範囲セレクター | `ToggleGroup` |
+| 通知・カード | `Card` |
+| Avatar | `Avatar` |
+| トースト | `Sonner` (toast) |
+| ダイアログ | `Dialog` |
 
 ---
 
@@ -99,6 +110,27 @@ npm create tsrouter-app@latest . -- --framework start --typescript --tailwind --
 npm install @supabase/supabase-js @uiw/react-md-editor react-markdown remark-gfm
 npm install -D vitest @vitejs/plugin-react @testing-library/react @testing-library/user-event @testing-library/jest-dom jsdom
 ```
+
+- [ ] **Step 2b: shadcn/ui を初期化する**
+
+TanStack StartはViteベースなのでViteのセットアップ手順を使う。
+
+```bash
+npx shadcn@latest init
+```
+
+プロンプトの回答:
+- Style: **Default**
+- Base color: **Slate**
+- CSS variables: **Yes**
+
+初期化後、よく使うコンポーネントを一括追加する:
+
+```bash
+npx shadcn@latest add button card avatar select toggle-group dialog sonner badge separator
+```
+
+`app/globals.css`（またはshadcnが指定するCSSファイル）が生成・更新されたことを確認する。
 
 - [ ] **Step 3: `vitest.config.ts` を作成する**
 
