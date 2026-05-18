@@ -52,7 +52,6 @@ manna/
 │   │   ├── MarkdownRenderer.tsx    # react-markdownラッパー
 │   │   ├── ScriptureSelector.tsx   # 聖典参照セレクター
 │   │   ├── VisibilitySelector.tsx  # 公開範囲セレクター
-│   │   ├── LikeButton.tsx          # いいねボタン
 │   │   ├── FollowButton.tsx        # フォローボタン
 │   │   ├── FamilyButton.tsx        # ファミリー招待ボタン
 │   │   └── Avatar.tsx              # アバター画像
@@ -75,7 +74,6 @@ manna/
 │   │   └── scripture.test.ts
 │   └── components/
 │       ├── PostCard.test.tsx
-│       ├── LikeButton.test.tsx
 │       └── VisibilitySelector.test.tsx
 ├── public/
 │   ├── manifest.json               # PWAマニフェスト
@@ -1470,22 +1468,21 @@ const mockPost = {
   scripture_verse_end: null,
   user_id: 'user-1',
   users: { display_name: '山田太郎', avatar_url: null },
-  likes: [],
 }
 
 describe('PostCard', () => {
   it('ユーザー名を表示する', () => {
-    render(<PostCard post={mockPost} currentUserId={null} />)
+    render(<PostCard post={mockPost} />)
     expect(screen.getByText('山田太郎')).toBeInTheDocument()
   })
 
   it('聖典参照を表示する', () => {
-    render(<PostCard post={mockPost} currentUserId={null} />)
+    render(<PostCard post={mockPost} />)
     expect(screen.getByText(/第1ニーファイ書 3:7/)).toBeInTheDocument()
   })
 
   it('Markdownをレンダリングする', () => {
-    render(<PostCard post={mockPost} currentUserId={null} />)
+    render(<PostCard post={mockPost} />)
     expect(screen.getByRole('strong')).toBeInTheDocument()
   })
 })
@@ -1528,7 +1525,6 @@ import { Link } from '@tanstack/react-router'
 import { Avatar } from './Avatar'
 import { MarkdownRenderer } from './MarkdownRenderer'
 import { getScriptureLabel } from '../lib/scripture'
-import { LikeButton } from './LikeButton'
 
 type Post = {
   id: string
@@ -1542,12 +1538,11 @@ type Post = {
   scripture_verse_end: number | null
   user_id: string
   users: { display_name: string; avatar_url: string | null }
-  likes: { user_id: string }[]
 }
 
-type Props = { post: Post; currentUserId: string | null }
+type Props = { post: Post }
 
-export function PostCard({ post, currentUserId }: Props) {
+export function PostCard({ post }: Props) {
   const scriptureLabel = post.scripture_collection && post.scripture_book && post.scripture_chapter
     ? getScriptureLabel({
         collection: post.scripture_collection,
@@ -1557,8 +1552,6 @@ export function PostCard({ post, currentUserId }: Props) {
         verseEnd: post.scripture_verse_end ?? undefined,
       })
     : null
-
-  const isLiked = post.likes.some(l => l.user_id === currentUserId)
 
   return (
     <div className="p-4 border-b">
@@ -1590,9 +1583,6 @@ export function PostCard({ post, currentUserId }: Props) {
             </Link>
           )}
           <MarkdownRenderer content={post.content} />
-          <div className="mt-2">
-            <LikeButton postId={post.id} initialCount={post.likes.length} initialLiked={isLiked} />
-          </div>
         </div>
       </div>
     </div>
@@ -1622,8 +1612,7 @@ const POST_SELECT = `
   id, content, visibility, created_at,
   scripture_collection, scripture_book, scripture_chapter,
   scripture_verse_start, scripture_verse_end, user_id,
-  users ( display_name, avatar_url ),
-  likes ( user_id )
+  users ( display_name, avatar_url )
 `
 
 export const Route = createFileRoute('/')({
@@ -1634,11 +1623,6 @@ function FeedPage() {
   const [tab, setTab] = useState<'following' | 'public'>('following')
   const [posts, setPosts] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setCurrentUserId(data.user?.id ?? null))
-  }, [])
 
   useEffect(() => {
     setLoading(true)
@@ -1673,7 +1657,7 @@ function FeedPage() {
       ) : (
         <div>
           {posts.map(post => (
-            <PostCard key={post.id} post={post} currentUserId={currentUserId} />
+            <PostCard key={post.id} post={post} />
           ))}
         </div>
       )}
@@ -1696,131 +1680,7 @@ git commit -m "feat: add feed screen and PostCard component"
 
 ---
 
-## Task 8: いいね機能
-
-**Files:**
-- Create: `app/components/LikeButton.tsx`
-- Create: `tests/components/LikeButton.test.tsx`
-
-- [ ] **Step 1: LikeButtonのテストを書く**
-
-`tests/components/LikeButton.test.tsx`:
-
-```typescript
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
-import { LikeButton } from '../../app/components/LikeButton'
-
-vi.mock('../../app/lib/supabase', () => ({
-  supabase: {
-    auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'user-1' } } }) },
-    from: vi.fn(() => ({
-      insert: vi.fn().mockResolvedValue({ error: null }),
-      delete: vi.fn(() => ({
-        eq: vi.fn(() => ({ eq: vi.fn().mockResolvedValue({ error: null }) }))
-      })),
-    })),
-  },
-}))
-
-describe('LikeButton', () => {
-  it('いいね数を表示する', () => {
-    render(<LikeButton postId="post-1" initialCount={5} initialLiked={false} />)
-    expect(screen.getByText('5')).toBeInTheDocument()
-  })
-
-  it('クリックするとカウントが増える', async () => {
-    render(<LikeButton postId="post-1" initialCount={5} initialLiked={false} />)
-    await userEvent.click(screen.getByRole('button'))
-    await waitFor(() => expect(screen.getByText('6')).toBeInTheDocument())
-  })
-
-  it('いいね済みの場合クリックするとカウントが減る', async () => {
-    render(<LikeButton postId="post-1" initialCount={5} initialLiked={true} />)
-    await userEvent.click(screen.getByRole('button'))
-    await waitFor(() => expect(screen.getByText('4')).toBeInTheDocument())
-  })
-})
-```
-
-- [ ] **Step 2: テストが失敗することを確認する**
-
-```bash
-npx vitest run tests/components/LikeButton.test.tsx
-```
-
-Expected: FAIL
-
-- [ ] **Step 3: LikeButtonを実装する**
-
-`app/components/LikeButton.tsx`:
-
-```typescript
-import { useState } from 'react'
-import { supabase } from '../lib/supabase'
-
-type Props = {
-  postId: string
-  initialCount: number
-  initialLiked: boolean
-}
-
-export function LikeButton({ postId, initialCount, initialLiked }: Props) {
-  const [liked, setLiked] = useState(initialLiked)
-  const [count, setCount] = useState(initialCount)
-  const [pending, setPending] = useState(false)
-
-  const toggle = async () => {
-    if (pending) return
-    setPending(true)
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { setPending(false); return }
-
-    if (liked) {
-      const { error } = await supabase.from('likes').delete()
-        .eq('post_id', postId).eq('user_id', user.id)
-      if (!error) { setLiked(false); setCount(c => c - 1) }
-    } else {
-      const { error } = await supabase.from('likes').insert({ post_id: postId, user_id: user.id })
-      if (!error) { setLiked(true); setCount(c => c + 1) }
-    }
-    setPending(false)
-  }
-
-  return (
-    <button
-      onClick={toggle}
-      disabled={pending}
-      className={`flex items-center gap-1 text-sm transition-colors ${
-        liked ? 'text-red-500' : 'text-gray-400 hover:text-red-400'
-      }`}
-    >
-      <span>{liked ? '❤️' : '🤍'}</span>
-      <span>{count}</span>
-    </button>
-  )
-}
-```
-
-- [ ] **Step 4: テストを実行して通ることを確認する**
-
-```bash
-npx vitest run tests/components/LikeButton.test.tsx
-```
-
-Expected: PASS
-
-- [ ] **Step 5: コミットする**
-
-```bash
-git add -A
-git commit -m "feat: add like button"
-```
-
----
-
-## Task 9: フォロー + ファミリー機能
+## Task 8: フォロー + ファミリー機能
 
 **Files:**
 - Create: `app/components/FollowButton.tsx`
@@ -1954,7 +1814,7 @@ git commit -m "feat: add follow and family buttons"
 
 ---
 
-## Task 10: プロフィール画面
+## Task 9: プロフィール画面
 
 **Files:**
 - Create: `app/routes/profile/index.tsx`
@@ -2000,8 +1860,7 @@ export const Route = createFileRoute('/profile/$userId')({
           id, content, visibility, created_at,
           scripture_collection, scripture_book, scripture_chapter,
           scripture_verse_start, scripture_verse_end, user_id,
-          users ( display_name, avatar_url ),
-          likes ( user_id )
+          users ( display_name, avatar_url )
         `).eq('user_id', params.userId).order('created_at', { ascending: false }),
         supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', params.userId),
         supabase.from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', params.userId),
@@ -2083,7 +1942,7 @@ git commit -m "feat: add profile screen with follow and family actions"
 
 ---
 
-## Task 11: 通知画面
+## Task 10: 通知画面
 
 **Files:**
 - Create: `app/routes/notifications.tsx`
@@ -2180,7 +2039,7 @@ git commit -m "feat: add notifications screen"
 
 ---
 
-## Task 12: 投稿詳細画面（節ページ連携）
+## Task 11: 投稿詳細画面（節ページ連携）
 
 **Files:**
 - Create: `app/routes/posts/$id.tsx`
@@ -2194,30 +2053,24 @@ import { createFileRoute, notFound, Link } from '@tanstack/react-router'
 import { supabase } from '../../lib/supabase'
 import { MarkdownRenderer } from '../../components/MarkdownRenderer'
 import { Avatar } from '../../components/Avatar'
-import { LikeButton } from '../../components/LikeButton'
 import { getScriptureLabel, buildScriptureUrl } from '../../lib/scripture'
 
 export const Route = createFileRoute('/posts/$id')({
   loader: async ({ params }) => {
-    const [{ data: post }, { data: { user } }] = await Promise.all([
-      supabase.from('posts').select(`
-        id, content, visibility, created_at,
-        scripture_collection, scripture_book, scripture_chapter,
-        scripture_verse_start, scripture_verse_end, user_id,
-        users ( display_name, avatar_url ),
-        likes ( user_id )
-      `).eq('id', params.id).single(),
-      supabase.auth.getUser(),
-    ])
+    const { data: post } = await supabase.from('posts').select(`
+      id, content, visibility, created_at,
+      scripture_collection, scripture_book, scripture_chapter,
+      scripture_verse_start, scripture_verse_end, user_id,
+      users ( display_name, avatar_url )
+    `).eq('id', params.id).single()
     if (!post) throw notFound()
-    return { post, currentUserId: user?.id ?? null }
+    return { post }
   },
   component: PostDetailPage,
 })
 
 function PostDetailPage() {
-  const { post, currentUserId } = Route.useLoaderData()
-  const isLiked = post.likes.some((l: any) => l.user_id === currentUserId)
+  const { post } = Route.useLoaderData()
 
   const scriptureLabel = post.scripture_collection && post.scripture_book && post.scripture_chapter
     ? getScriptureLabel({
@@ -2260,7 +2113,6 @@ function PostDetailPage() {
       )}
 
       <MarkdownRenderer content={post.content} className="mb-4" />
-      <LikeButton postId={post.id} initialCount={post.likes.length} initialLiked={isLiked} />
     </div>
   )
 }
@@ -2275,7 +2127,7 @@ git commit -m "feat: add post detail screen"
 
 ---
 
-## Task 13: PWA設定
+## Task 12: PWA設定
 
 **Files:**
 - Create: `public/manifest.json`
