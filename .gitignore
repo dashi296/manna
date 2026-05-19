@@ -10,6 +10,8 @@ dist-ssr
 .wrangler
 .output
 .vinxi
+.vite/
 __unconfig*
 todos.json
 .superpowers/
+apps/pwa/.cta.json
