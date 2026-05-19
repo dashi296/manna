@@ -1,3 +1,6 @@
+import { createServerClient, parseCookieHeader } from '@supabase/ssr'
+import { createServerFn } from '@tanstack/react-start'
+import type { Database } from '@manna/database'
 import { supabase } from './supabase'
 
 export async function signInWithGoogle() {
@@ -21,3 +24,29 @@ export async function getSession() {
   } = await supabase.auth.getSession()
   return session
 }
+
+// SSR 用: リクエストの cookie ヘッダーからセッションを読み取る
+export const getServerSession = createServerFn({ method: 'GET' }).handler(async () => {
+  const { getRequest } = await import('@tanstack/react-start/server')
+  const cookieHeader = getRequest().headers.get('cookie') ?? ''
+
+  const serverSupabase = createServerClient<Database>(
+    import.meta.env.VITE_SUPABASE_URL,
+    import.meta.env.VITE_SUPABASE_ANON_KEY,
+    {
+      cookies: {
+        getAll: () =>
+          parseCookieHeader(cookieHeader).map(({ name, value }) => ({
+            name,
+            value: value ?? '',
+          })),
+        setAll: () => {},
+      },
+    },
+  )
+
+  const {
+    data: { session },
+  } = await serverSupabase.auth.getSession()
+  return session
+})

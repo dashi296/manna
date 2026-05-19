@@ -1,7 +1,7 @@
 import { HeadContent, Scripts, Outlet, createRootRoute, redirect } from '@tanstack/react-router'
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
-import { getSession } from '@/shared/lib/auth'
+import { getSession, getServerSession } from '@/shared/lib/auth'
 import { BottomNav } from '@/shared/ui/BottomNav'
 import appCss from '@/src/styles.css?url'
 
@@ -17,12 +17,14 @@ export const Route = createRootRoute({
     links: [{ rel: 'stylesheet', href: appCss }],
   }),
   beforeLoad: async ({ location }) => {
-    if (typeof window === 'undefined') return // SSR: ブラウザクライアントはサーバーでセッションを復元できないためスキップ
     const needsAuth =
       location.pathname === '/' ||
       AUTH_REQUIRED_PREFIXES.some((p) => location.pathname.startsWith(p))
     if (needsAuth) {
-      const session = await getSession()
+      const session =
+        typeof window === 'undefined'
+          ? await getServerSession() // SSR: cookie から読み取る
+          : await getSession()       // CSR: createBrowserClient から読み取る
       if (!session) throw redirect({ to: '/login' })
     }
   },
