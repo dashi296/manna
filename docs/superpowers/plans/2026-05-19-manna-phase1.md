@@ -25,81 +25,54 @@
 
 ```
 manna/
-├── app/
-│   └── routes/                     # TanStack Startのルート定義（薄いラッパー）
-│       ├── __root.tsx              # ルートレイアウト
-│       ├── index.tsx               # / → FeedPage
-│       ├── login.tsx               # /login
-│       ├── scriptures/
-│       │   ├── index.tsx
-│       │   └── $collection/
-│       │       ├── index.tsx
-│       │       └── $book/
-│       │           ├── index.tsx
-│       │           └── $chapter.tsx
-│       ├── posts/
-│       │   ├── new.tsx
-│       │   └── $id.tsx
-│       ├── profile/
-│       │   ├── index.tsx
-│       │   └── $userId.tsx
-│       └── notifications.tsx
-│
-│   # ── Feature Sliced Design 層（app/routes/ からのみ import される） ──
-│
-├── pages/                          # ページコンポーネント（routes の実装本体）
-│   ├── feed/ui/FeedPage.tsx
-│   ├── scripture-list/ui/ScriptureListPage.tsx
-│   ├── scripture-book/ui/ScriptureBookPage.tsx
-│   ├── scripture-chapter/ui/ScriptureChapterPage.tsx
-│   ├── post-new/ui/PostNewPage.tsx
-│   ├── post-detail/ui/PostDetailPage.tsx
-│   ├── profile/ui/ProfilePage.tsx
-│   └── notifications/ui/NotificationsPage.tsx
+├── pages/                          # TanStack Startのルート定義（routesDirectory）兼FSD pages層
+│   ├── __root.tsx                  # ルートレイアウト + 認証ガード
+│   ├── index.tsx                   # / フィード
+│   ├── login.tsx                   # /login
+│   ├── scriptures/
+│   │   ├── index.tsx
+│   │   └── $collection/
+│   │       ├── index.tsx
+│   │       └── $book/
+│   │           ├── index.tsx
+│   │           └── $chapter.tsx
+│   ├── posts/
+│   │   ├── new.tsx
+│   │   └── $id.tsx
+│   ├── profile/
+│   │   ├── index.tsx
+│   │   └── $userId.tsx
+│   └── notifications.tsx
 │
 ├── widgets/                        # 複合UIブロック（複数のfeature/entityを組み合わせる）
-│   ├── post-feed/
-│   │   ├── ui/PostFeed.tsx         # フィードリスト全体
-│   │   └── index.ts
-│   ├── post-editor/
-│   │   ├── ui/PostEditor.tsx       # 投稿フォーム全体
-│   │   └── index.ts
-│   └── scripture-nav/
-│       ├── ui/ScriptureNav.tsx     # 聖典ナビゲーター
-│       └── index.ts
+│   └── post-editor/
+│       ├── ui/PostEditor.tsx       # 投稿フォーム全体
+│       └── index.ts               # export { PostEditor }
 │
 ├── features/                       # ユーザー操作・ビジネスロジック
-│   ├── create-post/
-│   │   ├── ui/CreatePostForm.tsx
-│   │   └── index.ts
 │   ├── follow-user/
 │   │   ├── ui/FollowButton.tsx
-│   │   └── index.ts
+│   │   └── index.ts               # export { FollowButton }
 │   ├── manage-family/
 │   │   ├── ui/FamilyButton.tsx
-│   │   └── index.ts
+│   │   └── index.ts               # export { FamilyButton }
 │   ├── select-scripture/
 │   │   ├── ui/ScriptureSelector.tsx
-│   │   └── index.ts
+│   │   └── index.ts               # export { ScriptureSelector }
 │   └── choose-visibility/
 │       ├── ui/VisibilitySelector.tsx
-│       └── index.ts
+│       └── index.ts               # export { VisibilitySelector }
 │
 ├── entities/                       # ビジネスエンティティ
 │   ├── post/
-│   │   ├── model/types.ts          # Post型定義
 │   │   ├── ui/PostCard.tsx
-│   │   ├── api/postApi.ts          # Supabase CRUD
-│   │   └── index.ts
+│   │   └── index.ts               # export { PostCard }
 │   ├── user/
-│   │   ├── model/types.ts
 │   │   ├── ui/Avatar.tsx
-│   │   ├── api/userApi.ts
-│   │   └── index.ts
+│   │   └── index.ts               # export { Avatar }
 │   └── scripture/
-│       ├── model/types.ts          # ScriptureRef型
-│       ├── lib/scriptureUtils.ts   # URLビルダー・ラベル生成
-│       └── index.ts
+│       ├── lib/scriptureUtils.ts   # ScriptureRef型・URLビルダー・ラベル生成
+│       └── index.ts               # export { ScriptureRef, buildScriptureUrl, ... }
 │
 ├── shared/                         # 共有インフラ（どの層からもimport可）
 │   ├── ui/                         # shadcn/ui コンポーネント置き場
@@ -134,14 +107,15 @@ manna/
 
 ## FSDインポートルール
 
-| import元 \ import先 | app | pages | widgets | features | entities | shared |
-|---|---|---|---|---|---|---|
-| app/routes | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| pages | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ |
-| widgets | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ |
-| features | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ |
-| entities | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
-| shared | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+`pages/` はルート定義と FSD pages 層を兼ねる最上位層。
+
+| import元 \ import先 | pages | widgets | features | entities | shared |
+|---|---|---|---|---|---|
+| pages | ❌ | ✅ | ✅ | ✅ | ✅ |
+| widgets | ❌ | ❌ | ✅ | ✅ | ✅ |
+| features | ❌ | ❌ | ❌ | ✅ | ✅ |
+| entities | ❌ | ❌ | ❌ | ❌ | ✅ |
+| shared | ❌ | ❌ | ❌ | ❌ | ❌ |
 
 各スライス（機能単位フォルダ）は `index.ts` でパブリックAPIを公開し、外部からは `index.ts` 経由でのみimportする。スライス内部への直接importは禁止。
 ```
@@ -192,19 +166,28 @@ npx shadcn@latest add button card avatar select toggle-group dialog sonner badge
 
 `app/globals.css`（またはshadcnが指定するCSSファイル）が生成・更新されたことを確認する。
 
-- [ ] **Step 3: `vite.config.ts` に `@/` パスエイリアスを設定する**
+- [ ] **Step 3: `app.config.ts` を設定する**
 
-TanStack StartがViteの設定を上書きする場合は `app.config.ts` 側にも同様に追加する。
+`pages/` を TanStack Start の `routesDirectory` に設定し、`@/` パスエイリアスも追加する。
+
+`app.config.ts`:
 
 ```typescript
-// vite.config.ts（または app.config.ts の vite オプション）
+import { defineConfig } from '@tanstack/react-start/config'
 import path from 'path'
 
-resolve: {
-  alias: {
-    '@': path.resolve(__dirname, '.'),
+export default defineConfig({
+  tsr: {
+    routesDirectory: './pages',
   },
-},
+  vite: {
+    resolve: {
+      alias: {
+        '@': path.resolve(__dirname, '.'),
+      },
+    },
+  },
+})
 ```
 
 `tsconfig.json` にも追加する:
@@ -317,8 +300,7 @@ CREATE TABLE posts (
   scripture_collection text,
   scripture_book text,
   scripture_chapter integer,
-  scripture_verse_start integer,
-  scripture_verse_end integer,
+  scripture_verses integer[],
   visibility visibility_type NOT NULL DEFAULT 'public',
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
@@ -357,6 +339,9 @@ CREATE TABLE notifications (
   read boolean NOT NULL DEFAULT false,
   created_at timestamptz NOT NULL DEFAULT now()
 );
+
+-- scripture_verses の配列検索を高速化
+CREATE INDEX posts_scripture_verses_gin ON posts USING GIN (scripture_verses);
 ```
 
 - [ ] **Step 3: RLSポリシーのマイグレーションを作成する**
@@ -551,17 +536,17 @@ git commit -m "feat: add Supabase schema, RLS policies, and triggers"
 **Files:**
 - Create: `shared/lib/supabase.ts`
 - Create: `shared/lib/auth.ts`
-- Create: `app/routes/login.tsx`
+- Create: `pages/login.tsx`
 
 - [ ] **Step 1: Supabaseクライアントを作成する**
 
 `shared/lib/supabase.ts`:
 
 ```typescript
-import { createBrowserClient } from '@supabase/supabase-js'
+import { createClient } from '@supabase/supabase-js'
 import type { Database } from '@/shared/types/database'
 
-export const supabase = createBrowserClient<Database>(
+export const supabase = createClient<Database>(
   import.meta.env.VITE_SUPABASE_URL,
   import.meta.env.VITE_SUPABASE_ANON_KEY,
 )
@@ -604,7 +589,7 @@ export async function getSession() {
 
 - [ ] **Step 4: ログイン画面を作成する**
 
-`app/routes/login.tsx`:
+`pages/login.tsx`:
 
 ```typescript
 import { createFileRoute, redirect } from '@tanstack/react-router'
@@ -639,18 +624,21 @@ function LoginPage() {
 
 - [ ] **Step 5: ルートレイアウトに認証状態を追加する**
 
-`app/routes/__root.tsx`（TanStack Startが生成したファイルを編集）:
+`pages/__root.tsx`（TanStack Startが生成したファイルを編集）:
 
 ```typescript
 import { createRootRoute, Outlet, redirect } from '@tanstack/react-router'
 import { getSession } from '@/shared/lib/auth'
-import { BottomNav } from '../components/BottomNav'
+import { BottomNav } from '@/shared/ui/BottomNav'
 
-const AUTH_REQUIRED_PATHS = ['/', '/posts/new', '/profile', '/notifications']
+// '/' は完全一致で認証必須。'/scriptures/*' は未ログインでも閲覧可能
+const AUTH_REQUIRED_PREFIXES = ['/posts/new', '/profile', '/notifications']
 
 export const Route = createRootRoute({
   beforeLoad: async ({ location }) => {
-    const needsAuth = AUTH_REQUIRED_PATHS.some(p => location.pathname.startsWith(p))
+    const needsAuth =
+      location.pathname === '/' ||
+      AUTH_REQUIRED_PREFIXES.some(p => location.pathname.startsWith(p))
     if (needsAuth) {
       const session = await getSession()
       if (!session) throw redirect({ to: '/login' })
@@ -737,6 +725,7 @@ git commit -m "feat: add Supabase client and Google OAuth"
 **Files:**
 - Create: `shared/config/scriptures.json`
 - Create: `entities/scripture/lib/scriptureUtils.ts`
+- Create: `entities/scripture/index.ts`
 - Create: `tests/entities/scripture/scriptureUtils.test.ts`
 
 - [ ] **Step 1: 失敗するテストを書く**
@@ -753,21 +742,36 @@ describe('buildScriptureUrl', () => {
     expect(url).toBe('https://www.churchofjesuschrist.org/study/scriptures/bofm/1-ne/3?lang=jpn')
   })
 
-  it('節のURLを生成する', () => {
-    const url = buildScriptureUrl({ collection: 'bofm', book: '1-ne', chapter: 3, verseStart: 7 })
+  it('単一節のURLを生成する', () => {
+    const url = buildScriptureUrl({ collection: 'bofm', book: '1-ne', chapter: 3, verses: [7] })
+    expect(url).toBe('https://www.churchofjesuschrist.org/study/scriptures/bofm/1-ne/3?lang=jpn&id=p7')
+  })
+
+  it('複数節の場合は先頭節のアンカーでURLを生成する', () => {
+    const url = buildScriptureUrl({ collection: 'bofm', book: '1-ne', chapter: 3, verses: [7, 9] })
     expect(url).toBe('https://www.churchofjesuschrist.org/study/scriptures/bofm/1-ne/3?lang=jpn&id=p7')
   })
 })
 
 describe('getScriptureLabel', () => {
-  it('書名・章・節のラベルを返す', () => {
-    const label = getScriptureLabel({ collection: 'bofm', book: '1-ne', chapter: 3, verseStart: 7 })
+  it('単一節のラベルを返す', () => {
+    const label = getScriptureLabel({ collection: 'bofm', book: '1-ne', chapter: 3, verses: [7] })
     expect(label).toBe('第1ニーファイ書 3:7')
   })
 
   it('節なしのラベルを返す', () => {
     const label = getScriptureLabel({ collection: 'bofm', book: '1-ne', chapter: 3 })
     expect(label).toBe('第1ニーファイ書 第3章')
+  })
+
+  it('連続節範囲のラベルを返す', () => {
+    const label = getScriptureLabel({ collection: 'bofm', book: '1-ne', chapter: 3, verses: [7, 8, 9] })
+    expect(label).toBe('第1ニーファイ書 3:7–9')
+  })
+
+  it('飛び番節のラベルを返す', () => {
+    const label = getScriptureLabel({ collection: 'bofm', book: '1-ne', chapter: 3, verses: [7, 9] })
+    expect(label).toBe('第1ニーファイ書 3:7, 9')
   })
 })
 
@@ -868,20 +872,20 @@ Expected: FAIL（モジュールが存在しない）
 `entities/scripture/lib/scriptureUtils.ts`:
 
 ```typescript
-import scripturesData from '../data/scriptures.json'
+import scripturesData from '@/shared/config/scriptures.json'
 
 export type ScriptureRef = {
   collection: string
   book: string
   chapter?: number
-  verseStart?: number
-  verseEnd?: number
+  verses?: number[]  // 任意の節集合（連続・飛び番どちらも可）
 }
 
 export function buildScriptureUrl(ref: ScriptureRef): string {
   const base = `https://www.churchofjesuschrist.org/study/scriptures`
   let url = `${base}/${ref.collection}/${ref.book}/${ref.chapter}?lang=jpn`
-  if (ref.verseStart) url += `&id=p${ref.verseStart}`
+  const first = ref.verses?.[0]
+  if (first) url += `&id=p${first}`
   return url
 }
 
@@ -889,11 +893,13 @@ export function getScriptureLabel(ref: ScriptureRef): string {
   const book = getBook(ref.collection, ref.book)
   const bookName = book?.name ?? ref.book
   if (!ref.chapter) return bookName
-  if (!ref.verseStart) return `${bookName} 第${ref.chapter}章`
-  if (ref.verseEnd && ref.verseEnd !== ref.verseStart) {
-    return `${bookName} ${ref.chapter}:${ref.verseStart}–${ref.verseEnd}`
-  }
-  return `${bookName} ${ref.chapter}:${ref.verseStart}`
+  if (!ref.verses?.length) return `${bookName} 第${ref.chapter}章`
+  const sorted = [...ref.verses].sort((a, b) => a - b)
+  if (sorted.length === 1) return `${bookName} ${ref.chapter}:${sorted[0]}`
+  // 連続ならダッシュ表記、飛び番はカンマ区切り
+  const isConsecutive = sorted.every((v, i) => i === 0 || v === sorted[i - 1] + 1)
+  if (isConsecutive) return `${bookName} ${ref.chapter}:${sorted[0]}–${sorted[sorted.length - 1]}`
+  return `${bookName} ${ref.chapter}:${sorted.join(', ')}`
 }
 
 export function getCollection(collectionId: string) {
@@ -909,7 +915,16 @@ export function getAllCollections() {
 }
 ```
 
-- [ ] **Step 5: テストを実行して通ることを確認する**
+- [ ] **Step 5: `entities/scripture/index.ts` を作成する**
+
+`entities/scripture/index.ts`:
+
+```typescript
+export type { ScriptureRef } from './lib/scriptureUtils'
+export { buildScriptureUrl, getScriptureLabel, getCollection, getBook, getAllCollections } from './lib/scriptureUtils'
+```
+
+- [ ] **Step 6: テストを実行して通ることを確認する**
 
 ```bash
 npx vitest run tests/entities/scripture/scriptureUtils.test.ts
@@ -917,7 +932,7 @@ npx vitest run tests/entities/scripture/scriptureUtils.test.ts
 
 Expected: PASS
 
-- [ ] **Step 6: コミットする**
+- [ ] **Step 7: コミットする**
 
 ```bash
 git add -A
@@ -929,14 +944,14 @@ git commit -m "feat: add scripture data and URL builder"
 ## Task 5: 聖典ナビゲーター画面
 
 **Files:**
-- Create: `app/routes/scriptures/index.tsx`
-- Create: `app/routes/scriptures/$collection/index.tsx`
-- Create: `app/routes/scriptures/$collection/$book/index.tsx`
-- Create: `app/routes/scriptures/$collection/$book/$chapter.tsx`
+- Create: `pages/scriptures/index.tsx`
+- Create: `pages/scriptures/$collection/index.tsx`
+- Create: `pages/scriptures/$collection/$book/index.tsx`
+- Create: `pages/scriptures/$collection/$book/$chapter.tsx`
 
 - [ ] **Step 1: 聖典集一覧画面を作成する**
 
-`app/routes/scriptures/index.tsx`:
+`pages/scriptures/index.tsx`:
 
 ```typescript
 import { createFileRoute, Link } from '@tanstack/react-router'
@@ -972,7 +987,7 @@ function ScripturesPage() {
 
 - [ ] **Step 2: 書籍一覧画面を作成する**
 
-`app/routes/scriptures/$collection/index.tsx`:
+`pages/scriptures/$collection/index.tsx`:
 
 ```typescript
 import { createFileRoute, Link, notFound } from '@tanstack/react-router'
@@ -1013,7 +1028,7 @@ function CollectionPage() {
 
 - [ ] **Step 3: 章一覧画面を作成する**
 
-`app/routes/scriptures/$collection/$book/index.tsx`:
+`pages/scriptures/$collection/$book/index.tsx`:
 
 ```typescript
 import { createFileRoute, Link, notFound } from '@tanstack/react-router'
@@ -1052,57 +1067,130 @@ function BookPage() {
 }
 ```
 
-- [ ] **Step 4: 節一覧画面（章ページ）を作成する**
+- [ ] **Step 4: 節一覧画面（章ページ）+ 節ページを作成する**
 
-`app/routes/scriptures/$collection/$book/$chapter.tsx`:
+`pages/scriptures/$collection/$book/$chapter.tsx`:
+
+このファイルは1つで章ページ（節一覧）と節ページ（投稿一覧）を兼ねる（Option A: クエリパラメータ方式）。
+- `?verses=7` → 節ページ（節7への投稿一覧）
+- `?verses=7,9` → 複数節ページ
+- パラメータなし → 章ページ（節一覧）
 
 ```typescript
 import { createFileRoute, Link, notFound } from '@tanstack/react-router'
 import { getBook, buildScriptureUrl, getScriptureLabel } from '@/entities/scripture'
+import { PostCard } from '@/entities/post'
 import { supabase } from '@/shared/lib/supabase'
+import { zodValidator } from '@tanstack/zod-adapter'
+import { z } from 'zod'
+
+const searchSchema = z.object({
+  verses: z.array(z.coerce.number()).optional(),
+})
+
+const POST_SELECT = `
+  id, content, visibility, created_at,
+  scripture_collection, scripture_book, scripture_chapter,
+  scripture_verses, user_id,
+  users ( display_name, avatar_url )
+`
 
 export const Route = createFileRoute('/scriptures/$collection/$book/$chapter')({
-  loader: async ({ params }) => {
+  validateSearch: zodValidator(searchSchema),
+  loader: async ({ params, search }) => {
     const book = getBook(params.collection, params.book)
     if (!book) throw notFound()
     const chapterNum = parseInt(params.chapter)
     if (isNaN(chapterNum)) throw notFound()
 
-    const { data: postCounts } = await supabase
+    if (search.verses?.length) {
+      // 節ページ: この節に関する投稿を取得
+      const { data: posts } = await supabase
+        .from('posts')
+        .select(POST_SELECT)
+        .eq('scripture_collection', params.collection)
+        .eq('scripture_book', params.book)
+        .eq('scripture_chapter', chapterNum)
+        .overlaps('scripture_verses', search.verses)
+        .order('created_at', { ascending: false })
+
+      return {
+        book, chapter: chapterNum, collection: params.collection,
+        mode: 'verse' as const, verses: search.verses,
+        posts: posts ?? [], countByVerse: {},
+      }
+    }
+
+    // 章ページ: 節ごとの投稿数バッジ用にscripture_versesを集計
+    const { data: allPosts } = await supabase
       .from('posts')
-      .select('scripture_verse_start')
+      .select('scripture_verses')
       .eq('scripture_collection', params.collection)
       .eq('scripture_book', params.book)
       .eq('scripture_chapter', chapterNum)
-      .not('scripture_verse_start', 'is', null)
+      .not('scripture_verses', 'is', null)
 
     const countByVerse: Record<number, number> = {}
-    postCounts?.forEach(p => {
-      const v = p.scripture_verse_start!
-      countByVerse[v] = (countByVerse[v] ?? 0) + 1
+    allPosts?.forEach(p => {
+      ;(p.scripture_verses as number[])?.forEach(v => {
+        countByVerse[v] = (countByVerse[v] ?? 0) + 1
+      })
     })
 
-    return { book, chapter: chapterNum, collection: params.collection, countByVerse }
+    return {
+      book, chapter: chapterNum, collection: params.collection,
+      mode: 'chapter' as const, verses: [],
+      posts: [], countByVerse,
+    }
   },
   component: ChapterPage,
 })
 
 function ChapterPage() {
-  const { book, chapter, collection, countByVerse } = Route.useLoaderData()
-  const officialUrl = buildScriptureUrl({ collection, book: book.id, chapter })
+  const { book, chapter, collection, mode, verses, posts, countByVerse } = Route.useLoaderData()
 
+  if (mode === 'verse') {
+    const scriptureLabel = getScriptureLabel({ collection, book: book.id, chapter, verses })
+    const officialUrl = buildScriptureUrl({ collection, book: book.id, chapter, verses })
+
+    return (
+      <div>
+        <div className="p-4 border-b">
+          <h1 className="text-lg font-bold">📖 {scriptureLabel}</h1>
+          <a href={officialUrl} target="_blank" rel="noopener noreferrer"
+            className="text-sm text-blue-600 underline">公式サイトで読む →</a>
+        </div>
+        <div className="flex items-center justify-between px-4 py-2 border-b">
+          <span className="text-sm text-gray-500">新着順</span>
+          <Link
+            to="/posts/new"
+            search={{ collection, book: book.id, chapter, verses }}
+            className="text-sm bg-blue-600 text-white px-3 py-1.5 rounded-full"
+          >
+            この節について投稿する
+          </Link>
+        </div>
+        {posts.length === 0 ? (
+          <div className="p-8 text-center text-gray-400">この節への投稿はまだありません</div>
+        ) : (
+          <div>
+            {posts.map((post: any) => (
+              <PostCard key={post.id} post={post} />
+            ))}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // 章ページ: 節一覧を表示
+  const officialUrl = buildScriptureUrl({ collection, book: book.id, chapter })
   return (
     <div className="p-4">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-bold">{book.name} 第{chapter}章</h1>
-        <a
-          href={officialUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-sm text-blue-600 underline"
-        >
-          本文を読む →
-        </a>
+        <a href={officialUrl} target="_blank" rel="noopener noreferrer"
+          className="text-sm text-blue-600 underline">本文を読む →</a>
       </div>
       <p className="text-sm text-gray-500 mb-4">節を選んで投稿を見る・書く</p>
       <ul className="divide-y border rounded-lg overflow-hidden">
@@ -1113,7 +1201,7 @@ function ChapterPage() {
               <Link
                 to="/scriptures/$collection/$book/$chapter"
                 params={{ collection, book: book.id, chapter: String(chapter) }}
-                search={{ verse }}
+                search={{ verses: [verse] }}
                 className="flex items-center justify-between px-4 py-3 hover:bg-gray-50"
               >
                 <span className="text-sm">第{verse}節</span>
@@ -1133,6 +1221,8 @@ function ChapterPage() {
 ```
 
 > **Note:** 節数は書籍・章によって異なる。Phase 1では50節を上限として表示し、投稿のない節は空欄で表示する。将来的に節数データをJSONに追加可能。
+>
+> **複数節指定:** URLは `?verses=7` (単一) または `?verses=7&verses=9` (複数) の形式。`scripture_verses integer[]` カラムにより任意の節集合を保存可能。
 
 - [ ] **Step 5: 開発サーバーで聖典ナビゲーターを手動確認する**
 
@@ -1140,7 +1230,9 @@ function ChapterPage() {
 /scriptures → 聖典集一覧
 /scriptures/bofm → モルモン書の書籍一覧
 /scriptures/bofm/1-ne → 第1ニーファイ書の章一覧
-/scriptures/bofm/1-ne/3 → 第3章の節一覧
+/scriptures/bofm/1-ne/3 → 第3章の節一覧（章ページ）
+/scriptures/bofm/1-ne/3?verses=7 → 第3章第7節ページ（投稿一覧・投稿ボタン）
+/scriptures/bofm/1-ne/3?verses=7&verses=9 → 第7,9節ページ
 ```
 
 - [ ] **Step 6: コミットする**
@@ -1156,10 +1248,13 @@ git commit -m "feat: add scripture navigator screens"
 
 **Files:**
 - Create: `shared/ui/MarkdownRenderer.tsx`
-- Create: `features/select-scripture/ui/ScriptureSelector.tsx`
 - Create: `features/choose-visibility/ui/VisibilitySelector.tsx`
+- Create: `features/choose-visibility/index.ts`
+- Create: `features/select-scripture/ui/ScriptureSelector.tsx`
+- Create: `features/select-scripture/index.ts`
 - Create: `widgets/post-editor/ui/PostEditor.tsx`
-- Create: `app/routes/posts/new.tsx`
+- Create: `widgets/post-editor/index.ts`
+- Create: `pages/posts/new.tsx`
 - Create: `tests/features/choose-visibility/VisibilitySelector.test.tsx`
 
 - [ ] **Step 1: VisibilitySelectorのテストを書く**
@@ -1250,6 +1345,14 @@ npx vitest run tests/features/choose-visibility/VisibilitySelector.test.tsx
 
 Expected: PASS
 
+- [ ] **Step 4b: `features/choose-visibility/index.ts` を作成する**
+
+`features/choose-visibility/index.ts`:
+
+```typescript
+export { VisibilitySelector } from './ui/VisibilitySelector'
+```
+
 - [ ] **Step 5: MarkdownRendererを実装する**
 
 `shared/ui/MarkdownRenderer.tsx`:
@@ -1288,7 +1391,7 @@ export function ScriptureSelector({ value, onChange }: Props) {
   const [collection, setCollection] = useState(value?.collection ?? '')
   const [book, setBook] = useState(value?.book ?? '')
   const [chapter, setChapter] = useState(value?.chapter?.toString() ?? '')
-  const [verseStart, setVerseStart] = useState(value?.verseStart?.toString() ?? '')
+  const [verseInput, setVerseInput] = useState(value?.verses?.join(', ') ?? '')
 
   const collections = getAllCollections()
   const books = collection ? (collections.find(c => c.id === collection)?.books ?? []) : []
@@ -1297,20 +1400,27 @@ export function ScriptureSelector({ value, onChange }: Props) {
 
   const handleApply = () => {
     if (!collection || !book || !chapter) { onChange(null); setOpen(false); return }
+    // カンマ区切りで複数節を指定可能（例: "7, 9" → [7, 9]）
+    const verses = verseInput
+      ? verseInput.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n))
+      : undefined
     onChange({
       collection,
       book,
       chapter: parseInt(chapter),
-      verseStart: verseStart ? parseInt(verseStart) : undefined,
+      verses: verses?.length ? verses : undefined,
     })
     setOpen(false)
   }
 
   if (!open) {
+    const label = value
+      ? `📖 ${value.collection}/${value.book} ${value.chapter}章${value.verses?.length ? `:${value.verses.join(', ')}節` : ''}`
+      : '聖典参照を追加'
     return (
       <button type="button" onClick={() => setOpen(true)}
         className="text-sm text-blue-600 underline">
-        {value ? `📖 ${value.collection}/${value.book} ${value.chapter}章${value.verseStart ? `:${value.verseStart}節` : ''}` : '聖典参照を追加'}
+        {label}
       </button>
     )
   }
@@ -1339,8 +1449,8 @@ export function ScriptureSelector({ value, onChange }: Props) {
         </select>
       )}
       {chapter && (
-        <input type="number" min={1} value={verseStart} onChange={e => setVerseStart(e.target.value)}
-          placeholder="節番号（任意）"
+        <input type="text" value={verseInput} onChange={e => setVerseInput(e.target.value)}
+          placeholder="節番号（任意）。複数はカンマ区切り: 7, 9"
           className="w-full border rounded px-2 py-1" />
       )}
       <div className="flex gap-2 justify-end">
@@ -1354,6 +1464,14 @@ export function ScriptureSelector({ value, onChange }: Props) {
 }
 ```
 
+- [ ] **Step 6b: `features/select-scripture/index.ts` を作成する**
+
+`features/select-scripture/index.ts`:
+
+```typescript
+export { ScriptureSelector } from './ui/ScriptureSelector'
+```
+
 - [ ] **Step 7: PostEditorコンポーネントを実装する**
 
 `widgets/post-editor/ui/PostEditor.tsx`:
@@ -1361,8 +1479,8 @@ export function ScriptureSelector({ value, onChange }: Props) {
 ```typescript
 import { useState, useEffect } from 'react'
 import { MarkdownRenderer } from '@/shared/ui/MarkdownRenderer'
-import { ScriptureSelector } from './ScriptureSelector'
-import { VisibilitySelector } from './VisibilitySelector'
+import { ScriptureSelector } from '@/features/select-scripture'
+import { VisibilitySelector } from '@/features/choose-visibility'
 import { supabase } from '@/shared/lib/supabase'
 import type { ScriptureRef } from '@/entities/scripture'
 import type { Database } from '@/shared/types/database'
@@ -1411,8 +1529,7 @@ export function PostEditor({ initialRef, onSuccess }: Props) {
         scripture_collection: scriptureRef?.collection ?? null,
         scripture_book: scriptureRef?.book ?? null,
         scripture_chapter: scriptureRef?.chapter ?? null,
-        scripture_verse_start: scriptureRef?.verseStart ?? null,
-        scripture_verse_end: scriptureRef?.verseEnd ?? null,
+        scripture_verses: scriptureRef?.verses ?? null,
       })
       if (err) throw err
       localStorage.removeItem(DRAFT_KEY)
@@ -1465,13 +1582,21 @@ export function PostEditor({ initialRef, onSuccess }: Props) {
 }
 ```
 
+- [ ] **Step 7b: `widgets/post-editor/index.ts` を作成する**
+
+`widgets/post-editor/index.ts`:
+
+```typescript
+export { PostEditor } from './ui/PostEditor'
+```
+
 - [ ] **Step 8: 投稿作成ルートを作成する**
 
-`app/routes/posts/new.tsx`:
+`pages/posts/new.tsx`:
 
 ```typescript
 import { createFileRoute, useNavigate, useSearch } from '@tanstack/react-router'
-import { PostEditor } from '../../components/PostEditor'
+import { PostEditor } from '@/widgets/post-editor'
 import type { ScriptureRef } from '@/entities/scripture'
 import { zodValidator } from '@tanstack/zod-adapter'
 import { z } from 'zod'
@@ -1480,7 +1605,7 @@ const searchSchema = z.object({
   collection: z.string().optional(),
   book: z.string().optional(),
   chapter: z.coerce.number().optional(),
-  verse: z.coerce.number().optional(),
+  verses: z.array(z.coerce.number()).optional(),
 })
 
 export const Route = createFileRoute('/posts/new')({
@@ -1494,7 +1619,7 @@ function NewPostPage() {
 
   const initialRef: ScriptureRef | undefined =
     search.collection && search.book && search.chapter
-      ? { collection: search.collection, book: search.book, chapter: search.chapter, verseStart: search.verse }
+      ? { collection: search.collection, book: search.book, chapter: search.chapter, verses: search.verses }
       : undefined
 
   return (
@@ -1532,9 +1657,11 @@ git commit -m "feat: add post creation with Markdown and visibility selector"
 ## Task 7: フィード画面 + PostCard
 
 **Files:**
-- Create: `entities/post/ui/PostCard.tsx`
 - Create: `entities/user/ui/Avatar.tsx`
-- Create: `app/routes/index.tsx`
+- Create: `entities/user/index.ts`
+- Create: `entities/post/ui/PostCard.tsx`
+- Create: `entities/post/index.ts`
+- Create: `pages/index.tsx`
 - Create: `tests/entities/post/PostCard.test.tsx`
 
 - [ ] **Step 1: PostCardのテストを書く**
@@ -1544,7 +1671,7 @@ git commit -m "feat: add post creation with Markdown and visibility selector"
 ```typescript
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { PostCard } from '../../app/components/PostCard'
+import { PostCard } from '@/entities/post'
 
 const mockPost = {
   id: 'post-1',
@@ -1554,8 +1681,7 @@ const mockPost = {
   scripture_collection: 'bofm',
   scripture_book: '1-ne',
   scripture_chapter: 3,
-  scripture_verse_start: 7,
-  scripture_verse_end: null,
+  scripture_verses: [7],
   user_id: 'user-1',
   users: { display_name: '山田太郎', avatar_url: null },
 }
@@ -1606,6 +1732,14 @@ export function Avatar({ url, name, size = 'md' }: Props) {
 }
 ```
 
+- [ ] **Step 3b: `entities/user/index.ts` を作成する**
+
+`entities/user/index.ts`:
+
+```typescript
+export { Avatar } from './ui/Avatar'
+```
+
 - [ ] **Step 4: PostCardコンポーネントを実装する**
 
 `entities/post/ui/PostCard.tsx`:
@@ -1624,8 +1758,7 @@ type Post = {
   scripture_collection: string | null
   scripture_book: string | null
   scripture_chapter: number | null
-  scripture_verse_start: number | null
-  scripture_verse_end: number | null
+  scripture_verses: number[] | null
   user_id: string
   users: { display_name: string; avatar_url: string | null }
 }
@@ -1638,8 +1771,7 @@ export function PostCard({ post }: Props) {
         collection: post.scripture_collection,
         book: post.scripture_book,
         chapter: post.scripture_chapter,
-        verseStart: post.scripture_verse_start ?? undefined,
-        verseEnd: post.scripture_verse_end ?? undefined,
+        verses: post.scripture_verses ?? undefined,
       })
     : null
 
@@ -1680,6 +1812,14 @@ export function PostCard({ post }: Props) {
 }
 ```
 
+- [ ] **Step 4b: `entities/post/index.ts` を作成する**
+
+`entities/post/index.ts`:
+
+```typescript
+export { PostCard } from './ui/PostCard'
+```
+
 - [ ] **Step 5: テストを実行して通ることを確認する**
 
 ```bash
@@ -1690,7 +1830,7 @@ Expected: PASS
 
 - [ ] **Step 6: フィード画面を実装する**
 
-`app/routes/index.tsx`:
+`pages/index.tsx`:
 
 ```typescript
 import { createFileRoute } from '@tanstack/react-router'
@@ -1701,7 +1841,7 @@ import { PostCard } from '@/entities/post'
 const POST_SELECT = `
   id, content, visibility, created_at,
   scripture_collection, scripture_book, scripture_chapter,
-  scripture_verse_start, scripture_verse_end, user_id,
+  scripture_verses, user_id,
   users ( display_name, avatar_url )
 `
 
@@ -1717,12 +1857,31 @@ function FeedPage() {
   useEffect(() => {
     setLoading(true)
     const load = async () => {
-      let query = supabase.from('posts').select(POST_SELECT).order('created_at', { ascending: false }).limit(20)
-      if (tab === 'public') {
-        query = query.eq('visibility', 'public')
+      if (tab === 'following') {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) { setPosts([]); setLoading(false); return }
+        const { data: following } = await supabase
+          .from('follows')
+          .select('following_id')
+          .eq('follower_id', user.id)
+        const ids = following?.map(f => f.following_id) ?? []
+        if (ids.length === 0) { setPosts([]); setLoading(false); return }
+        const { data } = await supabase
+          .from('posts')
+          .select(POST_SELECT)
+          .in('user_id', ids)
+          .order('created_at', { ascending: false })
+          .limit(20)
+        setPosts(data ?? [])
+      } else {
+        const { data } = await supabase
+          .from('posts')
+          .select(POST_SELECT)
+          .eq('visibility', 'public')
+          .order('created_at', { ascending: false })
+          .limit(20)
+        setPosts(data ?? [])
       }
-      const { data } = await query
-      setPosts(data ?? [])
       setLoading(false)
     }
     load()
@@ -1774,9 +1933,58 @@ git commit -m "feat: add feed screen and PostCard component"
 
 **Files:**
 - Create: `features/follow-user/ui/FollowButton.tsx`
+- Create: `features/follow-user/index.ts`
 - Create: `features/manage-family/ui/FamilyButton.tsx`
+- Create: `features/manage-family/index.ts`
+- Create: `tests/features/follow-user/FollowButton.test.tsx`
 
-- [ ] **Step 1: FollowButtonを実装する**
+- [ ] **Step 1: FollowButtonの失敗テストを書く**
+
+`tests/features/follow-user/FollowButton.test.tsx`:
+
+```typescript
+import { describe, it, expect, vi } from 'vitest'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { FollowButton } from '@/features/follow-user'
+
+vi.mock('@/shared/lib/supabase', () => ({
+  supabase: {
+    from: () => ({
+      insert: vi.fn().mockResolvedValue({ error: null }),
+      delete: () => ({ eq: () => ({ eq: vi.fn().mockResolvedValue({ error: null }) }) }),
+    }),
+  },
+}))
+
+describe('FollowButton', () => {
+  it('未フォロー時は「フォロー」ボタンを表示する', () => {
+    render(<FollowButton targetUserId="u2" currentUserId="u1" initialFollowing={false} />)
+    expect(screen.getByRole('button', { name: 'フォロー' })).toBeInTheDocument()
+  })
+
+  it('フォロー済み時は「フォロー中」ボタンを表示する', () => {
+    render(<FollowButton targetUserId="u2" currentUserId="u1" initialFollowing={true} />)
+    expect(screen.getByRole('button', { name: 'フォロー中' })).toBeInTheDocument()
+  })
+
+  it('クリックするとボタンのラベルが切り替わる', async () => {
+    render(<FollowButton targetUserId="u2" currentUserId="u1" initialFollowing={false} />)
+    await userEvent.click(screen.getByRole('button', { name: 'フォロー' }))
+    expect(await screen.findByRole('button', { name: 'フォロー中' })).toBeInTheDocument()
+  })
+})
+```
+
+- [ ] **Step 2: テストが失敗することを確認する**
+
+```bash
+npx vitest run tests/features/follow-user/FollowButton.test.tsx
+```
+
+Expected: FAIL（モジュールが存在しない）
+
+- [ ] **Step 3: FollowButtonを実装する**
 
 `features/follow-user/ui/FollowButton.tsx`:
 
@@ -1821,7 +2029,23 @@ export function FollowButton({ targetUserId, currentUserId, initialFollowing }: 
 }
 ```
 
-- [ ] **Step 2: FamilyButtonを実装する**
+- [ ] **Step 4: テストを実行して通ることを確認する**
+
+```bash
+npx vitest run tests/features/follow-user/FollowButton.test.tsx
+```
+
+Expected: PASS
+
+- [ ] **Step 4b: `features/follow-user/index.ts` を作成する**
+
+`features/follow-user/index.ts`:
+
+```typescript
+export { FollowButton } from './ui/FollowButton'
+```
+
+- [ ] **Step 5: FamilyButtonを実装する**
 
 `features/manage-family/ui/FamilyButton.tsx`:
 
@@ -1861,8 +2085,12 @@ export function FamilyButton({ targetUserId, currentUserId, initialStatus }: Pro
 
   const remove = async () => {
     setPending(true)
+    // current↔target の間のレコードのみ削除（他のファミリー関係を巻き込まない）
     await supabase.from('family_relationships').delete()
-      .or(`requester_id.eq.${currentUserId},addressee_id.eq.${currentUserId}`)
+      .or(
+        `and(requester_id.eq.${currentUserId},addressee_id.eq.${targetUserId}),` +
+        `and(requester_id.eq.${targetUserId},addressee_id.eq.${currentUserId})`
+      )
     setStatus('none')
     setPending(false)
   }
@@ -1895,7 +2123,15 @@ export function FamilyButton({ targetUserId, currentUserId, initialStatus }: Pro
 }
 ```
 
-- [ ] **Step 3: コミットする**
+- [ ] **Step 5b: `features/manage-family/index.ts` を作成する**
+
+`features/manage-family/index.ts`:
+
+```typescript
+export { FamilyButton } from './ui/FamilyButton'
+```
+
+- [ ] **Step 6: コミットする**
 
 ```bash
 git add -A
@@ -1907,12 +2143,12 @@ git commit -m "feat: add follow and family buttons"
 ## Task 9: プロフィール画面
 
 **Files:**
-- Create: `app/routes/profile/index.tsx`
-- Create: `app/routes/profile/$userId.tsx`
+- Create: `pages/profile/index.tsx`
+- Create: `pages/profile/$userId.tsx`
 
 - [ ] **Step 1: 自分のプロフィール画面を実装する**
 
-`app/routes/profile/index.tsx`:
+`pages/profile/index.tsx`:
 
 ```typescript
 import { createFileRoute, redirect } from '@tanstack/react-router'
@@ -1930,13 +2166,13 @@ export const Route = createFileRoute('/profile/')({
 
 - [ ] **Step 2: ユーザープロフィール画面を実装する**
 
-`app/routes/profile/$userId.tsx`:
+`pages/profile/$userId.tsx`:
 
 ```typescript
 import { createFileRoute, notFound } from '@tanstack/react-router'
 import { supabase } from '@/shared/lib/supabase'
 import { Avatar } from '@/entities/user'
-import { PostCard } from '../../components/PostCard'
+import { PostCard } from '@/entities/post'
 import { FollowButton } from '@/features/follow-user'
 import { FamilyButton } from '@/features/manage-family'
 
@@ -1949,7 +2185,7 @@ export const Route = createFileRoute('/profile/$userId')({
         supabase.from('posts').select(`
           id, content, visibility, created_at,
           scripture_collection, scripture_book, scripture_chapter,
-          scripture_verse_start, scripture_verse_end, user_id,
+          scripture_verses, user_id,
           users ( display_name, avatar_url )
         `).eq('user_id', params.userId).order('created_at', { ascending: false }),
         supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', params.userId),
@@ -1966,8 +2202,10 @@ export const Route = createFileRoute('/profile/$userId')({
       const [{ data: followData }, { data: familyData }] = await Promise.all([
         supabase.from('follows').select('*').eq('follower_id', user.id).eq('following_id', params.userId).maybeSingle(),
         supabase.from('family_relationships').select('*')
-          .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`)
-          .or(`requester_id.eq.${params.userId},addressee_id.eq.${params.userId}`)
+          .or(
+            `and(requester_id.eq.${user.id},addressee_id.eq.${params.userId}),` +
+            `and(requester_id.eq.${params.userId},addressee_id.eq.${user.id})`
+          )
           .maybeSingle(),
       ])
       isFollowing = !!followData
@@ -2035,11 +2273,11 @@ git commit -m "feat: add profile screen with follow and family actions"
 ## Task 10: 通知画面
 
 **Files:**
-- Create: `app/routes/notifications.tsx`
+- Create: `pages/notifications.tsx`
 
 - [ ] **Step 1: 通知画面を実装する**
 
-`app/routes/notifications.tsx`:
+`pages/notifications.tsx`:
 
 ```typescript
 import { createFileRoute, Link } from '@tanstack/react-router'
@@ -2132,11 +2370,11 @@ git commit -m "feat: add notifications screen"
 ## Task 11: 投稿詳細画面（節ページ連携）
 
 **Files:**
-- Create: `app/routes/posts/$id.tsx`
+- Create: `pages/posts/$id.tsx`
 
 - [ ] **Step 1: 投稿詳細画面を実装する**
 
-`app/routes/posts/$id.tsx`:
+`pages/posts/$id.tsx`:
 
 ```typescript
 import { createFileRoute, notFound, Link } from '@tanstack/react-router'
@@ -2150,7 +2388,7 @@ export const Route = createFileRoute('/posts/$id')({
     const { data: post } = await supabase.from('posts').select(`
       id, content, visibility, created_at,
       scripture_collection, scripture_book, scripture_chapter,
-      scripture_verse_start, scripture_verse_end, user_id,
+      scripture_verses, user_id,
       users ( display_name, avatar_url )
     `).eq('id', params.id).single()
     if (!post) throw notFound()
@@ -2167,7 +2405,7 @@ function PostDetailPage() {
         collection: post.scripture_collection,
         book: post.scripture_book,
         chapter: post.scripture_chapter,
-        verseStart: post.scripture_verse_start ?? undefined,
+        verses: (post.scripture_verses as number[] | null) ?? undefined,
       })
     : null
 
@@ -2176,7 +2414,7 @@ function PostDetailPage() {
         collection: post.scripture_collection,
         book: post.scripture_book,
         chapter: post.scripture_chapter,
-        verseStart: post.scripture_verse_start ?? undefined,
+        verses: (post.scripture_verses as number[] | null) ?? undefined,
       })
     : null
 
@@ -2221,7 +2459,7 @@ git commit -m "feat: add post detail screen"
 
 **Files:**
 - Create: `public/manifest.json`
-- Modify: `app/routes/__root.tsx`
+- Modify: `pages/__root.tsx`
 
 - [ ] **Step 1: PWAマニフェストを作成する**
 
