@@ -317,8 +317,7 @@ CREATE TABLE posts (
   scripture_collection text,
   scripture_book text,
   scripture_chapter integer,
-  scripture_verse_start integer,
-  scripture_verse_end integer,
+  scripture_verses integer[],
   visibility visibility_type NOT NULL DEFAULT 'public',
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
@@ -558,10 +557,10 @@ git commit -m "feat: add Supabase schema, RLS policies, and triggers"
 `shared/lib/supabase.ts`:
 
 ```typescript
-import { createBrowserClient } from '@supabase/supabase-js'
+import { createClient } from '@supabase/supabase-js'
 import type { Database } from '@/shared/types/database'
 
-export const supabase = createBrowserClient<Database>(
+export const supabase = createClient<Database>(
   import.meta.env.VITE_SUPABASE_URL,
   import.meta.env.VITE_SUPABASE_ANON_KEY,
 )
@@ -644,13 +643,16 @@ function LoginPage() {
 ```typescript
 import { createRootRoute, Outlet, redirect } from '@tanstack/react-router'
 import { getSession } from '@/shared/lib/auth'
-import { BottomNav } from '../components/BottomNav'
+import { BottomNav } from '@/shared/ui/BottomNav'
 
-const AUTH_REQUIRED_PATHS = ['/', '/posts/new', '/profile', '/notifications']
+// '/' は完全一致で認証必須。'/scriptures/*' は未ログインでも閲覧可能
+const AUTH_REQUIRED_PREFIXES = ['/posts/new', '/profile', '/notifications']
 
 export const Route = createRootRoute({
   beforeLoad: async ({ location }) => {
-    const needsAuth = AUTH_REQUIRED_PATHS.some(p => location.pathname.startsWith(p))
+    const needsAuth =
+      location.pathname === '/' ||
+      AUTH_REQUIRED_PREFIXES.some(p => location.pathname.startsWith(p))
     if (needsAuth) {
       const session = await getSession()
       if (!session) throw redirect({ to: '/login' })
@@ -753,21 +755,36 @@ describe('buildScriptureUrl', () => {
     expect(url).toBe('https://www.churchofjesuschrist.org/study/scriptures/bofm/1-ne/3?lang=jpn')
   })
 
-  it('節のURLを生成する', () => {
-    const url = buildScriptureUrl({ collection: 'bofm', book: '1-ne', chapter: 3, verseStart: 7 })
+  it('単一節のURLを生成する', () => {
+    const url = buildScriptureUrl({ collection: 'bofm', book: '1-ne', chapter: 3, verses: [7] })
+    expect(url).toBe('https://www.churchofjesuschrist.org/study/scriptures/bofm/1-ne/3?lang=jpn&id=p7')
+  })
+
+  it('複数節の場合は先頭節のアンカーでURLを生成する', () => {
+    const url = buildScriptureUrl({ collection: 'bofm', book: '1-ne', chapter: 3, verses: [7, 9] })
     expect(url).toBe('https://www.churchofjesuschrist.org/study/scriptures/bofm/1-ne/3?lang=jpn&id=p7')
   })
 })
 
 describe('getScriptureLabel', () => {
-  it('書名・章・節のラベルを返す', () => {
-    const label = getScriptureLabel({ collection: 'bofm', book: '1-ne', chapter: 3, verseStart: 7 })
+  it('単一節のラベルを返す', () => {
+    const label = getScriptureLabel({ collection: 'bofm', book: '1-ne', chapter: 3, verses: [7] })
     expect(label).toBe('第1ニーファイ書 3:7')
   })
 
   it('節なしのラベルを返す', () => {
     const label = getScriptureLabel({ collection: 'bofm', book: '1-ne', chapter: 3 })
     expect(label).toBe('第1ニーファイ書 第3章')
+  })
+
+  it('連続節範囲のラベルを返す', () => {
+    const label = getScriptureLabel({ collection: 'bofm', book: '1-ne', chapter: 3, verses: [7, 8, 9] })
+    expect(label).toBe('第1ニーファイ書 3:7–9')
+  })
+
+  it('飛び番節のラベルを返す', () => {
+    const label = getScriptureLabel({ collection: 'bofm', book: '1-ne', chapter: 3, verses: [7, 9] })
+    expect(label).toBe('第1ニーファイ書 3:7, 9')
   })
 })
 
@@ -868,20 +885,20 @@ Expected: FAIL（モジュールが存在しない）
 `entities/scripture/lib/scriptureUtils.ts`:
 
 ```typescript
-import scripturesData from '../data/scriptures.json'
+import scripturesData from '@/shared/config/scriptures.json'
 
 export type ScriptureRef = {
   collection: string
   book: string
   chapter?: number
-  verseStart?: number
-  verseEnd?: number
+  verses?: number[]  // 任意の節集合（連続・飛び番どちらも可）
 }
 
 export function buildScriptureUrl(ref: ScriptureRef): string {
   const base = `https://www.churchofjesuschrist.org/study/scriptures`
   let url = `${base}/${ref.collection}/${ref.book}/${ref.chapter}?lang=jpn`
-  if (ref.verseStart) url += `&id=p${ref.verseStart}`
+  const first = ref.verses?.[0]
+  if (first) url += `&id=p${first}`
   return url
 }
 
@@ -889,11 +906,13 @@ export function getScriptureLabel(ref: ScriptureRef): string {
   const book = getBook(ref.collection, ref.book)
   const bookName = book?.name ?? ref.book
   if (!ref.chapter) return bookName
-  if (!ref.verseStart) return `${bookName} 第${ref.chapter}章`
-  if (ref.verseEnd && ref.verseEnd !== ref.verseStart) {
-    return `${bookName} ${ref.chapter}:${ref.verseStart}–${ref.verseEnd}`
-  }
-  return `${bookName} ${ref.chapter}:${ref.verseStart}`
+  if (!ref.verses?.length) return `${bookName} 第${ref.chapter}章`
+  const sorted = [...ref.verses].sort((a, b) => a - b)
+  if (sorted.length === 1) return `${bookName} ${ref.chapter}:${sorted[0]}`
+  // 連続ならダッシュ表記、飛び番はカンマ区切り
+  const isConsecutive = sorted.every((v, i) => i === 0 || v === sorted[i - 1] + 1)
+  if (isConsecutive) return `${bookName} ${ref.chapter}:${sorted[0]}–${sorted[sorted.length - 1]}`
+  return `${bookName} ${ref.chapter}:${sorted.join(', ')}`
 }
 
 export function getCollection(collectionId: string) {
@@ -1052,57 +1071,141 @@ function BookPage() {
 }
 ```
 
-- [ ] **Step 4: 節一覧画面（章ページ）を作成する**
+- [ ] **Step 4: 節一覧画面（章ページ）+ 節ページを作成する**
 
 `app/routes/scriptures/$collection/$book/$chapter.tsx`:
 
+このファイルは1つで章ページ（節一覧）と節ページ（投稿一覧）を兼ねる（Option A: クエリパラメータ方式）。
+- `?verses=7` → 節ページ（節7への投稿一覧）
+- `?verses=7,9` → 複数節ページ
+- パラメータなし → 章ページ（節一覧）
+
 ```typescript
 import { createFileRoute, Link, notFound } from '@tanstack/react-router'
+import { useState } from 'react'
 import { getBook, buildScriptureUrl, getScriptureLabel } from '@/entities/scripture'
+import { PostCard } from '@/entities/post'
 import { supabase } from '@/shared/lib/supabase'
+import { zodValidator } from '@tanstack/zod-adapter'
+import { z } from 'zod'
+
+const searchSchema = z.object({
+  verses: z.array(z.coerce.number()).optional(),
+})
+
+const POST_SELECT = `
+  id, content, visibility, created_at,
+  scripture_collection, scripture_book, scripture_chapter,
+  scripture_verses, user_id,
+  users ( display_name, avatar_url )
+`
 
 export const Route = createFileRoute('/scriptures/$collection/$book/$chapter')({
-  loader: async ({ params }) => {
+  validateSearch: zodValidator(searchSchema),
+  loader: async ({ params, search }) => {
     const book = getBook(params.collection, params.book)
     if (!book) throw notFound()
     const chapterNum = parseInt(params.chapter)
     if (isNaN(chapterNum)) throw notFound()
 
-    const { data: postCounts } = await supabase
+    if (search.verses?.length) {
+      // 節ページ: この節に関する投稿を取得
+      const { data: posts } = await supabase
+        .from('posts')
+        .select(POST_SELECT)
+        .eq('scripture_collection', params.collection)
+        .eq('scripture_book', params.book)
+        .eq('scripture_chapter', chapterNum)
+        .contains('scripture_verses', search.verses)
+        .order('created_at', { ascending: false })
+
+      return {
+        book, chapter: chapterNum, collection: params.collection,
+        mode: 'verse' as const, verses: search.verses,
+        posts: posts ?? [], countByVerse: {},
+      }
+    }
+
+    // 章ページ: 節ごとの投稿数バッジ用にscripture_versesを集計
+    const { data: allPosts } = await supabase
       .from('posts')
-      .select('scripture_verse_start')
+      .select('scripture_verses')
       .eq('scripture_collection', params.collection)
       .eq('scripture_book', params.book)
       .eq('scripture_chapter', chapterNum)
-      .not('scripture_verse_start', 'is', null)
+      .not('scripture_verses', 'is', null)
 
     const countByVerse: Record<number, number> = {}
-    postCounts?.forEach(p => {
-      const v = p.scripture_verse_start!
-      countByVerse[v] = (countByVerse[v] ?? 0) + 1
+    allPosts?.forEach(p => {
+      ;(p.scripture_verses as number[])?.forEach(v => {
+        countByVerse[v] = (countByVerse[v] ?? 0) + 1
+      })
     })
 
-    return { book, chapter: chapterNum, collection: params.collection, countByVerse }
+    return {
+      book, chapter: chapterNum, collection: params.collection,
+      mode: 'chapter' as const, verses: [],
+      posts: [], countByVerse,
+    }
   },
   component: ChapterPage,
 })
 
 function ChapterPage() {
-  const { book, chapter, collection, countByVerse } = Route.useLoaderData()
-  const officialUrl = buildScriptureUrl({ collection, book: book.id, chapter })
+  const { book, chapter, collection, mode, verses, posts, countByVerse } = Route.useLoaderData()
+  const [sort, setSort] = useState<'newest' | 'liked'>('newest')
 
+  if (mode === 'verse') {
+    const scriptureLabel = getScriptureLabel({ collection, book: book.id, chapter, verses })
+    const officialUrl = buildScriptureUrl({ collection, book: book.id, chapter, verses })
+
+    return (
+      <div>
+        <div className="p-4 border-b">
+          <h1 className="text-lg font-bold">📖 {scriptureLabel}</h1>
+          <a href={officialUrl} target="_blank" rel="noopener noreferrer"
+            className="text-sm text-blue-600 underline">公式サイトで読む →</a>
+        </div>
+        <div className="flex items-center justify-between px-4 py-2 border-b">
+          <div className="flex gap-3">
+            <button onClick={() => setSort('newest')}
+              className={`text-sm ${sort === 'newest' ? 'text-blue-600 font-medium' : 'text-gray-400'}`}>
+              新着順
+            </button>
+            <button onClick={() => setSort('liked')}
+              className={`text-sm ${sort === 'liked' ? 'text-blue-600 font-medium' : 'text-gray-400'}`}>
+              人気順
+            </button>
+          </div>
+          <Link
+            to="/posts/new"
+            search={{ collection, book: book.id, chapter, verses }}
+            className="text-sm bg-blue-600 text-white px-3 py-1.5 rounded-full"
+          >
+            この節について投稿する
+          </Link>
+        </div>
+        {posts.length === 0 ? (
+          <div className="p-8 text-center text-gray-400">この節への投稿はまだありません</div>
+        ) : (
+          <div>
+            {posts.map((post: any) => (
+              <PostCard key={post.id} post={post} />
+            ))}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // 章ページ: 節一覧を表示
+  const officialUrl = buildScriptureUrl({ collection, book: book.id, chapter })
   return (
     <div className="p-4">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-bold">{book.name} 第{chapter}章</h1>
-        <a
-          href={officialUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-sm text-blue-600 underline"
-        >
-          本文を読む →
-        </a>
+        <a href={officialUrl} target="_blank" rel="noopener noreferrer"
+          className="text-sm text-blue-600 underline">本文を読む →</a>
       </div>
       <p className="text-sm text-gray-500 mb-4">節を選んで投稿を見る・書く</p>
       <ul className="divide-y border rounded-lg overflow-hidden">
@@ -1113,7 +1216,7 @@ function ChapterPage() {
               <Link
                 to="/scriptures/$collection/$book/$chapter"
                 params={{ collection, book: book.id, chapter: String(chapter) }}
-                search={{ verse }}
+                search={{ verses: [verse] }}
                 className="flex items-center justify-between px-4 py-3 hover:bg-gray-50"
               >
                 <span className="text-sm">第{verse}節</span>
@@ -1133,6 +1236,8 @@ function ChapterPage() {
 ```
 
 > **Note:** 節数は書籍・章によって異なる。Phase 1では50節を上限として表示し、投稿のない節は空欄で表示する。将来的に節数データをJSONに追加可能。
+>
+> **複数節指定:** URLは `?verses=7` (単一) または `?verses=7&verses=9` (複数) の形式。`scripture_verses integer[]` カラムにより任意の節集合を保存可能。
 
 - [ ] **Step 5: 開発サーバーで聖典ナビゲーターを手動確認する**
 
@@ -1140,7 +1245,9 @@ function ChapterPage() {
 /scriptures → 聖典集一覧
 /scriptures/bofm → モルモン書の書籍一覧
 /scriptures/bofm/1-ne → 第1ニーファイ書の章一覧
-/scriptures/bofm/1-ne/3 → 第3章の節一覧
+/scriptures/bofm/1-ne/3 → 第3章の節一覧（章ページ）
+/scriptures/bofm/1-ne/3?verses=7 → 第3章第7節ページ（投稿一覧・投稿ボタン）
+/scriptures/bofm/1-ne/3?verses=7&verses=9 → 第7,9節ページ
 ```
 
 - [ ] **Step 6: コミットする**
@@ -1288,7 +1395,7 @@ export function ScriptureSelector({ value, onChange }: Props) {
   const [collection, setCollection] = useState(value?.collection ?? '')
   const [book, setBook] = useState(value?.book ?? '')
   const [chapter, setChapter] = useState(value?.chapter?.toString() ?? '')
-  const [verseStart, setVerseStart] = useState(value?.verseStart?.toString() ?? '')
+  const [verseInput, setVerseInput] = useState(value?.verses?.join(', ') ?? '')
 
   const collections = getAllCollections()
   const books = collection ? (collections.find(c => c.id === collection)?.books ?? []) : []
@@ -1297,20 +1404,27 @@ export function ScriptureSelector({ value, onChange }: Props) {
 
   const handleApply = () => {
     if (!collection || !book || !chapter) { onChange(null); setOpen(false); return }
+    // カンマ区切りで複数節を指定可能（例: "7, 9" → [7, 9]）
+    const verses = verseInput
+      ? verseInput.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n))
+      : undefined
     onChange({
       collection,
       book,
       chapter: parseInt(chapter),
-      verseStart: verseStart ? parseInt(verseStart) : undefined,
+      verses: verses?.length ? verses : undefined,
     })
     setOpen(false)
   }
 
   if (!open) {
+    const label = value
+      ? `📖 ${value.collection}/${value.book} ${value.chapter}章${value.verses?.length ? `:${value.verses.join(', ')}節` : ''}`
+      : '聖典参照を追加'
     return (
       <button type="button" onClick={() => setOpen(true)}
         className="text-sm text-blue-600 underline">
-        {value ? `📖 ${value.collection}/${value.book} ${value.chapter}章${value.verseStart ? `:${value.verseStart}節` : ''}` : '聖典参照を追加'}
+        {label}
       </button>
     )
   }
@@ -1339,8 +1453,8 @@ export function ScriptureSelector({ value, onChange }: Props) {
         </select>
       )}
       {chapter && (
-        <input type="number" min={1} value={verseStart} onChange={e => setVerseStart(e.target.value)}
-          placeholder="節番号（任意）"
+        <input type="text" value={verseInput} onChange={e => setVerseInput(e.target.value)}
+          placeholder="節番号（任意）。複数はカンマ区切り: 7, 9"
           className="w-full border rounded px-2 py-1" />
       )}
       <div className="flex gap-2 justify-end">
@@ -1361,8 +1475,8 @@ export function ScriptureSelector({ value, onChange }: Props) {
 ```typescript
 import { useState, useEffect } from 'react'
 import { MarkdownRenderer } from '@/shared/ui/MarkdownRenderer'
-import { ScriptureSelector } from './ScriptureSelector'
-import { VisibilitySelector } from './VisibilitySelector'
+import { ScriptureSelector } from '@/features/select-scripture'
+import { VisibilitySelector } from '@/features/choose-visibility'
 import { supabase } from '@/shared/lib/supabase'
 import type { ScriptureRef } from '@/entities/scripture'
 import type { Database } from '@/shared/types/database'
@@ -1411,8 +1525,7 @@ export function PostEditor({ initialRef, onSuccess }: Props) {
         scripture_collection: scriptureRef?.collection ?? null,
         scripture_book: scriptureRef?.book ?? null,
         scripture_chapter: scriptureRef?.chapter ?? null,
-        scripture_verse_start: scriptureRef?.verseStart ?? null,
-        scripture_verse_end: scriptureRef?.verseEnd ?? null,
+        scripture_verses: scriptureRef?.verses ?? null,
       })
       if (err) throw err
       localStorage.removeItem(DRAFT_KEY)
@@ -1471,7 +1584,7 @@ export function PostEditor({ initialRef, onSuccess }: Props) {
 
 ```typescript
 import { createFileRoute, useNavigate, useSearch } from '@tanstack/react-router'
-import { PostEditor } from '../../components/PostEditor'
+import { PostEditor } from '@/widgets/post-editor'
 import type { ScriptureRef } from '@/entities/scripture'
 import { zodValidator } from '@tanstack/zod-adapter'
 import { z } from 'zod'
@@ -1480,7 +1593,7 @@ const searchSchema = z.object({
   collection: z.string().optional(),
   book: z.string().optional(),
   chapter: z.coerce.number().optional(),
-  verse: z.coerce.number().optional(),
+  verses: z.array(z.coerce.number()).optional(),
 })
 
 export const Route = createFileRoute('/posts/new')({
@@ -1494,7 +1607,7 @@ function NewPostPage() {
 
   const initialRef: ScriptureRef | undefined =
     search.collection && search.book && search.chapter
-      ? { collection: search.collection, book: search.book, chapter: search.chapter, verseStart: search.verse }
+      ? { collection: search.collection, book: search.book, chapter: search.chapter, verses: search.verses }
       : undefined
 
   return (
@@ -1544,7 +1657,7 @@ git commit -m "feat: add post creation with Markdown and visibility selector"
 ```typescript
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { PostCard } from '../../app/components/PostCard'
+import { PostCard } from '@/entities/post'
 
 const mockPost = {
   id: 'post-1',
@@ -1554,8 +1667,7 @@ const mockPost = {
   scripture_collection: 'bofm',
   scripture_book: '1-ne',
   scripture_chapter: 3,
-  scripture_verse_start: 7,
-  scripture_verse_end: null,
+  scripture_verses: [7],
   user_id: 'user-1',
   users: { display_name: '山田太郎', avatar_url: null },
 }
@@ -1624,8 +1736,7 @@ type Post = {
   scripture_collection: string | null
   scripture_book: string | null
   scripture_chapter: number | null
-  scripture_verse_start: number | null
-  scripture_verse_end: number | null
+  scripture_verses: number[] | null
   user_id: string
   users: { display_name: string; avatar_url: string | null }
 }
@@ -1638,8 +1749,7 @@ export function PostCard({ post }: Props) {
         collection: post.scripture_collection,
         book: post.scripture_book,
         chapter: post.scripture_chapter,
-        verseStart: post.scripture_verse_start ?? undefined,
-        verseEnd: post.scripture_verse_end ?? undefined,
+        verses: post.scripture_verses ?? undefined,
       })
     : null
 
@@ -1701,7 +1811,7 @@ import { PostCard } from '@/entities/post'
 const POST_SELECT = `
   id, content, visibility, created_at,
   scripture_collection, scripture_book, scripture_chapter,
-  scripture_verse_start, scripture_verse_end, user_id,
+  scripture_verses, user_id,
   users ( display_name, avatar_url )
 `
 
@@ -1717,12 +1827,31 @@ function FeedPage() {
   useEffect(() => {
     setLoading(true)
     const load = async () => {
-      let query = supabase.from('posts').select(POST_SELECT).order('created_at', { ascending: false }).limit(20)
-      if (tab === 'public') {
-        query = query.eq('visibility', 'public')
+      if (tab === 'following') {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) { setPosts([]); setLoading(false); return }
+        const { data: following } = await supabase
+          .from('follows')
+          .select('following_id')
+          .eq('follower_id', user.id)
+        const ids = following?.map(f => f.following_id) ?? []
+        if (ids.length === 0) { setPosts([]); setLoading(false); return }
+        const { data } = await supabase
+          .from('posts')
+          .select(POST_SELECT)
+          .in('user_id', ids)
+          .order('created_at', { ascending: false })
+          .limit(20)
+        setPosts(data ?? [])
+      } else {
+        const { data } = await supabase
+          .from('posts')
+          .select(POST_SELECT)
+          .eq('visibility', 'public')
+          .order('created_at', { ascending: false })
+          .limit(20)
+        setPosts(data ?? [])
       }
-      const { data } = await query
-      setPosts(data ?? [])
       setLoading(false)
     }
     load()
@@ -1861,8 +1990,12 @@ export function FamilyButton({ targetUserId, currentUserId, initialStatus }: Pro
 
   const remove = async () => {
     setPending(true)
+    // current↔target の間のレコードのみ削除（他のファミリー関係を巻き込まない）
     await supabase.from('family_relationships').delete()
-      .or(`requester_id.eq.${currentUserId},addressee_id.eq.${currentUserId}`)
+      .or(
+        `and(requester_id.eq.${currentUserId},addressee_id.eq.${targetUserId}),` +
+        `and(requester_id.eq.${targetUserId},addressee_id.eq.${currentUserId})`
+      )
     setStatus('none')
     setPending(false)
   }
@@ -1936,7 +2069,7 @@ export const Route = createFileRoute('/profile/')({
 import { createFileRoute, notFound } from '@tanstack/react-router'
 import { supabase } from '@/shared/lib/supabase'
 import { Avatar } from '@/entities/user'
-import { PostCard } from '../../components/PostCard'
+import { PostCard } from '@/entities/post'
 import { FollowButton } from '@/features/follow-user'
 import { FamilyButton } from '@/features/manage-family'
 
@@ -1949,7 +2082,7 @@ export const Route = createFileRoute('/profile/$userId')({
         supabase.from('posts').select(`
           id, content, visibility, created_at,
           scripture_collection, scripture_book, scripture_chapter,
-          scripture_verse_start, scripture_verse_end, user_id,
+          scripture_verses, user_id,
           users ( display_name, avatar_url )
         `).eq('user_id', params.userId).order('created_at', { ascending: false }),
         supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', params.userId),
@@ -1966,8 +2099,10 @@ export const Route = createFileRoute('/profile/$userId')({
       const [{ data: followData }, { data: familyData }] = await Promise.all([
         supabase.from('follows').select('*').eq('follower_id', user.id).eq('following_id', params.userId).maybeSingle(),
         supabase.from('family_relationships').select('*')
-          .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`)
-          .or(`requester_id.eq.${params.userId},addressee_id.eq.${params.userId}`)
+          .or(
+            `and(requester_id.eq.${user.id},addressee_id.eq.${params.userId}),` +
+            `and(requester_id.eq.${params.userId},addressee_id.eq.${user.id})`
+          )
           .maybeSingle(),
       ])
       isFollowing = !!followData
@@ -2150,7 +2285,7 @@ export const Route = createFileRoute('/posts/$id')({
     const { data: post } = await supabase.from('posts').select(`
       id, content, visibility, created_at,
       scripture_collection, scripture_book, scripture_chapter,
-      scripture_verse_start, scripture_verse_end, user_id,
+      scripture_verses, user_id,
       users ( display_name, avatar_url )
     `).eq('id', params.id).single()
     if (!post) throw notFound()
@@ -2167,7 +2302,7 @@ function PostDetailPage() {
         collection: post.scripture_collection,
         book: post.scripture_book,
         chapter: post.scripture_chapter,
-        verseStart: post.scripture_verse_start ?? undefined,
+        verses: (post.scripture_verses as number[] | null) ?? undefined,
       })
     : null
 
@@ -2176,7 +2311,7 @@ function PostDetailPage() {
         collection: post.scripture_collection,
         book: post.scripture_book,
         chapter: post.scripture_chapter,
-        verseStart: post.scripture_verse_start ?? undefined,
+        verses: (post.scripture_verses as number[] | null) ?? undefined,
       })
     : null
 
