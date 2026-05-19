@@ -48,6 +48,13 @@ CREATE TABLE family_relationships (
   CHECK (requester_id != addressee_id)
 );
 
+-- 同一ペアの逆順重複（A→B と B→A）を防ぐ
+CREATE UNIQUE INDEX family_relationships_pair_uniq
+  ON family_relationships (
+    LEAST(requester_id::text, addressee_id::text),
+    GREATEST(requester_id::text, addressee_id::text)
+  );
+
 CREATE TABLE notifications (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -58,5 +65,9 @@ CREATE TABLE notifications (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
--- scripture_verses の配列検索を高速化
+-- インデックス
 CREATE INDEX posts_scripture_verses_gin ON posts USING GIN (scripture_verses);
+-- RLS ポリシーで user_id フィルタを使うため（FK 列は自動インデックスされない）
+CREATE INDEX posts_user_id_idx ON posts (user_id);
+-- is_family() の addressee_id 側ルックアップ用
+CREATE INDEX family_relationships_addressee_idx ON family_relationships (addressee_id);
