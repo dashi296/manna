@@ -17,6 +17,7 @@ export const Route = createRootRoute({
     links: [{ rel: 'stylesheet', href: appCss }],
   }),
   beforeLoad: async ({ location }) => {
+    if (typeof window === 'undefined') return // SSR: ブラウザクライアントはサーバーでセッションを復元できないためスキップ
     const needsAuth =
       location.pathname === '/' ||
       AUTH_REQUIRED_PREFIXES.some((p) => location.pathname.startsWith(p))
