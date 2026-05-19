@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import type { Database } from '@/shared/types/database'
+import type { Database } from '@manna/database'
 
 export const supabase = createClient<Database>(
   import.meta.env.VITE_SUPABASE_URL,

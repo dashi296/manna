@@ -1,4 +1,3 @@
-Connecting to db 5432
 export type Json =
   | string
   | number
@@ -415,5 +414,5 @@ export const Constants = {
   },
 } as const
 
-A new version of Supabase CLI is available: v2.100.1 (currently installed v)
-We recommend updating regularly for new features and bug fixes: https://supabase.com/docs/guides/cli/getting-started#updating-the-supabase-cli
+[90m│[39m
+[31m■[39m  [31mUnknown: ChildProcess.exitCode (/Users/shunokada/projects/manna/node_modules/.pnpm/@supabase+cli-darwin-arm64@2.100.1/node_modules/@supabase/cli-darwin-arm64/bin/supabase-go gen types --local)[39m
