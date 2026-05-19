@@ -58,48 +58,34 @@ manna/
 │   └── notifications/ui/NotificationsPage.tsx
 │
 ├── widgets/                        # 複合UIブロック（複数のfeature/entityを組み合わせる）
-│   ├── post-feed/
-│   │   ├── ui/PostFeed.tsx         # フィードリスト全体
-│   │   └── index.ts
-│   ├── post-editor/
-│   │   ├── ui/PostEditor.tsx       # 投稿フォーム全体
-│   │   └── index.ts
-│   └── scripture-nav/
-│       ├── ui/ScriptureNav.tsx     # 聖典ナビゲーター
-│       └── index.ts
+│   └── post-editor/
+│       ├── ui/PostEditor.tsx       # 投稿フォーム全体
+│       └── index.ts               # export { PostEditor }
 │
 ├── features/                       # ユーザー操作・ビジネスロジック
-│   ├── create-post/
-│   │   ├── ui/CreatePostForm.tsx
-│   │   └── index.ts
 │   ├── follow-user/
 │   │   ├── ui/FollowButton.tsx
-│   │   └── index.ts
+│   │   └── index.ts               # export { FollowButton }
 │   ├── manage-family/
 │   │   ├── ui/FamilyButton.tsx
-│   │   └── index.ts
+│   │   └── index.ts               # export { FamilyButton }
 │   ├── select-scripture/
 │   │   ├── ui/ScriptureSelector.tsx
-│   │   └── index.ts
+│   │   └── index.ts               # export { ScriptureSelector }
 │   └── choose-visibility/
 │       ├── ui/VisibilitySelector.tsx
-│       └── index.ts
+│       └── index.ts               # export { VisibilitySelector }
 │
 ├── entities/                       # ビジネスエンティティ
 │   ├── post/
-│   │   ├── model/types.ts          # Post型定義
 │   │   ├── ui/PostCard.tsx
-│   │   ├── api/postApi.ts          # Supabase CRUD
-│   │   └── index.ts
+│   │   └── index.ts               # export { PostCard }
 │   ├── user/
-│   │   ├── model/types.ts
 │   │   ├── ui/Avatar.tsx
-│   │   ├── api/userApi.ts
-│   │   └── index.ts
+│   │   └── index.ts               # export { Avatar }
 │   └── scripture/
-│       ├── model/types.ts          # ScriptureRef型
-│       ├── lib/scriptureUtils.ts   # URLビルダー・ラベル生成
-│       └── index.ts
+│       ├── lib/scriptureUtils.ts   # ScriptureRef型・URLビルダー・ラベル生成
+│       └── index.ts               # export { ScriptureRef, buildScriptureUrl, ... }
 │
 ├── shared/                         # 共有インフラ（どの層からもimport可）
 │   ├── ui/                         # shadcn/ui コンポーネント置き場
@@ -356,6 +342,9 @@ CREATE TABLE notifications (
   read boolean NOT NULL DEFAULT false,
   created_at timestamptz NOT NULL DEFAULT now()
 );
+
+-- scripture_verses の配列検索を高速化
+CREATE INDEX posts_scripture_verses_gin ON posts USING GIN (scripture_verses);
 ```
 
 - [ ] **Step 3: RLSポリシーのマイグレーションを作成する**
@@ -739,6 +728,7 @@ git commit -m "feat: add Supabase client and Google OAuth"
 **Files:**
 - Create: `shared/config/scriptures.json`
 - Create: `entities/scripture/lib/scriptureUtils.ts`
+- Create: `entities/scripture/index.ts`
 - Create: `tests/entities/scripture/scriptureUtils.test.ts`
 
 - [ ] **Step 1: 失敗するテストを書く**
@@ -928,7 +918,16 @@ export function getAllCollections() {
 }
 ```
 
-- [ ] **Step 5: テストを実行して通ることを確認する**
+- [ ] **Step 5: `entities/scripture/index.ts` を作成する**
+
+`entities/scripture/index.ts`:
+
+```typescript
+export type { ScriptureRef } from './lib/scriptureUtils'
+export { buildScriptureUrl, getScriptureLabel, getCollection, getBook, getAllCollections } from './lib/scriptureUtils'
+```
+
+- [ ] **Step 6: テストを実行して通ることを確認する**
 
 ```bash
 npx vitest run tests/entities/scripture/scriptureUtils.test.ts
@@ -936,7 +935,7 @@ npx vitest run tests/entities/scripture/scriptureUtils.test.ts
 
 Expected: PASS
 
-- [ ] **Step 6: コミットする**
+- [ ] **Step 7: コミットする**
 
 ```bash
 git add -A
@@ -1252,9 +1251,12 @@ git commit -m "feat: add scripture navigator screens"
 
 **Files:**
 - Create: `shared/ui/MarkdownRenderer.tsx`
-- Create: `features/select-scripture/ui/ScriptureSelector.tsx`
 - Create: `features/choose-visibility/ui/VisibilitySelector.tsx`
+- Create: `features/choose-visibility/index.ts`
+- Create: `features/select-scripture/ui/ScriptureSelector.tsx`
+- Create: `features/select-scripture/index.ts`
 - Create: `widgets/post-editor/ui/PostEditor.tsx`
+- Create: `widgets/post-editor/index.ts`
 - Create: `app/routes/posts/new.tsx`
 - Create: `tests/features/choose-visibility/VisibilitySelector.test.tsx`
 
@@ -1345,6 +1347,14 @@ npx vitest run tests/features/choose-visibility/VisibilitySelector.test.tsx
 ```
 
 Expected: PASS
+
+- [ ] **Step 4b: `features/choose-visibility/index.ts` を作成する**
+
+`features/choose-visibility/index.ts`:
+
+```typescript
+export { VisibilitySelector } from './ui/VisibilitySelector'
+```
 
 - [ ] **Step 5: MarkdownRendererを実装する**
 
@@ -1457,6 +1467,14 @@ export function ScriptureSelector({ value, onChange }: Props) {
 }
 ```
 
+- [ ] **Step 6b: `features/select-scripture/index.ts` を作成する**
+
+`features/select-scripture/index.ts`:
+
+```typescript
+export { ScriptureSelector } from './ui/ScriptureSelector'
+```
+
 - [ ] **Step 7: PostEditorコンポーネントを実装する**
 
 `widgets/post-editor/ui/PostEditor.tsx`:
@@ -1567,6 +1585,14 @@ export function PostEditor({ initialRef, onSuccess }: Props) {
 }
 ```
 
+- [ ] **Step 7b: `widgets/post-editor/index.ts` を作成する**
+
+`widgets/post-editor/index.ts`:
+
+```typescript
+export { PostEditor } from './ui/PostEditor'
+```
+
 - [ ] **Step 8: 投稿作成ルートを作成する**
 
 `app/routes/posts/new.tsx`:
@@ -1634,8 +1660,10 @@ git commit -m "feat: add post creation with Markdown and visibility selector"
 ## Task 7: フィード画面 + PostCard
 
 **Files:**
-- Create: `entities/post/ui/PostCard.tsx`
 - Create: `entities/user/ui/Avatar.tsx`
+- Create: `entities/user/index.ts`
+- Create: `entities/post/ui/PostCard.tsx`
+- Create: `entities/post/index.ts`
 - Create: `app/routes/index.tsx`
 - Create: `tests/entities/post/PostCard.test.tsx`
 
@@ -1705,6 +1733,14 @@ export function Avatar({ url, name, size = 'md' }: Props) {
     </div>
   )
 }
+```
+
+- [ ] **Step 3b: `entities/user/index.ts` を作成する**
+
+`entities/user/index.ts`:
+
+```typescript
+export { Avatar } from './ui/Avatar'
 ```
 
 - [ ] **Step 4: PostCardコンポーネントを実装する**
@@ -1777,6 +1813,14 @@ export function PostCard({ post }: Props) {
     </div>
   )
 }
+```
+
+- [ ] **Step 4b: `entities/post/index.ts` を作成する**
+
+`entities/post/index.ts`:
+
+```typescript
+export { PostCard } from './ui/PostCard'
 ```
 
 - [ ] **Step 5: テストを実行して通ることを確認する**
@@ -1892,9 +1936,58 @@ git commit -m "feat: add feed screen and PostCard component"
 
 **Files:**
 - Create: `features/follow-user/ui/FollowButton.tsx`
+- Create: `features/follow-user/index.ts`
 - Create: `features/manage-family/ui/FamilyButton.tsx`
+- Create: `features/manage-family/index.ts`
+- Create: `tests/features/follow-user/FollowButton.test.tsx`
 
-- [ ] **Step 1: FollowButtonを実装する**
+- [ ] **Step 1: FollowButtonの失敗テストを書く**
+
+`tests/features/follow-user/FollowButton.test.tsx`:
+
+```typescript
+import { describe, it, expect, vi } from 'vitest'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { FollowButton } from '@/features/follow-user'
+
+vi.mock('@/shared/lib/supabase', () => ({
+  supabase: {
+    from: () => ({
+      insert: vi.fn().mockResolvedValue({ error: null }),
+      delete: () => ({ eq: () => ({ eq: vi.fn().mockResolvedValue({ error: null }) }) }),
+    }),
+  },
+}))
+
+describe('FollowButton', () => {
+  it('未フォロー時は「フォロー」ボタンを表示する', () => {
+    render(<FollowButton targetUserId="u2" currentUserId="u1" initialFollowing={false} />)
+    expect(screen.getByRole('button', { name: 'フォロー' })).toBeInTheDocument()
+  })
+
+  it('フォロー済み時は「フォロー中」ボタンを表示する', () => {
+    render(<FollowButton targetUserId="u2" currentUserId="u1" initialFollowing={true} />)
+    expect(screen.getByRole('button', { name: 'フォロー中' })).toBeInTheDocument()
+  })
+
+  it('クリックするとボタンのラベルが切り替わる', async () => {
+    render(<FollowButton targetUserId="u2" currentUserId="u1" initialFollowing={false} />)
+    await userEvent.click(screen.getByRole('button', { name: 'フォロー' }))
+    expect(await screen.findByRole('button', { name: 'フォロー中' })).toBeInTheDocument()
+  })
+})
+```
+
+- [ ] **Step 2: テストが失敗することを確認する**
+
+```bash
+npx vitest run tests/features/follow-user/FollowButton.test.tsx
+```
+
+Expected: FAIL（モジュールが存在しない）
+
+- [ ] **Step 3: FollowButtonを実装する**
 
 `features/follow-user/ui/FollowButton.tsx`:
 
@@ -1939,7 +2032,23 @@ export function FollowButton({ targetUserId, currentUserId, initialFollowing }: 
 }
 ```
 
-- [ ] **Step 2: FamilyButtonを実装する**
+- [ ] **Step 4: テストを実行して通ることを確認する**
+
+```bash
+npx vitest run tests/features/follow-user/FollowButton.test.tsx
+```
+
+Expected: PASS
+
+- [ ] **Step 4b: `features/follow-user/index.ts` を作成する**
+
+`features/follow-user/index.ts`:
+
+```typescript
+export { FollowButton } from './ui/FollowButton'
+```
+
+- [ ] **Step 5: FamilyButtonを実装する**
 
 `features/manage-family/ui/FamilyButton.tsx`:
 
@@ -2017,7 +2126,15 @@ export function FamilyButton({ targetUserId, currentUserId, initialStatus }: Pro
 }
 ```
 
-- [ ] **Step 3: コミットする**
+- [ ] **Step 5b: `features/manage-family/index.ts` を作成する**
+
+`features/manage-family/index.ts`:
+
+```typescript
+export { FamilyButton } from './ui/FamilyButton'
+```
+
+- [ ] **Step 6: コミットする**
 
 ```bash
 git add -A
