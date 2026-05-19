@@ -1082,7 +1082,6 @@ function BookPage() {
 
 ```typescript
 import { createFileRoute, Link, notFound } from '@tanstack/react-router'
-import { useState } from 'react'
 import { getBook, buildScriptureUrl, getScriptureLabel } from '@/entities/scripture'
 import { PostCard } from '@/entities/post'
 import { supabase } from '@/shared/lib/supabase'
@@ -1116,7 +1115,7 @@ export const Route = createFileRoute('/scriptures/$collection/$book/$chapter')({
         .eq('scripture_collection', params.collection)
         .eq('scripture_book', params.book)
         .eq('scripture_chapter', chapterNum)
-        .contains('scripture_verses', search.verses)
+        .overlaps('scripture_verses', search.verses)
         .order('created_at', { ascending: false })
 
       return {
@@ -1153,7 +1152,6 @@ export const Route = createFileRoute('/scriptures/$collection/$book/$chapter')({
 
 function ChapterPage() {
   const { book, chapter, collection, mode, verses, posts, countByVerse } = Route.useLoaderData()
-  const [sort, setSort] = useState<'newest' | 'liked'>('newest')
 
   if (mode === 'verse') {
     const scriptureLabel = getScriptureLabel({ collection, book: book.id, chapter, verses })
@@ -1167,16 +1165,7 @@ function ChapterPage() {
             className="text-sm text-blue-600 underline">公式サイトで読む →</a>
         </div>
         <div className="flex items-center justify-between px-4 py-2 border-b">
-          <div className="flex gap-3">
-            <button onClick={() => setSort('newest')}
-              className={`text-sm ${sort === 'newest' ? 'text-blue-600 font-medium' : 'text-gray-400'}`}>
-              新着順
-            </button>
-            <button onClick={() => setSort('liked')}
-              className={`text-sm ${sort === 'liked' ? 'text-blue-600 font-medium' : 'text-gray-400'}`}>
-              人気順
-            </button>
-          </div>
+          <span className="text-sm text-gray-500">新着順</span>
           <Link
             to="/posts/new"
             search={{ collection, book: book.id, chapter, verses }}
