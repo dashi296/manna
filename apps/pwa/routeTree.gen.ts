@@ -9,10 +9,19 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './pages/__root'
+import { Route as NotificationsRouteImport } from './pages/notifications'
 import { Route as LoginRouteImport } from './pages/login'
 import { Route as AboutRouteImport } from './pages/about'
 import { Route as IndexRouteImport } from './pages/index'
+import { Route as ScripturesIndexRouteImport } from './pages/scriptures/index'
+import { Route as ProfileIndexRouteImport } from './pages/profile/index'
+import { Route as PostsNewRouteImport } from './pages/posts/new'
 
+const NotificationsRoute = NotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -28,39 +37,99 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ScripturesIndexRoute = ScripturesIndexRouteImport.update({
+  id: '/scriptures/',
+  path: '/scriptures/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfileIndexRoute = ProfileIndexRouteImport.update({
+  id: '/profile/',
+  path: '/profile/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PostsNewRoute = PostsNewRouteImport.update({
+  id: '/posts/new',
+  path: '/posts/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/login': typeof LoginRoute
+  '/notifications': typeof NotificationsRoute
+  '/posts/new': typeof PostsNewRoute
+  '/profile/': typeof ProfileIndexRoute
+  '/scriptures/': typeof ScripturesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/login': typeof LoginRoute
+  '/notifications': typeof NotificationsRoute
+  '/posts/new': typeof PostsNewRoute
+  '/profile': typeof ProfileIndexRoute
+  '/scriptures': typeof ScripturesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/login': typeof LoginRoute
+  '/notifications': typeof NotificationsRoute
+  '/posts/new': typeof PostsNewRoute
+  '/profile/': typeof ProfileIndexRoute
+  '/scriptures/': typeof ScripturesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/about' | '/login'
+  fullPaths:
+    | '/'
+    | '/about'
+    | '/login'
+    | '/notifications'
+    | '/posts/new'
+    | '/profile/'
+    | '/scriptures/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/about' | '/login'
-  id: '__root__' | '/' | '/about' | '/login'
+  to:
+    | '/'
+    | '/about'
+    | '/login'
+    | '/notifications'
+    | '/posts/new'
+    | '/profile'
+    | '/scriptures'
+  id:
+    | '__root__'
+    | '/'
+    | '/about'
+    | '/login'
+    | '/notifications'
+    | '/posts/new'
+    | '/profile/'
+    | '/scriptures/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
   LoginRoute: typeof LoginRoute
+  NotificationsRoute: typeof NotificationsRoute
+  PostsNewRoute: typeof PostsNewRoute
+  ProfileIndexRoute: typeof ProfileIndexRoute
+  ScripturesIndexRoute: typeof ScripturesIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/notifications': {
+      id: '/notifications'
+      path: '/notifications'
+      fullPath: '/notifications'
+      preLoaderRoute: typeof NotificationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -82,6 +151,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/scriptures/': {
+      id: '/scriptures/'
+      path: '/scriptures'
+      fullPath: '/scriptures/'
+      preLoaderRoute: typeof ScripturesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profile/': {
+      id: '/profile/'
+      path: '/profile'
+      fullPath: '/profile/'
+      preLoaderRoute: typeof ProfileIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/posts/new': {
+      id: '/posts/new'
+      path: '/posts/new'
+      fullPath: '/posts/new'
+      preLoaderRoute: typeof PostsNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -89,6 +179,10 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
   LoginRoute: LoginRoute,
+  NotificationsRoute: NotificationsRoute,
+  PostsNewRoute: PostsNewRoute,
+  ProfileIndexRoute: ProfileIndexRoute,
+  ScripturesIndexRoute: ScripturesIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

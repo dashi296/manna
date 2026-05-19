@@ -414,5 +414,3 @@ export const Constants = {
   },
 } as const
 
-[90m│[39m
-[31m■[39m  [31mUnknown: ChildProcess.exitCode (/Users/shunokada/projects/manna/node_modules/.pnpm/@supabase+cli-darwin-arm64@2.100.1/node_modules/@supabase/cli-darwin-arm64/bin/supabase-go gen types --local)[39m
