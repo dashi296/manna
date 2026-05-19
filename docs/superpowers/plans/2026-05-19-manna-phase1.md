@@ -25,37 +25,24 @@
 
 ```
 manna/
-├── app/
-│   └── routes/                     # TanStack Startのルート定義（薄いラッパー）
-│       ├── __root.tsx              # ルートレイアウト
-│       ├── index.tsx               # / → FeedPage
-│       ├── login.tsx               # /login
-│       ├── scriptures/
-│       │   ├── index.tsx
-│       │   └── $collection/
-│       │       ├── index.tsx
-│       │       └── $book/
-│       │           ├── index.tsx
-│       │           └── $chapter.tsx
-│       ├── posts/
-│       │   ├── new.tsx
-│       │   └── $id.tsx
-│       ├── profile/
-│       │   ├── index.tsx
-│       │   └── $userId.tsx
-│       └── notifications.tsx
-│
-│   # ── Feature Sliced Design 層（app/routes/ からのみ import される） ──
-│
-├── pages/                          # ページコンポーネント（routes の実装本体）
-│   ├── feed/ui/FeedPage.tsx
-│   ├── scripture-list/ui/ScriptureListPage.tsx
-│   ├── scripture-book/ui/ScriptureBookPage.tsx
-│   ├── scripture-chapter/ui/ScriptureChapterPage.tsx
-│   ├── post-new/ui/PostNewPage.tsx
-│   ├── post-detail/ui/PostDetailPage.tsx
-│   ├── profile/ui/ProfilePage.tsx
-│   └── notifications/ui/NotificationsPage.tsx
+├── pages/                          # TanStack Startのルート定義（routesDirectory）兼FSD pages層
+│   ├── __root.tsx                  # ルートレイアウト + 認証ガード
+│   ├── index.tsx                   # / フィード
+│   ├── login.tsx                   # /login
+│   ├── scriptures/
+│   │   ├── index.tsx
+│   │   └── $collection/
+│   │       ├── index.tsx
+│   │       └── $book/
+│   │           ├── index.tsx
+│   │           └── $chapter.tsx
+│   ├── posts/
+│   │   ├── new.tsx
+│   │   └── $id.tsx
+│   ├── profile/
+│   │   ├── index.tsx
+│   │   └── $userId.tsx
+│   └── notifications.tsx
 │
 ├── widgets/                        # 複合UIブロック（複数のfeature/entityを組み合わせる）
 │   └── post-editor/
@@ -120,14 +107,15 @@ manna/
 
 ## FSDインポートルール
 
-| import元 \ import先 | app | pages | widgets | features | entities | shared |
-|---|---|---|---|---|---|---|
-| app/routes | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| pages | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ |
-| widgets | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ |
-| features | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ |
-| entities | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
-| shared | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+`pages/` はルート定義と FSD pages 層を兼ねる最上位層。
+
+| import元 \ import先 | pages | widgets | features | entities | shared |
+|---|---|---|---|---|---|
+| pages | ❌ | ✅ | ✅ | ✅ | ✅ |
+| widgets | ❌ | ❌ | ✅ | ✅ | ✅ |
+| features | ❌ | ❌ | ❌ | ✅ | ✅ |
+| entities | ❌ | ❌ | ❌ | ❌ | ✅ |
+| shared | ❌ | ❌ | ❌ | ❌ | ❌ |
 
 各スライス（機能単位フォルダ）は `index.ts` でパブリックAPIを公開し、外部からは `index.ts` 経由でのみimportする。スライス内部への直接importは禁止。
 ```
@@ -178,19 +166,28 @@ npx shadcn@latest add button card avatar select toggle-group dialog sonner badge
 
 `app/globals.css`（またはshadcnが指定するCSSファイル）が生成・更新されたことを確認する。
 
-- [ ] **Step 3: `vite.config.ts` に `@/` パスエイリアスを設定する**
+- [ ] **Step 3: `app.config.ts` を設定する**
 
-TanStack StartがViteの設定を上書きする場合は `app.config.ts` 側にも同様に追加する。
+`pages/` を TanStack Start の `routesDirectory` に設定し、`@/` パスエイリアスも追加する。
+
+`app.config.ts`:
 
 ```typescript
-// vite.config.ts（または app.config.ts の vite オプション）
+import { defineConfig } from '@tanstack/react-start/config'
 import path from 'path'
 
-resolve: {
-  alias: {
-    '@': path.resolve(__dirname, '.'),
+export default defineConfig({
+  tsr: {
+    routesDirectory: './pages',
   },
-},
+  vite: {
+    resolve: {
+      alias: {
+        '@': path.resolve(__dirname, '.'),
+      },
+    },
+  },
+})
 ```
 
 `tsconfig.json` にも追加する:
@@ -539,7 +536,7 @@ git commit -m "feat: add Supabase schema, RLS policies, and triggers"
 **Files:**
 - Create: `shared/lib/supabase.ts`
 - Create: `shared/lib/auth.ts`
-- Create: `app/routes/login.tsx`
+- Create: `pages/login.tsx`
 
 - [ ] **Step 1: Supabaseクライアントを作成する**
 
@@ -592,7 +589,7 @@ export async function getSession() {
 
 - [ ] **Step 4: ログイン画面を作成する**
 
-`app/routes/login.tsx`:
+`pages/login.tsx`:
 
 ```typescript
 import { createFileRoute, redirect } from '@tanstack/react-router'
@@ -627,7 +624,7 @@ function LoginPage() {
 
 - [ ] **Step 5: ルートレイアウトに認証状態を追加する**
 
-`app/routes/__root.tsx`（TanStack Startが生成したファイルを編集）:
+`pages/__root.tsx`（TanStack Startが生成したファイルを編集）:
 
 ```typescript
 import { createRootRoute, Outlet, redirect } from '@tanstack/react-router'
@@ -947,14 +944,14 @@ git commit -m "feat: add scripture data and URL builder"
 ## Task 5: 聖典ナビゲーター画面
 
 **Files:**
-- Create: `app/routes/scriptures/index.tsx`
-- Create: `app/routes/scriptures/$collection/index.tsx`
-- Create: `app/routes/scriptures/$collection/$book/index.tsx`
-- Create: `app/routes/scriptures/$collection/$book/$chapter.tsx`
+- Create: `pages/scriptures/index.tsx`
+- Create: `pages/scriptures/$collection/index.tsx`
+- Create: `pages/scriptures/$collection/$book/index.tsx`
+- Create: `pages/scriptures/$collection/$book/$chapter.tsx`
 
 - [ ] **Step 1: 聖典集一覧画面を作成する**
 
-`app/routes/scriptures/index.tsx`:
+`pages/scriptures/index.tsx`:
 
 ```typescript
 import { createFileRoute, Link } from '@tanstack/react-router'
@@ -990,7 +987,7 @@ function ScripturesPage() {
 
 - [ ] **Step 2: 書籍一覧画面を作成する**
 
-`app/routes/scriptures/$collection/index.tsx`:
+`pages/scriptures/$collection/index.tsx`:
 
 ```typescript
 import { createFileRoute, Link, notFound } from '@tanstack/react-router'
@@ -1031,7 +1028,7 @@ function CollectionPage() {
 
 - [ ] **Step 3: 章一覧画面を作成する**
 
-`app/routes/scriptures/$collection/$book/index.tsx`:
+`pages/scriptures/$collection/$book/index.tsx`:
 
 ```typescript
 import { createFileRoute, Link, notFound } from '@tanstack/react-router'
@@ -1072,7 +1069,7 @@ function BookPage() {
 
 - [ ] **Step 4: 節一覧画面（章ページ）+ 節ページを作成する**
 
-`app/routes/scriptures/$collection/$book/$chapter.tsx`:
+`pages/scriptures/$collection/$book/$chapter.tsx`:
 
 このファイルは1つで章ページ（節一覧）と節ページ（投稿一覧）を兼ねる（Option A: クエリパラメータ方式）。
 - `?verses=7` → 節ページ（節7への投稿一覧）
@@ -1257,7 +1254,7 @@ git commit -m "feat: add scripture navigator screens"
 - Create: `features/select-scripture/index.ts`
 - Create: `widgets/post-editor/ui/PostEditor.tsx`
 - Create: `widgets/post-editor/index.ts`
-- Create: `app/routes/posts/new.tsx`
+- Create: `pages/posts/new.tsx`
 - Create: `tests/features/choose-visibility/VisibilitySelector.test.tsx`
 
 - [ ] **Step 1: VisibilitySelectorのテストを書く**
@@ -1595,7 +1592,7 @@ export { PostEditor } from './ui/PostEditor'
 
 - [ ] **Step 8: 投稿作成ルートを作成する**
 
-`app/routes/posts/new.tsx`:
+`pages/posts/new.tsx`:
 
 ```typescript
 import { createFileRoute, useNavigate, useSearch } from '@tanstack/react-router'
@@ -1664,7 +1661,7 @@ git commit -m "feat: add post creation with Markdown and visibility selector"
 - Create: `entities/user/index.ts`
 - Create: `entities/post/ui/PostCard.tsx`
 - Create: `entities/post/index.ts`
-- Create: `app/routes/index.tsx`
+- Create: `pages/index.tsx`
 - Create: `tests/entities/post/PostCard.test.tsx`
 
 - [ ] **Step 1: PostCardのテストを書く**
@@ -1833,7 +1830,7 @@ Expected: PASS
 
 - [ ] **Step 6: フィード画面を実装する**
 
-`app/routes/index.tsx`:
+`pages/index.tsx`:
 
 ```typescript
 import { createFileRoute } from '@tanstack/react-router'
@@ -2146,12 +2143,12 @@ git commit -m "feat: add follow and family buttons"
 ## Task 9: プロフィール画面
 
 **Files:**
-- Create: `app/routes/profile/index.tsx`
-- Create: `app/routes/profile/$userId.tsx`
+- Create: `pages/profile/index.tsx`
+- Create: `pages/profile/$userId.tsx`
 
 - [ ] **Step 1: 自分のプロフィール画面を実装する**
 
-`app/routes/profile/index.tsx`:
+`pages/profile/index.tsx`:
 
 ```typescript
 import { createFileRoute, redirect } from '@tanstack/react-router'
@@ -2169,7 +2166,7 @@ export const Route = createFileRoute('/profile/')({
 
 - [ ] **Step 2: ユーザープロフィール画面を実装する**
 
-`app/routes/profile/$userId.tsx`:
+`pages/profile/$userId.tsx`:
 
 ```typescript
 import { createFileRoute, notFound } from '@tanstack/react-router'
@@ -2276,11 +2273,11 @@ git commit -m "feat: add profile screen with follow and family actions"
 ## Task 10: 通知画面
 
 **Files:**
-- Create: `app/routes/notifications.tsx`
+- Create: `pages/notifications.tsx`
 
 - [ ] **Step 1: 通知画面を実装する**
 
-`app/routes/notifications.tsx`:
+`pages/notifications.tsx`:
 
 ```typescript
 import { createFileRoute, Link } from '@tanstack/react-router'
@@ -2373,11 +2370,11 @@ git commit -m "feat: add notifications screen"
 ## Task 11: 投稿詳細画面（節ページ連携）
 
 **Files:**
-- Create: `app/routes/posts/$id.tsx`
+- Create: `pages/posts/$id.tsx`
 
 - [ ] **Step 1: 投稿詳細画面を実装する**
 
-`app/routes/posts/$id.tsx`:
+`pages/posts/$id.tsx`:
 
 ```typescript
 import { createFileRoute, notFound, Link } from '@tanstack/react-router'
@@ -2462,7 +2459,7 @@ git commit -m "feat: add post detail screen"
 
 **Files:**
 - Create: `public/manifest.json`
-- Modify: `app/routes/__root.tsx`
+- Modify: `pages/__root.tsx`
 
 - [ ] **Step 1: PWAマニフェストを作成する**
 
