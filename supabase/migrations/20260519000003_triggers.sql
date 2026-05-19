@@ -103,10 +103,12 @@ CREATE TRIGGER family_protect_immutable
 CREATE OR REPLACE FUNCTION public.protect_notification_immutable_cols()
 RETURNS trigger AS $$
 BEGIN
-  IF OLD.user_id IS DISTINCT FROM NEW.user_id
+  IF OLD.id IS DISTINCT FROM NEW.id
+    OR OLD.user_id IS DISTINCT FROM NEW.user_id
     OR OLD.type IS DISTINCT FROM NEW.type
     OR OLD.actor_id IS DISTINCT FROM NEW.actor_id
     OR OLD.post_id IS DISTINCT FROM NEW.post_id
+    OR OLD.created_at IS DISTINCT FROM NEW.created_at
   THEN
     RAISE EXCEPTION 'only the read field may be updated on notifications';
   END IF;

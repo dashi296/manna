@@ -26,8 +26,9 @@ export async function getSession() {
 }
 
 // SSR 用: リクエストの cookie ヘッダーからセッションを読み取る
+// setAll でトークンリフレッシュ時の新しい cookie をレスポンスに書き戻す
 export const getServerSession = createServerFn({ method: 'GET' }).handler(async () => {
-  const { getRequest } = await import('@tanstack/react-start/server')
+  const { getRequest, setCookie } = await import('@tanstack/react-start/server')
   const cookieHeader = getRequest().headers.get('cookie') ?? ''
 
   const serverSupabase = createServerClient<Database>(
@@ -40,7 +41,9 @@ export const getServerSession = createServerFn({ method: 'GET' }).handler(async 
             name,
             value: value ?? '',
           })),
-        setAll: () => {},
+        setAll: (cookiesToSet) => {
+          cookiesToSet.forEach(({ name, value, options }) => setCookie(name, value, options))
+        },
       },
     },
   )

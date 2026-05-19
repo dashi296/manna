@@ -1,9 +1,12 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
-import { signInWithGoogle, getSession } from '@/shared/lib/auth'
+import { signInWithGoogle, getSession, getServerSession } from '@/shared/lib/auth'
 
 export const Route = createFileRoute('/login')({
   beforeLoad: async () => {
-    const session = await getSession()
+    const session =
+      typeof window === 'undefined'
+        ? await getServerSession() // SSR: cookie から読み取る
+        : await getSession()       // CSR: createBrowserClient から読み取る
     if (session) throw redirect({ to: '/' })
   },
   component: LoginPage,
