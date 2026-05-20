@@ -149,11 +149,17 @@ CREATE POLICY "family_insert_self" ON public.family_relationships
   FOR INSERT TO authenticated
   WITH CHECK ((select auth.uid()) = requester_id);
 
--- addressee のみ status を更新可能（承認/拒否）
+-- addressee のみ pending → accepted/declined への一方向遷移のみ許可
 CREATE POLICY "family_update_addressee" ON public.family_relationships
   FOR UPDATE TO authenticated
-  USING ((select auth.uid()) = addressee_id)
-  WITH CHECK ((select auth.uid()) = addressee_id);
+  USING (
+    (select auth.uid()) = addressee_id
+    AND status = 'pending'
+  )
+  WITH CHECK (
+    (select auth.uid()) = addressee_id
+    AND status IN ('accepted', 'declined')
+  );
 
 CREATE POLICY "family_delete_own" ON public.family_relationships
   FOR DELETE TO authenticated
