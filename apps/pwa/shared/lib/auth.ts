@@ -1,7 +1,6 @@
 import { createServerClient, parseCookieHeader } from '@supabase/ssr'
 import { createServerFn } from '@tanstack/react-start'
 import type { Database } from '@manna/database'
-import ws from 'ws'
 
 // ブラウザ専用関数: createBrowserClient は SSR 側で WebSocket エラーを起こすため
 // ブラウザからのみ呼ばれるこれらの関数内で動的 import する
@@ -30,7 +29,10 @@ export async function getSession() {
   return session
 }
 
-function makeServerClient(cookieHeader: string, setCookie: (name: string, value: string, options?: object) => void) {
+async function makeServerClient(cookieHeader: string, setCookie: (name: string, value: string, options?: object) => void) {
+  // ws は Node.js 専用モジュールのためサーバー側でのみ動的 import する
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const ws = (await import('ws')).default as any
   return createServerClient<Database>(
     import.meta.env.VITE_SUPABASE_URL,
     import.meta.env.VITE_SUPABASE_ANON_KEY,
@@ -45,8 +47,7 @@ function makeServerClient(cookieHeader: string, setCookie: (name: string, value:
           cookiesToSet.forEach(({ name, value, options }) => setCookie(name, value, options))
         },
       },
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      realtime: { transport: ws as any },
+      realtime: { transport: ws },
     },
   )
 }
@@ -56,7 +57,7 @@ function makeServerClient(cookieHeader: string, setCookie: (name: string, value:
 export const getServerSession = createServerFn({ method: 'GET' }).handler(async () => {
   const { getRequest, setCookie } = await import('@tanstack/react-start/server')
   const cookieHeader = getRequest().headers.get('cookie') ?? ''
-  const serverSupabase = makeServerClient(cookieHeader, setCookie)
+  const serverSupabase = await makeServerClient(cookieHeader, setCookie)
   const {
     data: { session },
   } = await serverSupabase.auth.getSession()
