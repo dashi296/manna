@@ -1,0 +1,19 @@
+{
+  "name": "manna-workspace",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --filter @manna/pwa dev",
+    "build": "pnpm --filter @manna/pwa build",
+    "test": "pnpm --filter @manna/pwa test",
+    "supabase:types": "supabase gen types typescript --local 2>/dev/null > packages/database/index.ts"
+  },
+  "devDependencies": {
+    "supabase": "^2.100.1"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "lightningcss"
+    ]
+  }
+}

@@ -19,15 +19,40 @@
 
 ```
 manna/
-├── pages/        # TanStack Start ルート定義 (routesDirectory) 兼 FSD pages 層
-├── widgets/      # 複合UIブロック
-├── features/     # ユーザー操作・ビジネスロジック
-├── entities/     # ビジネスエンティティ (post / user / scripture)
-├── shared/       # 共有インフラ (supabase / auth / shadcn/ui)
-└── supabase/migrations/
+├── apps/
+│   └── pwa/              # TanStack Start PWA (@manna/pwa)
+│       ├── pages/        # TanStack Start ルート定義 (routesDirectory) 兼 FSD pages 層
+│       ├── widgets/      # 複合UIブロック
+│       ├── features/     # ユーザー操作・ビジネスロジック
+│       ├── entities/     # ビジネスエンティティ (post / user / scripture)
+│       └── shared/       # 共有インフラ (supabase / auth / shadcn/ui)
+├── packages/
+│   └── database/         # Supabase 生成 TypeScript 型 (@manna/database)
+└── supabase/migrations/  # Supabase CLI プロジェクト
 ```
 
-`@/` エイリアスはプロジェクトルートを指す。各スライスは `index.ts` でパブリック API を公開し、外部からは `index.ts` 経由のみでインポートする。
+`@/` エイリアスは `apps/pwa/` を指す。各スライスは `index.ts` でパブリック API を公開し、外部からは `index.ts` 経由のみでインポートする。
+
+## セットアップ
+
+[devbox](https://www.jetify.com/devbox) でNode.jsとpnpmを管理しています。
+
+```bash
+# devboxがインストールされていない場合
+curl -fsSL https://get.jetify.com/devbox | bash
+
+# パッケージインストールと開発サーバー起動
+devbox install
+devbox run dev
+```
+
+devbox shellに入ることで `node` / `pnpm` を直接使うこともできます:
+
+```bash
+devbox shell
+pnpm install
+pnpm dev
+```
 
 ## 実装計画
 

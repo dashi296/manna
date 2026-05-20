@@ -13,6 +13,7 @@
 - **バックエンド / DB**: Supabase (PostgreSQL + Auth + Realtime)
 - **認証**: Google OAuth (Supabase Auth経由)
 - **テスト**: Vitest + @testing-library/react
+- **開発環境**: devbox (Node.js 24 + pnpm 9 を Nix で管理)
 
 ---
 
@@ -45,15 +46,17 @@ shared/     ← 共有インフラ (supabase / auth / shadcn/ui)
 
 - **`@/` エイリアス**: プロジェクトルート（`.`）を指す
 - **`pages/` = routesDirectory**: `app.config.ts` で `tsr.routesDirectory: './pages'` を設定
-- **Supabase クライアント**: `@supabase/supabase-js` の `createClient`（`@supabase/ssr` の `createBrowserClient` ではない）
+- **ブラウザ Supabase クライアント**: `@supabase/ssr` の `createBrowserClient`（セッションを cookie に保存し SSR 側で読み取れるようにするため）
 
 ```typescript
-import { createClient } from '@supabase/supabase-js'
-export const supabase = createClient<Database>(
+import { createBrowserClient } from '@supabase/ssr'
+export const supabase = createBrowserClient<Database>(
   import.meta.env.VITE_SUPABASE_URL,
   import.meta.env.VITE_SUPABASE_ANON_KEY,
 )
 ```
+
+- **SSR Supabase クライアント**: `@supabase/ssr` の `createServerClient` を `createServerFn` 内で使う（`getRequest().headers` から cookie を読み取り `beforeLoad` で認証チェックを行う）
 
 ---
 
