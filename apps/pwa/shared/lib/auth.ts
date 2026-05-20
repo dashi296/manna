@@ -48,12 +48,17 @@ function makeServerClient(cookieHeader: string, setCookie: (name: string, value:
   )
 }
 
+// createServerFn ハンドラ内で使う SSR 用 Supabase クライアントを返す
+export async function createSupabaseServer() {
+  const { getRequest, setCookie } = await import('@tanstack/react-start/server')
+  const cookieHeader = getRequest().headers.get('cookie') ?? ''
+  return makeServerClient(cookieHeader, setCookie)
+}
+
 // SSR 用: リクエストの cookie ヘッダーからセッションを読み取る
 // setAll でトークンリフレッシュ時の新しい cookie をレスポンスに書き戻す
 export const getServerSession = createServerFn({ method: 'GET' }).handler(async () => {
-  const { getRequest, setCookie } = await import('@tanstack/react-start/server')
-  const cookieHeader = getRequest().headers.get('cookie') ?? ''
-  const serverSupabase = makeServerClient(cookieHeader, setCookie)
+  const serverSupabase = await createSupabaseServer()
   const {
     data: { session },
   } = await serverSupabase.auth.getSession()

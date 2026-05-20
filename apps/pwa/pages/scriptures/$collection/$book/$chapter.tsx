@@ -1,7 +1,8 @@
 import { createFileRoute, Link, notFound } from '@tanstack/react-router'
+import { createServerFn } from '@tanstack/react-start'
 import { getBook, buildScriptureUrl, getScriptureLabel } from '@/entities/scripture'
 import { PostCard, type PostWithUser } from '@/entities/post'
-import { supabase } from '@/shared/lib/supabase'
+import { createSupabaseServer } from '@/shared/lib/auth'
 
 const POST_SELECT = `
   id, content, visibility, created_at,
@@ -9,6 +10,44 @@ const POST_SELECT = `
   scripture_verses, user_id,
   users ( display_name, avatar_url )
 `
+
+const fetchVersePosts = createServerFn({ method: 'POST' })
+  .inputValidator((data: { collection: string; book: string; chapter: number; verses: number[] }) => data)
+  .handler(async (ctx) => {
+    const { collection, book, chapter, verses } = ctx.data
+    const serverSupabase = await createSupabaseServer()
+    const { data: posts } = await serverSupabase
+      .from('posts')
+      .select(POST_SELECT)
+      .eq('scripture_collection', collection)
+      .eq('scripture_book', book)
+      .eq('scripture_chapter', chapter)
+      .overlaps('scripture_verses', verses)
+      .order('created_at', { ascending: false })
+    return (posts ?? []) as PostWithUser[]
+  })
+
+const fetchChapterCounts = createServerFn({ method: 'POST' })
+  .inputValidator((data: { collection: string; book: string; chapter: number }) => data)
+  .handler(async (ctx) => {
+    const { collection, book, chapter } = ctx.data
+    const serverSupabase = await createSupabaseServer()
+    const { data: allPosts } = await serverSupabase
+      .from('posts')
+      .select('scripture_verses')
+      .eq('scripture_collection', collection)
+      .eq('scripture_book', book)
+      .eq('scripture_chapter', chapter)
+      .not('scripture_verses', 'is', null)
+
+    const countByVerse: Record<number, number> = {}
+    allPosts?.forEach((p) => {
+      ;(p.scripture_verses as number[] | null)?.forEach((v) => {
+        countByVerse[v] = (countByVerse[v] ?? 0) + 1
+      })
+    })
+    return countByVerse
+  })
 
 export const Route = createFileRoute('/scriptures/$collection/$book/$chapter')({
   validateSearch: (search: Record<string, unknown>): { verses?: number[] } => ({
@@ -23,42 +62,34 @@ export const Route = createFileRoute('/scriptures/$collection/$book/$chapter')({
     const book = getBook(params.collection, params.book)
     if (!book) throw notFound()
     const chapterNum = parseInt(params.chapter)
-    if (isNaN(chapterNum)) throw notFound()
+    if (isNaN(chapterNum) || chapterNum < 1 || chapterNum > book.chapters) throw notFound()
 
     if (deps.verses?.length) {
-      const { data: posts } = await supabase
-        .from('posts')
-        .select(POST_SELECT)
-        .eq('scripture_collection', params.collection)
-        .eq('scripture_book', params.book)
-        .eq('scripture_chapter', chapterNum)
-        .overlaps('scripture_verses', deps.verses)
-        .order('created_at', { ascending: false })
-
+      const posts = await fetchVersePosts({
+        data: {
+          collection: params.collection,
+          book: params.book,
+          chapter: chapterNum,
+          verses: deps.verses,
+        },
+      })
       return {
         book,
         chapter: chapterNum,
         collection: params.collection,
         mode: 'verse' as const,
         verses: deps.verses,
-        posts: (posts ?? []) as PostWithUser[],
+        posts,
         countByVerse: {} as Record<number, number>,
       }
     }
 
-    const { data: allPosts } = await supabase
-      .from('posts')
-      .select('scripture_verses')
-      .eq('scripture_collection', params.collection)
-      .eq('scripture_book', params.book)
-      .eq('scripture_chapter', chapterNum)
-      .not('scripture_verses', 'is', null)
-
-    const countByVerse: Record<number, number> = {}
-    allPosts?.forEach((p) => {
-      ;(p.scripture_verses as number[] | null)?.forEach((v) => {
-        countByVerse[v] = (countByVerse[v] ?? 0) + 1
-      })
+    const countByVerse = await fetchChapterCounts({
+      data: {
+        collection: params.collection,
+        book: params.book,
+        chapter: chapterNum,
+      },
     })
 
     return {
