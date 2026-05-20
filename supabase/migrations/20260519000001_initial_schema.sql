@@ -42,7 +42,7 @@ CREATE TABLE follows (
 CREATE TABLE family_relationships (
   requester_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   addressee_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'accepted')),
+  status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'declined')),
   created_at timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (requester_id, addressee_id),
   CHECK (requester_id != addressee_id)
