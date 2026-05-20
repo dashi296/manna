@@ -35,7 +35,21 @@ manna/
 
 ## セットアップ
 
+[devbox](https://www.jetify.com/devbox) でNode.jsとpnpmを管理しています。
+
 ```bash
+# devboxがインストールされていない場合
+curl -fsSL https://get.jetify.com/devbox | bash
+
+# パッケージインストールと開発サーバー起動
+devbox install
+devbox run dev
+```
+
+devbox shellに入ることで `node` / `pnpm` を直接使うこともできます:
+
+```bash
+devbox shell
 pnpm install
 pnpm dev
 ```

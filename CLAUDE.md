@@ -13,6 +13,7 @@
 - **バックエンド / DB**: Supabase (PostgreSQL + Auth + Realtime)
 - **認証**: Google OAuth (Supabase Auth経由)
 - **テスト**: Vitest + @testing-library/react
+- **開発環境**: devbox (Node.js 24 + pnpm 9 を Nix で管理)
 
 ---
 
