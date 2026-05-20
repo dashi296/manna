@@ -29,10 +29,7 @@ export async function getSession() {
   return session
 }
 
-async function makeServerClient(cookieHeader: string, setCookie: (name: string, value: string, options?: object) => void) {
-  // ws は Node.js 専用モジュールのためサーバー側でのみ動的 import する
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const ws = (await import('ws')).default as any
+function makeServerClient(cookieHeader: string, setCookie: (name: string, value: string, options?: object) => void) {
   return createServerClient<Database>(
     import.meta.env.VITE_SUPABASE_URL,
     import.meta.env.VITE_SUPABASE_ANON_KEY,
@@ -47,7 +44,6 @@ async function makeServerClient(cookieHeader: string, setCookie: (name: string, 
           cookiesToSet.forEach(({ name, value, options }) => setCookie(name, value, options))
         },
       },
-      realtime: { transport: ws },
     },
   )
 }
@@ -57,7 +53,7 @@ async function makeServerClient(cookieHeader: string, setCookie: (name: string, 
 export const getServerSession = createServerFn({ method: 'GET' }).handler(async () => {
   const { getRequest, setCookie } = await import('@tanstack/react-start/server')
   const cookieHeader = getRequest().headers.get('cookie') ?? ''
-  const serverSupabase = await makeServerClient(cookieHeader, setCookie)
+  const serverSupabase = makeServerClient(cookieHeader, setCookie)
   const {
     data: { session },
   } = await serverSupabase.auth.getSession()
