@@ -5,10 +5,11 @@ ALTER TABLE follows ENABLE ROW LEVEL SECURITY;
 ALTER TABLE family_relationships ENABLE ROW LEVEL SECURITY;
 ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 
--- ファミリー判定ヘルパー関数
--- SECURITY DEFINER で RLS をバイパスして family_relationships を参照する
--- SET search_path = '' で search_path インジェクション攻撃を防ぐ
-CREATE OR REPLACE FUNCTION public.is_family(user_a uuid, user_b uuid)
+-- private スキーマは PostgREST の schemas リストに含まれないため rpc/ 経由で公開されない
+-- RLS ポリシーからは呼び出せるよう authenticated に EXECUTE を付与する
+CREATE SCHEMA IF NOT EXISTS private;
+
+CREATE OR REPLACE FUNCTION private.is_family(user_a uuid, user_b uuid)
 RETURNS boolean AS $$
   SELECT EXISTS (
     SELECT 1 FROM public.family_relationships
@@ -19,6 +20,9 @@ RETURNS boolean AS $$
     )
   );
 $$ LANGUAGE sql SECURITY DEFINER STABLE SET search_path = '';
+
+GRANT USAGE ON SCHEMA private TO authenticated;
+GRANT EXECUTE ON FUNCTION private.is_family(uuid, uuid) TO authenticated;
 
 -- users
 CREATE POLICY "users_select_all" ON public.users
@@ -55,7 +59,7 @@ CREATE POLICY "posts_select_followers" ON public.posts
 
 CREATE POLICY "posts_select_family" ON public.posts
   FOR SELECT TO authenticated
-  USING (visibility = 'family' AND public.is_family((select auth.uid()), user_id));
+  USING (visibility = 'family' AND private.is_family((select auth.uid()), user_id));
 
 -- posts INSERT / UPDATE / DELETE
 CREATE POLICY "posts_insert_own" ON public.posts
@@ -88,7 +92,7 @@ CREATE POLICY "likes_select_visible_post" ON public.likes
               WHERE follower_id = (select auth.uid()) AND following_id = p.user_id
             )
           )
-          OR (p.visibility = 'family' AND public.is_family((select auth.uid()), p.user_id))
+          OR (p.visibility = 'family' AND private.is_family((select auth.uid()), p.user_id))
         )
     )
   );
@@ -111,7 +115,7 @@ CREATE POLICY "likes_insert_self_visible_post" ON public.likes
               WHERE follower_id = (select auth.uid()) AND following_id = p.user_id
             )
           )
-          OR (p.visibility = 'family' AND public.is_family((select auth.uid()), p.user_id))
+          OR (p.visibility = 'family' AND private.is_family((select auth.uid()), p.user_id))
         )
     )
   );

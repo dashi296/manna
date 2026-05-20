@@ -1,9 +1,10 @@
 import { HeadContent, Scripts, Outlet, createRootRoute, redirect } from '@tanstack/react-router'
-import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
-import { TanStackDevtools } from '@tanstack/react-devtools'
 import { getSession, getServerSession } from '@/shared/lib/auth'
 import { BottomNav } from '@/shared/ui/BottomNav'
+import { DevTools } from '@/shared/ui/DevTools'
 import appCss from '@/src/styles.css?url'
+
+const isDev = import.meta.env.DEV
 
 const AUTH_REQUIRED_PREFIXES = ['/posts/new', '/profile', '/notifications']
 
@@ -40,12 +41,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       </head>
       <body className="font-sans antialiased">
         {children}
-        {import.meta.env.DEV && (
-          <TanStackDevtools
-            config={{ position: 'bottom-right' }}
-            plugins={[{ name: 'Tanstack Router', render: <TanStackRouterDevtoolsPanel /> }]}
-          />
-        )}
+        {isDev && <DevTools />}
         <Scripts />
       </body>
     </html>
