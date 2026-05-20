@@ -1,0 +1,64 @@
+{
+  "collections": [
+    {
+      "id": "bofm",
+      "name": "モルモン書",
+      "books": [
+        { "id": "1-ne",   "name": "第1ニーファイ書",          "chapters": 22 },
+        { "id": "2-ne",   "name": "第2ニーファイ書",          "chapters": 33 },
+        { "id": "jacob",  "name": "ヤコブ書",                 "chapters": 7  },
+        { "id": "enos",   "name": "エノス書",                 "chapters": 1  },
+        { "id": "jarom",  "name": "ジャロム書",               "chapters": 1  },
+        { "id": "omni",   "name": "オムナイ書",               "chapters": 1  },
+        { "id": "w-of-m", "name": "モルモンの言葉",           "chapters": 1  },
+        { "id": "mosiah", "name": "モーサヤ書",               "chapters": 29 },
+        { "id": "alma",   "name": "アルマ書",                 "chapters": 63 },
+        { "id": "hel",    "name": "ヒラマン書",               "chapters": 16 },
+        { "id": "3-ne",   "name": "第3ニーファイ書",          "chapters": 30 },
+        { "id": "4-ne",   "name": "第4ニーファイ書",          "chapters": 1  },
+        { "id": "morm",   "name": "モルモン書（書）",         "chapters": 9  },
+        { "id": "ether",  "name": "エテル書",                 "chapters": 15 },
+        { "id": "moro",   "name": "モロナイ書",               "chapters": 10 }
+      ]
+    },
+    {
+      "id": "dc-testament",
+      "name": "教義と聖約",
+      "books": [
+        { "id": "dc", "name": "教義と聖約", "chapters": 138 }
+      ]
+    },
+    {
+      "id": "pgp",
+      "name": "高価な真珠",
+      "books": [
+        { "id": "moses",  "name": "モーセ書",                 "chapters": 8 },
+        { "id": "abr",    "name": "アブラハム書",             "chapters": 5 },
+        { "id": "js-m",   "name": "ジョセフ・スミス—マタイ", "chapters": 1 },
+        { "id": "js-h",   "name": "ジョセフ・スミス—歴史",   "chapters": 1 },
+        { "id": "a-of-f", "name": "信仰箇条",                 "chapters": 1 }
+      ]
+    },
+    {
+      "id": "ot",
+      "name": "旧約聖書",
+      "books": [
+        { "id": "gen", "name": "創世記",       "chapters": 50  },
+        { "id": "ex",  "name": "出エジプト記", "chapters": 40  },
+        { "id": "ps",  "name": "詩篇",         "chapters": 150 },
+        { "id": "isa", "name": "イザヤ書",     "chapters": 66  }
+      ]
+    },
+    {
+      "id": "nt",
+      "name": "新約聖書",
+      "books": [
+        { "id": "matt", "name": "マタイ",           "chapters": 28 },
+        { "id": "mark", "name": "マルコ",           "chapters": 16 },
+        { "id": "luke", "name": "ルカ",             "chapters": 24 },
+        { "id": "john", "name": "ヨハネ",           "chapters": 21 },
+        { "id": "rev",  "name": "ヨハネの黙示録",   "chapters": 22 }
+      ]
+    }
+  ]
+}
