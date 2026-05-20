@@ -61,8 +61,9 @@ export const Route = createFileRoute('/scriptures/$collection/$book/$chapter')({
   loader: async ({ params, deps }) => {
     const book = getBook(params.collection, params.book)
     if (!book) throw notFound()
-    const chapterNum = parseInt(params.chapter)
-    if (isNaN(chapterNum) || chapterNum < 1 || chapterNum > book.chapters) throw notFound()
+    if (!/^\d+$/.test(params.chapter)) throw notFound()
+    const chapterNum = parseInt(params.chapter, 10)
+    if (chapterNum < 1 || chapterNum > book.chapters) throw notFound()
 
     if (deps.verses?.length) {
       const posts = await fetchVersePosts({
@@ -155,7 +156,7 @@ function ChapterPage() {
       </div>
       <p className="text-sm text-gray-500 mb-4">節を選んで投稿を見る・書く</p>
       <ul className="divide-y border rounded-lg overflow-hidden">
-        {Array.from({ length: 50 }, (_, i) => i + 1).map((verse) => {
+        {Array.from({ length: book.verses[chapter - 1] }, (_, i) => i + 1).map((verse) => {
           const count = countByVerse[verse] ?? 0
           return (
             <li key={verse}>
