@@ -20,6 +20,9 @@ const config = defineConfig({
       router: {
         routesDirectory: './pages',
       },
+      server: {
+        preset: 'cloudflare-pages',
+      },
     }),
     viteReact(),
   ],
