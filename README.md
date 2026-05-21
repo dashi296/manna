@@ -65,9 +65,12 @@ VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 # Install devbox if not already installed
 curl -fsSL https://get.jetify.com/devbox | bash
 
-# Install Node.js/pnpm, then enter the shell (pnpm install runs automatically)
+# Install Node.js and pnpm
 devbox install
+
+# Enter the devbox shell and install npm dependencies (first time only)
 devbox shell
+pnpm install
 
 # Start the dev server
 pnpm dev

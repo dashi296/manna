@@ -65,9 +65,12 @@ VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 # devbox がインストールされていない場合
 curl -fsSL https://get.jetify.com/devbox | bash
 
-# Node.js・pnpm をインストールし、shell に入る（pnpm install が自動実行される）
+# Node.js・pnpm をインストール
 devbox install
+
+# devbox shell に入り、npm 依存パッケージをインストール（初回のみ）
 devbox shell
+pnpm install
 
 # 開発サーバーを起動する
 pnpm dev
