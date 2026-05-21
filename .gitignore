@@ -16,4 +16,4 @@ todos.json
 .superpowers/
 apps/pwa/.cta.json
 .playwright-mcp/
-.env.production
+**/.env.production
