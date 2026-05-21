@@ -32,7 +32,7 @@ export async function getSession() {
 function makeServerClient(cookieHeader: string, setCookie: (name: string, value: string, options?: object) => void) {
   return createServerClient<Database>(
     import.meta.env.VITE_SUPABASE_URL,
-    import.meta.env.VITE_SUPABASE_ANON_KEY,
+    import.meta.env.VITE_SUPABASE_KEY,
     {
       cookies: {
         getAll: () =>
