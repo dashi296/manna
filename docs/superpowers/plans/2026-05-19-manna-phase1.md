@@ -229,7 +229,7 @@ import '@testing-library/jest-dom'
 
 ```
 VITE_SUPABASE_URL=http://127.0.0.1:54321
-VITE_SUPABASE_ANON_KEY=（supabase start後に表示されるanon keyを貼る）
+VITE_SUPABASE_KEY=（supabase start後に表示されるanon keyを貼る）
 ```
 
 - [ ] **Step 7: `.gitignore` に追記する**
@@ -548,7 +548,7 @@ import type { Database } from '@/shared/types/database'
 
 export const supabase = createClient<Database>(
   import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY,
+  import.meta.env.VITE_SUPABASE_KEY,
 )
 ```
 
@@ -2539,6 +2539,6 @@ Expected: すべてPASS。
 | 変数名 | 説明 |
 |---|---|
 | `VITE_SUPABASE_URL` | SupabaseプロジェクトURL |
-| `VITE_SUPABASE_ANON_KEY` | Supabase匿名キー |
+| `VITE_SUPABASE_KEY` | Supabase匿名キー |
 
 本番SupabaseプロジェクトはSupabaseダッシュボードで作成し、Google OAuth設定を本番URLで再設定する。
