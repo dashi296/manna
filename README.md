@@ -1,52 +1,76 @@
 # Manna
 
-末日聖徒イエスキリスト教会の聖典学習体験共有SNS。
+A social platform for sharing scripture study experiences within The Church of Jesus Christ of Latter-day Saints.
 
-聖典を学びながら感じた感動・洞察・感想をオンラインで共有する。公式聖典サイト（churchofjesuschrist.org）のテキストは自前で持たず、ディープリンクで参照する。
+Share the inspiration, insights, and reflections you feel while studying the scriptures. Rather than hosting scripture text directly, Manna links to the official site (churchofjesuschrist.org) via deep links.
 
-## 技術スタック
+> [日本語 README](README.ja.md)
 
-| 役割 | 技術 |
+---
+
+## Tech Stack
+
+| Role | Technology |
 |---|---|
-| フロントエンド | TanStack Start (TypeScript / Vite / SSR) |
-| UIコンポーネント | shadcn/ui (Radix UI + Tailwind) |
-| バックエンド / DB | Supabase (PostgreSQL + Auth + Realtime + Storage) |
-| 認証 | Google OAuth (Supabase Auth経由) |
-| フロントエンド構造 | Feature Sliced Design (FSD) |
-| テスト | Vitest + @testing-library/react |
+| Frontend | TanStack Start (TypeScript / Vite / SSR) |
+| UI Components | shadcn/ui (Radix UI + Tailwind CSS v4) |
+| Backend / DB | Supabase (PostgreSQL + Auth + Realtime + Storage) |
+| Authentication | Google OAuth (via Supabase Auth) |
+| Frontend Architecture | Feature Sliced Design (FSD) |
+| Testing | Vitest + @testing-library/react |
+| Dev Environment | devbox (Node.js 24 + pnpm 9 managed via Nix) |
 
-## ディレクトリ構造（FSD）
+---
+
+## Directory Structure
 
 ```
 manna/
 ├── apps/
 │   └── pwa/              # TanStack Start PWA (@manna/pwa)
-│       ├── pages/        # TanStack Start ルート定義 (routesDirectory) 兼 FSD pages 層
-│       ├── widgets/      # 複合UIブロック
-│       ├── features/     # ユーザー操作・ビジネスロジック
-│       ├── entities/     # ビジネスエンティティ (post / user / scripture)
-│       └── shared/       # 共有インフラ (supabase / auth / shadcn/ui)
+│       ├── pages/        # Route definitions (routesDirectory) and FSD pages layer
+│       ├── widgets/      # Composite UI blocks
+│       ├── features/     # User interactions and business logic
+│       ├── entities/     # Business entities (post / user / scripture)
+│       └── shared/       # Shared infrastructure (supabase / auth / shadcn/ui)
 ├── packages/
-│   └── database/         # Supabase 生成 TypeScript 型 (@manna/database)
-└── supabase/migrations/  # Supabase CLI プロジェクト
+│   └── database/         # Supabase-generated TypeScript types (@manna/database)
+└── supabase/
+    └── migrations/       # Supabase CLI migrations
 ```
 
-`@/` エイリアスは `apps/pwa/` を指す。各スライスは `index.ts` でパブリック API を公開し、外部からは `index.ts` 経由のみでインポートする。
+The `@/` alias points to `apps/pwa/`. Each slice exposes its public API via `index.ts`; all external imports must go through `index.ts`.
 
-## セットアップ
+---
 
-[devbox](https://www.jetify.com/devbox) でNode.jsとpnpmを管理しています。
+## Setup
+
+### Prerequisites
+
+- [devbox](https://www.jetify.com/devbox) installed
+- Access to a Supabase project
+
+### Environment Variables
+
+Create `apps/pwa/.env.local` with the following:
+
+```env
+VITE_SUPABASE_URL=your_supabase_project_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
+
+### Install and Start
 
 ```bash
-# devboxがインストールされていない場合
+# Install devbox if not already installed
 curl -fsSL https://get.jetify.com/devbox | bash
 
-# パッケージインストールと開発サーバー起動
+# Install packages and start the dev server
 devbox install
 devbox run dev
 ```
 
-devbox shellに入ることで `node` / `pnpm` を直接使うこともできます:
+To work directly inside the devbox shell:
 
 ```bash
 devbox shell
@@ -54,21 +78,37 @@ pnpm install
 pnpm dev
 ```
 
-## 実装計画
+The development server starts at http://localhost:3000.
 
-[docs/superpowers/plans/2026-05-19-manna-phase1.md](docs/superpowers/plans/2026-05-19-manna-phase1.md) に全タスクの詳細手順・コードサンプルを記載。
+---
 
-GitHub Issues でタスクを管理。依存順に着手すること:
+## Testing
 
-1. [#1 プロジェクトセットアップ](https://github.com/dashi296/manna/issues/1)
-2. [#2 Supabaseスキーマ + RLS + トリガー](https://github.com/dashi296/manna/issues/2)
-3. [#3 Supabaseクライアント + 認証](https://github.com/dashi296/manna/issues/3)
-4. [#4 聖典データ + URLビルダー](https://github.com/dashi296/manna/issues/4)
-5. [#5 聖典ナビゲーター画面](https://github.com/dashi296/manna/issues/5)
-6. [#6 投稿作成画面](https://github.com/dashi296/manna/issues/6)
-7. [#7 フィード画面 + PostCard](https://github.com/dashi296/manna/issues/7)
-8. [#9 フォロー + ファミリー機能](https://github.com/dashi296/manna/issues/9)
-9. [#10 プロフィール画面](https://github.com/dashi296/manna/issues/10)
-10. [#11 通知画面](https://github.com/dashi296/manna/issues/11)
-11. [#12 投稿詳細画面](https://github.com/dashi296/manna/issues/12)
-12. [#13 PWA設定](https://github.com/dashi296/manna/issues/13)
+```bash
+# Run all tests
+pnpm test
+
+# Watch mode
+pnpm --filter @manna/pwa test -- --watch
+```
+
+---
+
+## Implementation Plan & Task Tracking
+
+The detailed implementation plan is documented in [`docs/superpowers/plans/2026-05-19-manna-phase1.md`](docs/superpowers/plans/2026-05-19-manna-phase1.md).
+
+Tasks are tracked via GitHub Issues and should be worked on in dependency order:
+
+1. [#1 Project Setup](https://github.com/dashi296/manna/issues/1)
+2. [#2 Supabase Schema + RLS + Triggers](https://github.com/dashi296/manna/issues/2)
+3. [#3 Supabase Client + Authentication](https://github.com/dashi296/manna/issues/3)
+4. [#4 Scripture Data + URL Builder](https://github.com/dashi296/manna/issues/4)
+5. [#5 Scripture Navigator Screen](https://github.com/dashi296/manna/issues/5)
+6. [#6 Post Creation Screen](https://github.com/dashi296/manna/issues/6)
+7. [#7 Feed Screen + PostCard](https://github.com/dashi296/manna/issues/7)
+8. [#9 Follow + Family Feature](https://github.com/dashi296/manna/issues/9)
+9. [#10 Profile Screen](https://github.com/dashi296/manna/issues/10)
+10. [#11 Notifications Screen](https://github.com/dashi296/manna/issues/11)
+11. [#12 Post Detail Screen](https://github.com/dashi296/manna/issues/12)
+12. [#13 PWA Configuration](https://github.com/dashi296/manna/issues/13)
