@@ -1,7 +1,10 @@
 name = "manna-pwa"
 compatibility_date = "2026-05-22"
 compatibility_flags = ["nodejs_compat"]
-main = "@tanstack/react-start/server-entry"
+main = "dist/server/server.js"
+
+[assets]
+directory = "dist/client"
 
 [observability]
 enabled = true
