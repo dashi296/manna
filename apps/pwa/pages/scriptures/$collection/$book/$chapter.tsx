@@ -54,7 +54,7 @@ export const Route = createFileRoute('/scriptures/$collection/$book/$chapter')({
     verses: search.verses !== undefined
       ? (Array.isArray(search.verses) ? search.verses : [search.verses])
           .map(Number)
-          .filter((n) => !isNaN(n))
+          .filter((n) => Number.isInteger(n) && n > 0)
       : undefined,
   }),
   loaderDeps: ({ search }) => ({ verses: search.verses }),
@@ -66,6 +66,8 @@ export const Route = createFileRoute('/scriptures/$collection/$book/$chapter')({
     if (chapterNum < 1 || chapterNum > book.chapters) throw notFound()
 
     if (deps.verses?.length) {
+      const verseCount = book.verses[chapterNum - 1]
+      if (deps.verses.some((v) => v < 1 || v > verseCount)) throw notFound()
       const posts = await fetchVersePosts({
         data: {
           collection: params.collection,

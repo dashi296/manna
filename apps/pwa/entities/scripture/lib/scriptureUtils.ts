@@ -10,7 +10,7 @@ export type ScriptureRef = {
 export function buildScriptureUrl(ref: ScriptureRef): string {
   const base = 'https://www.churchofjesuschrist.org/study/scriptures'
   let url = `${base}/${ref.collection}/${ref.book}/${ref.chapter}?lang=jpn`
-  const first = ref.verses?.[0]
+  const first = ref.verses ? [...ref.verses].sort((a, b) => a - b)[0] : undefined
   if (first) url += `&id=p${first}`
   return url
 }
