@@ -6,5 +6,5 @@ import type { Database } from '@manna/database'
 // このファイルはブラウザ専用: auth.ts から動的 import でのみ参照すること
 export const supabase = createBrowserClient<Database>(
   import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY,
+  import.meta.env.VITE_SUPABASE_KEY,
 )
