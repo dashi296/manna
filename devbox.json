@@ -5,7 +5,7 @@
     "pnpm_9@9.15.9"
   ],
   "shell": {
-    "init_hook": [],
+    "init_hook": ["pnpm install"],
     "scripts": {
       "dev": "pnpm dev",
       "build": "pnpm build",
