@@ -16,6 +16,9 @@ import { Route as ScripturesIndexRouteImport } from './pages/scriptures/index'
 import { Route as ProfileIndexRouteImport } from './pages/profile/index'
 import { Route as PostsNewRouteImport } from './pages/posts/new'
 import { Route as AuthCallbackRouteImport } from './pages/auth/callback'
+import { Route as ScripturesCollectionIndexRouteImport } from './pages/scriptures/$collection/index'
+import { Route as ScripturesCollectionBookIndexRouteImport } from './pages/scriptures/$collection/$book/index'
+import { Route as ScripturesCollectionBookChapterRouteImport } from './pages/scriptures/$collection/$book/$chapter'
 
 const NotificationsRoute = NotificationsRouteImport.update({
   id: '/notifications',
@@ -52,6 +55,24 @@ const AuthCallbackRoute = AuthCallbackRouteImport.update({
   path: '/auth/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ScripturesCollectionIndexRoute =
+  ScripturesCollectionIndexRouteImport.update({
+    id: '/scriptures/$collection/',
+    path: '/scriptures/$collection/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ScripturesCollectionBookIndexRoute =
+  ScripturesCollectionBookIndexRouteImport.update({
+    id: '/scriptures/$collection/$book/',
+    path: '/scriptures/$collection/$book/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ScripturesCollectionBookChapterRoute =
+  ScripturesCollectionBookChapterRouteImport.update({
+    id: '/scriptures/$collection/$book/$chapter',
+    path: '/scriptures/$collection/$book/$chapter',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -61,6 +82,9 @@ export interface FileRoutesByFullPath {
   '/posts/new': typeof PostsNewRoute
   '/profile/': typeof ProfileIndexRoute
   '/scriptures/': typeof ScripturesIndexRoute
+  '/scriptures/$collection/': typeof ScripturesCollectionIndexRoute
+  '/scriptures/$collection/$book/$chapter': typeof ScripturesCollectionBookChapterRoute
+  '/scriptures/$collection/$book/': typeof ScripturesCollectionBookIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -70,6 +94,9 @@ export interface FileRoutesByTo {
   '/posts/new': typeof PostsNewRoute
   '/profile': typeof ProfileIndexRoute
   '/scriptures': typeof ScripturesIndexRoute
+  '/scriptures/$collection': typeof ScripturesCollectionIndexRoute
+  '/scriptures/$collection/$book/$chapter': typeof ScripturesCollectionBookChapterRoute
+  '/scriptures/$collection/$book': typeof ScripturesCollectionBookIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -80,6 +107,9 @@ export interface FileRoutesById {
   '/posts/new': typeof PostsNewRoute
   '/profile/': typeof ProfileIndexRoute
   '/scriptures/': typeof ScripturesIndexRoute
+  '/scriptures/$collection/': typeof ScripturesCollectionIndexRoute
+  '/scriptures/$collection/$book/$chapter': typeof ScripturesCollectionBookChapterRoute
+  '/scriptures/$collection/$book/': typeof ScripturesCollectionBookIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -91,6 +121,9 @@ export interface FileRouteTypes {
     | '/posts/new'
     | '/profile/'
     | '/scriptures/'
+    | '/scriptures/$collection/'
+    | '/scriptures/$collection/$book/$chapter'
+    | '/scriptures/$collection/$book/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -100,6 +133,9 @@ export interface FileRouteTypes {
     | '/posts/new'
     | '/profile'
     | '/scriptures'
+    | '/scriptures/$collection'
+    | '/scriptures/$collection/$book/$chapter'
+    | '/scriptures/$collection/$book'
   id:
     | '__root__'
     | '/'
@@ -109,6 +145,9 @@ export interface FileRouteTypes {
     | '/posts/new'
     | '/profile/'
     | '/scriptures/'
+    | '/scriptures/$collection/'
+    | '/scriptures/$collection/$book/$chapter'
+    | '/scriptures/$collection/$book/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -119,6 +158,9 @@ export interface RootRouteChildren {
   PostsNewRoute: typeof PostsNewRoute
   ProfileIndexRoute: typeof ProfileIndexRoute
   ScripturesIndexRoute: typeof ScripturesIndexRoute
+  ScripturesCollectionIndexRoute: typeof ScripturesCollectionIndexRoute
+  ScripturesCollectionBookChapterRoute: typeof ScripturesCollectionBookChapterRoute
+  ScripturesCollectionBookIndexRoute: typeof ScripturesCollectionBookIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -172,6 +214,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/scriptures/$collection/': {
+      id: '/scriptures/$collection/'
+      path: '/scriptures/$collection'
+      fullPath: '/scriptures/$collection/'
+      preLoaderRoute: typeof ScripturesCollectionIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/scriptures/$collection/$book/': {
+      id: '/scriptures/$collection/$book/'
+      path: '/scriptures/$collection/$book'
+      fullPath: '/scriptures/$collection/$book/'
+      preLoaderRoute: typeof ScripturesCollectionBookIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/scriptures/$collection/$book/$chapter': {
+      id: '/scriptures/$collection/$book/$chapter'
+      path: '/scriptures/$collection/$book/$chapter'
+      fullPath: '/scriptures/$collection/$book/$chapter'
+      preLoaderRoute: typeof ScripturesCollectionBookChapterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -183,6 +246,9 @@ const rootRouteChildren: RootRouteChildren = {
   PostsNewRoute: PostsNewRoute,
   ProfileIndexRoute: ProfileIndexRoute,
   ScripturesIndexRoute: ScripturesIndexRoute,
+  ScripturesCollectionIndexRoute: ScripturesCollectionIndexRoute,
+  ScripturesCollectionBookChapterRoute: ScripturesCollectionBookChapterRoute,
+  ScripturesCollectionBookIndexRoute: ScripturesCollectionBookIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
