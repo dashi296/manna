@@ -1,5 +1,6 @@
 import { createServerClient, parseCookieHeader } from '@supabase/ssr'
 import { createServerFn } from '@tanstack/react-start'
+import { getStartContext } from '@tanstack/start-storage-context'
 import type { Database } from '@manna/database'
 
 // ブラウザ専用関数: createBrowserClient は SSR 側で WebSocket エラーを起こすため
@@ -29,7 +30,10 @@ export async function getSession() {
   return session
 }
 
-function makeServerClient(cookieHeader: string, setCookie: (name: string, value: string, options?: object) => void) {
+// createServerFn ハンドラ内で使う SSR 用 Supabase クライアントを返す
+// setAll は SSR では使わない（ブラウザクライアントがトークンリフレッシュを管理する）
+export function createSupabaseServer() {
+  const cookieHeader = getStartContext()?.request?.headers.get('cookie') ?? ''
   return createServerClient<Database>(
     import.meta.env.VITE_SUPABASE_URL,
     import.meta.env.VITE_SUPABASE_KEY,
@@ -40,25 +44,16 @@ function makeServerClient(cookieHeader: string, setCookie: (name: string, value:
             name,
             value: value ?? '',
           })),
-        setAll: (cookiesToSet) => {
-          cookiesToSet.forEach(({ name, value, options }) => setCookie(name, value, options))
-        },
+        setAll: () => {},
       },
     },
   )
 }
 
-// createServerFn ハンドラ内で使う SSR 用 Supabase クライアントを返す
-export async function createSupabaseServer() {
-  const { getRequest, setCookie } = await import('@tanstack/react-start/server')
-  const cookieHeader = getRequest().headers.get('cookie') ?? ''
-  return makeServerClient(cookieHeader, setCookie)
-}
-
 // SSR 用: リクエストの cookie ヘッダーからセッションを読み取る
 // setAll でトークンリフレッシュ時の新しい cookie をレスポンスに書き戻す
 export const getServerSession = createServerFn({ method: 'GET' }).handler(async () => {
-  const serverSupabase = await createSupabaseServer()
+  const serverSupabase = createSupabaseServer()
   const {
     data: { session },
   } = await serverSupabase.auth.getSession()
