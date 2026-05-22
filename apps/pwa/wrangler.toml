@@ -1,4 +1,4 @@
-name = "manna-pwa"
+name = "manna"
 compatibility_date = "2026-05-22"
 compatibility_flags = ["nodejs_compat"]
 main = "dist/server/server.js"
