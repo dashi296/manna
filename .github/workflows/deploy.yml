@@ -28,7 +28,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Deploy to Cloudflare Workers
-        run: pnpm --filter @manna/pwa deploy
+        run: pnpm --filter @manna/pwa run cf:deploy
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_KEY: ${{ secrets.VITE_SUPABASE_KEY }}
