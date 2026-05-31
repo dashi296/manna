@@ -5,6 +5,35 @@
 
 @theme {
   --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Fraunces", Georgia, serif;
+
+  /* Brand colors — named Tailwind utilities */
+  --color-sea-ink: var(--sea-ink);
+  --color-sea-ink-soft: var(--sea-ink-soft);
+  --color-lagoon: var(--lagoon);
+  --color-lagoon-deep: var(--lagoon-deep);
+  --color-palm: var(--palm);
+  --color-sand: var(--sand);
+  --color-foam: var(--foam);
+  --color-bg-base: var(--bg-base);
+  --color-surface: var(--surface);
+  --color-surface-strong: var(--surface-strong);
+  --color-line: var(--line);
+
+  /* shadcn/ui token mapping */
+  --color-background: var(--foam);
+  --color-foreground: var(--sea-ink);
+  --color-muted: var(--sand);
+  --color-muted-foreground: var(--sea-ink-soft);
+  --color-primary: var(--lagoon-deep);
+  --color-primary-foreground: #ffffff;
+  --color-secondary: var(--palm);
+  --color-secondary-foreground: #ffffff;
+  --color-border: var(--line);
+  --color-ring: var(--lagoon);
+
+  /* Radius */
+  --radius: 0.75rem;
 }
 
 :root {
