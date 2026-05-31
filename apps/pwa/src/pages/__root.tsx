@@ -4,7 +4,7 @@ import { AppSidebar } from '@/shared/ui/AppSidebar'
 import { BottomNav } from '@/shared/ui/BottomNav'
 import { DevTools } from '@/shared/ui/DevTools'
 import { SidebarInset, SidebarProvider } from '@/shared/ui/sidebar'
-import appCss from '@/src/styles.css?url'
+import appCss from '@/styles.css?url'
 
 const isDev = import.meta.env.DEV
 
