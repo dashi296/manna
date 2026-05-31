@@ -94,7 +94,7 @@ export function PostCard({ post }: Props) {
                 color: 'var(--palm)',
               }}
             >
-              📖 {scriptureLabel}
+              <span aria-hidden="true">📖</span> {scriptureLabel}
             </a>
           )}
         </div>

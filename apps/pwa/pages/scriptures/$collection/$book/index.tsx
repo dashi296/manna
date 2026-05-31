@@ -1,6 +1,6 @@
 import { createFileRoute, Link, notFound } from '@tanstack/react-router'
 import { getBook, getCollection } from '@/entities/scripture'
-import { PageHeader } from '@/shared/ui/PageHeader'
+import { PageHeader } from '@/shared/ui'
 
 export const Route = createFileRoute('/scriptures/$collection/$book/')({
   loader: ({ params }) => {

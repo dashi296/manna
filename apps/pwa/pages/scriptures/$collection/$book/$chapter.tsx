@@ -3,7 +3,7 @@ import { createServerFn } from '@tanstack/react-start'
 import { getBook, buildScriptureUrl, getScriptureLabel } from '@/entities/scripture'
 import { PostCard, type PostWithUser } from '@/entities/post'
 import { createSupabaseServer } from '@/shared/lib/auth'
-import { PageHeader } from '@/shared/ui/PageHeader'
+import { PageHeader } from '@/shared/ui'
 
 const POST_SELECT = `
   id, content, visibility, created_at,
@@ -119,6 +119,8 @@ function ChapterPage() {
       <div>
         <PageHeader
           title={`📖 ${scriptureLabel}`}
+          backTo="/scriptures/$collection/$book/$chapter"
+          backLabel={`第${chapter}章`}
           action={
             <Link
               to="/posts/new"
@@ -162,6 +164,8 @@ function ChapterPage() {
     <div>
       <PageHeader
         title={`${book.name} 第${chapter}章`}
+        backTo="/scriptures/$collection/$book"
+        backLabel={book.name}
         action={
           <a
             href={officialUrl}

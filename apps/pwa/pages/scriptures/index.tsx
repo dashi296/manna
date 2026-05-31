@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { getAllCollections } from '@/entities/scripture'
-import { PageHeader } from '@/shared/ui/PageHeader'
+import { PageHeader } from '@/shared/ui'
 
 export const Route = createFileRoute('/scriptures/')({
   component: ScripturesPage,
