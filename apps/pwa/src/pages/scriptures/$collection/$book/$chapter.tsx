@@ -3,6 +3,7 @@ import { createServerFn } from '@tanstack/react-start'
 import { getBook, buildScriptureUrl, getScriptureLabel } from '@/entities/scripture'
 import { PostCard, type PostWithUser } from '@/entities/post'
 import { createSupabaseServer } from '@/shared/lib/auth'
+import { PageHeader } from '@/shared/ui'
 
 const POST_SELECT = `
   id, content, visibility, created_at,
@@ -15,7 +16,7 @@ const fetchVersePosts = createServerFn({ method: 'POST' })
   .inputValidator((data: { collection: string; book: string; chapter: number; verses: number[] }) => data)
   .handler(async (ctx) => {
     const { collection, book, chapter, verses } = ctx.data
-    const serverSupabase = createSupabaseServer()
+    const serverSupabase = await createSupabaseServer()
     const { data: posts } = await serverSupabase
       .from('posts')
       .select(POST_SELECT)
@@ -31,7 +32,7 @@ const fetchChapterCounts = createServerFn({ method: 'POST' })
   .inputValidator((data: { collection: string; book: string; chapter: number }) => data)
   .handler(async (ctx) => {
     const { collection, book, chapter } = ctx.data
-    const serverSupabase = createSupabaseServer()
+    const serverSupabase = await createSupabaseServer()
     const { data: allPosts } = await serverSupabase
       .from('posts')
       .select('scripture_verses')
@@ -116,24 +117,37 @@ function ChapterPage() {
     const officialUrl = buildScriptureUrl({ collection, book: book.id, chapter, verses })
     return (
       <div>
-        <div className="p-4 border-b">
-          <h1 className="text-lg font-bold">📖 {scriptureLabel}</h1>
-          <a href={officialUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 underline">
+        <PageHeader
+          title={`📖 ${scriptureLabel}`}
+          backTo="/scriptures/$collection/$book/$chapter"
+          backLabel={`第${chapter}章`}
+          action={
+            <Link
+              to="/posts/new"
+              search={{ collection, book: book.id, chapter, verses }}
+              className="text-xs px-3 py-1.5 rounded-full font-semibold"
+              style={{ background: 'var(--lagoon)', color: '#fff' }}
+            >
+              投稿する
+            </Link>
+          }
+        />
+        <div className="px-4 py-2 border-b" style={{ borderColor: 'var(--line)' }}>
+          <a
+            href={officialUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm underline"
+            style={{ color: 'var(--lagoon-deep)' }}
+          >
             公式サイトで読む →
           </a>
-        </div>
-        <div className="flex items-center justify-between px-4 py-2 border-b">
-          <span className="text-sm text-gray-500">新着順</span>
-          <Link
-            to="/posts/new"
-            search={{ collection, book: book.id, chapter, verses }}
-            className="text-sm bg-blue-600 text-white px-3 py-1.5 rounded-full"
-          >
-            この節について投稿する
-          </Link>
+          <span className="text-xs ml-3" style={{ color: 'var(--sea-ink-soft)' }}>新着順</span>
         </div>
         {posts.length === 0 ? (
-          <div className="p-8 text-center text-gray-400">この節への投稿はまだありません</div>
+          <div className="p-8 text-center text-sm" style={{ color: 'var(--sea-ink-soft)' }}>
+            この節への投稿はまだありません
+          </div>
         ) : (
           <div>
             {posts.map((post) => (
@@ -147,36 +161,56 @@ function ChapterPage() {
 
   const officialUrl = buildScriptureUrl({ collection, book: book.id, chapter })
   return (
-    <div className="p-4">
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-xl font-bold">
-          {book.name} 第{chapter}章
-        </h1>
-        <a href={officialUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 underline">
-          本文を読む →
-        </a>
+    <div>
+      <PageHeader
+        title={`${book.name} 第${chapter}章`}
+        backTo="/scriptures/$collection/$book"
+        backLabel={book.name}
+        action={
+          <a
+            href={officialUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs underline"
+            style={{ color: 'var(--lagoon-deep)' }}
+          >
+            本文を読む
+          </a>
+        }
+      />
+      <div className="p-4">
+        <p className="text-xs mb-4" style={{ color: 'var(--sea-ink-soft)' }}>節を選んで投稿を見る・書く</p>
+        <ul className="overflow-hidden rounded-xl" style={{ border: '1px solid var(--line)' }}>
+          {Array.from({ length: book.verses[chapter - 1] }, (_, i) => i + 1).map((verse) => {
+            const count = countByVerse[verse] ?? 0
+            return (
+              <li key={verse} className="border-b last:border-b-0" style={{ borderColor: 'var(--line)' }}>
+                <Link
+                  to="/scriptures/$collection/$book/$chapter"
+                  params={{ collection, book: book.id, chapter: String(chapter) }}
+                  search={{ verses: [verse] }}
+                  className="flex items-center justify-between px-4 py-3 transition-colors"
+                  style={{ color: 'var(--sea-ink)' }}
+                >
+                  <span className="text-sm">第{verse}節</span>
+                  {count > 0 && (
+                    <span
+                      className="text-xs px-2 py-0.5 rounded-full font-medium"
+                      style={{
+                        background: 'var(--chip-bg)',
+                        border: '1px solid var(--chip-line)',
+                        color: 'var(--palm)',
+                      }}
+                    >
+                      {count}件
+                    </span>
+                  )}
+                </Link>
+              </li>
+            )
+          })}
+        </ul>
       </div>
-      <p className="text-sm text-gray-500 mb-4">節を選んで投稿を見る・書く</p>
-      <ul className="divide-y border rounded-lg overflow-hidden">
-        {Array.from({ length: book.verses[chapter - 1] }, (_, i) => i + 1).map((verse) => {
-          const count = countByVerse[verse] ?? 0
-          return (
-            <li key={verse}>
-              <Link
-                to="/scriptures/$collection/$book/$chapter"
-                params={{ collection, book: book.id, chapter: String(chapter) }}
-                search={{ verses: [verse] }}
-                className="flex items-center justify-between px-4 py-3 hover:bg-gray-50"
-              >
-                <span className="text-sm">第{verse}節</span>
-                {count > 0 && (
-                  <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">{count}件</span>
-                )}
-              </Link>
-            </li>
-          )
-        })}
-      </ul>
     </div>
   )
 }

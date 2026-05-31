@@ -1,0 +1,56 @@
+import { describe, it, expect } from 'vitest'
+import { render, screen } from '@testing-library/react'
+import { PostCard, type PostWithUser } from '@/entities/post'
+
+const basePost: PostWithUser = {
+  id: 'post-1',
+  content: 'これは試験投稿です。',
+  visibility: 'public',
+  created_at: '2026-05-31T10:00:00Z',
+  scripture_collection: 'bofm',
+  scripture_book: '1-ne',
+  scripture_chapter: 3,
+  scripture_verses: [7],
+  user_id: 'user-1',
+  users: { display_name: 'テスト太郎', avatar_url: null },
+}
+
+describe('PostCard', () => {
+  it('投稿本文を表示する', () => {
+    render(<PostCard post={basePost} />)
+    expect(screen.getByText('これは試験投稿です。')).toBeInTheDocument()
+  })
+
+  it('ユーザーの表示名を表示する', () => {
+    render(<PostCard post={basePost} />)
+    expect(screen.getByText('テスト太郎')).toBeInTheDocument()
+  })
+
+  it('聖典参照ラベルを表示する', () => {
+    render(<PostCard post={basePost} />)
+    expect(screen.getByText(/第1ニーファイ書/)).toBeInTheDocument()
+  })
+
+  it('投稿日時を表示する', () => {
+    render(<PostCard post={basePost} />)
+    expect(screen.getByText(/2026|5月31日|5月|31/)).toBeInTheDocument()
+  })
+
+  it('display_name が null のときは「匿名ユーザー」を表示する', () => {
+    const post = { ...basePost, users: { display_name: null, avatar_url: null } }
+    render(<PostCard post={post} />)
+    expect(screen.getByText('匿名ユーザー')).toBeInTheDocument()
+  })
+
+  it('聖典参照が null のときはバッジを表示しない', () => {
+    const post = {
+      ...basePost,
+      scripture_collection: null,
+      scripture_book: null,
+      scripture_chapter: null,
+      scripture_verses: null,
+    }
+    render(<PostCard post={post} />)
+    expect(screen.queryByText(/第1ニーファイ書/)).not.toBeInTheDocument()
+  })
+})

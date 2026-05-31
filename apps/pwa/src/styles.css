@@ -1,10 +1,58 @@
 
 @import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Manrope:wght@400;500;600;700;800&display=swap");
 @import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
 @plugin "@tailwindcss/typography";
 
-@theme {
+@theme inline {
   --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Fraunces", Georgia, serif;
+
+  /* Brand colors — named Tailwind utilities */
+  --color-sea-ink: var(--sea-ink);
+  --color-sea-ink-soft: var(--sea-ink-soft);
+  --color-lagoon: var(--lagoon);
+  --color-lagoon-deep: var(--lagoon-deep);
+  --color-palm: var(--palm);
+  --color-sand: var(--sand);
+  --color-foam: var(--foam);
+  --color-bg-base: var(--bg-base);
+  --color-surface: var(--surface);
+  --color-surface-strong: var(--surface-strong);
+  --color-line: var(--line);
+
+  /* shadcn/ui token mapping */
+  --color-background: var(--foam);
+  --color-foreground: var(--sea-ink);
+  --color-muted: var(--sand);
+  --color-muted-foreground: var(--sea-ink-soft);
+  --color-primary: var(--lagoon-deep);
+  --color-primary-foreground: #ffffff;
+  --color-secondary: var(--palm);
+  --color-secondary-foreground: #ffffff;
+  --color-card: var(--surface-strong);
+  --color-card-foreground: var(--sea-ink);
+  --color-accent: var(--sand);
+  --color-accent-foreground: var(--sea-ink);
+  --color-destructive: #dc2626;
+  --color-destructive-foreground: #ffffff;
+  --color-input: var(--line);
+  --color-popover: var(--surface-strong);
+  --color-popover-foreground: var(--sea-ink);
+  --color-border: var(--line);
+  --color-ring: var(--lagoon);
+
+  /* Radius */
+  --radius: 0.75rem;
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
 }
 
 :root {
@@ -27,6 +75,14 @@
   --link-bg-hover: rgba(255, 255, 255, 0.9);
   --hero-a: rgba(79, 184, 178, 0.36);
   --hero-b: rgba(47, 106, 74, 0.2);
+  --sidebar: hsl(0 0% 98%);
+  --sidebar-foreground: hsl(240 5.3% 26.1%);
+  --sidebar-primary: hsl(240 5.9% 10%);
+  --sidebar-primary-foreground: hsl(0 0% 98%);
+  --sidebar-accent: hsl(240 4.8% 95.9%);
+  --sidebar-accent-foreground: hsl(240 5.9% 10%);
+  --sidebar-border: hsl(220 13% 91%);
+  --sidebar-ring: hsl(217.2 91.2% 59.8%);
 }
 
 :root[data-theme="dark"] {
@@ -257,5 +313,16 @@ a {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+.dark {
+  --sidebar: hsl(240 5.9% 10%);
+  --sidebar-foreground: hsl(240 4.8% 95.9%);
+  --sidebar-primary: hsl(224.3 76.3% 48%);
+  --sidebar-primary-foreground: hsl(0 0% 100%);
+  --sidebar-accent: hsl(240 3.7% 15.9%);
+  --sidebar-accent-foreground: hsl(240 4.8% 95.9%);
+  --sidebar-border: hsl(240 3.7% 15.9%);
+  --sidebar-ring: hsl(217.2 91.2% 59.8%);
 }
 

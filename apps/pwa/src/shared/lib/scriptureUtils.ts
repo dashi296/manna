@@ -16,7 +16,8 @@ export function buildScriptureUrl(ref: ScriptureRef): string {
 }
 
 export function getScriptureLabel(ref: ScriptureRef): string {
-  const book = getBook(ref.collection, ref.book)
+  const collection = scripturesData.collections.find((c) => c.id === ref.collection)
+  const book = collection?.books.find((b) => b.id === ref.book)
   const bookName = book?.name ?? ref.book
   if (!ref.chapter) return bookName
   if (!ref.verses?.length) return `${bookName} 第${ref.chapter}章`
@@ -25,16 +26,4 @@ export function getScriptureLabel(ref: ScriptureRef): string {
   const isConsecutive = sorted.every((v, i) => i === 0 || v === sorted[i - 1] + 1)
   if (isConsecutive) return `${bookName} ${ref.chapter}:${sorted[0]}–${sorted[sorted.length - 1]}`
   return `${bookName} ${ref.chapter}:${sorted.join(', ')}`
-}
-
-export function getCollection(collectionId: string) {
-  return scripturesData.collections.find((c) => c.id === collectionId)
-}
-
-export function getBook(collectionId: string, bookId: string) {
-  return getCollection(collectionId)?.books.find((b) => b.id === bookId)
-}
-
-export function getAllCollections() {
-  return scripturesData.collections
 }

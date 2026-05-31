@@ -10,20 +10,19 @@ const config = defineConfig({
   resolve: {
     tsconfigPaths: true,
     alias: {
-      '@': path.resolve(__dirname, '.'),
+      '@': path.resolve(__dirname, 'src'),
     },
   },
   plugins: [
-    cloudflare({ viteEnvironment: { name: 'ssr' } }),
-    devtools(),
     tailwindcss(),
+    cloudflare({ viteEnvironment: { name: 'ssr' } }),
     tanstackStart({
-      srcDirectory: '.',
       router: {
         routesDirectory: './pages',
       },
     }),
     viteReact(),
+    devtools(),
   ],
 })
 
