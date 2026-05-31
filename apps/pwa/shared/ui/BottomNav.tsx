@@ -14,7 +14,7 @@ export function BottomNav() {
   const { location } = useRouterState()
 
   return (
-    <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md border-t border-line bg-[var(--header-bg)] backdrop-blur-sm">
+    <nav className="lg:hidden fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md border-t border-line bg-[var(--header-bg)] backdrop-blur-sm">
       <div className="flex">
         {NAV_ITEMS.map(({ to, label, Icon }) => {
           const active =
