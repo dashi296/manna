@@ -1,4 +1,4 @@
-import { getScriptureLabel, buildScriptureUrl } from '@/entities/scripture'
+import { getScriptureLabel, buildScriptureUrl } from '@/shared/lib/scriptureUtils'
 
 export type PostWithUser = {
   id: string
@@ -26,7 +26,7 @@ function Initials({ name }: { name: string }) {
     <div
       className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold shrink-0"
       style={{ background: 'var(--lagoon)', color: '#fff' }}
-      aria-hidden
+      aria-hidden="true"
     >
       {ch}
     </div>
