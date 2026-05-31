@@ -14,7 +14,7 @@ const config = defineConfig({
     },
   },
   plugins: [
-    cloudflare({ viteEnvironment: { name: 'ssr' } }),
+    // cloudflare({ viteEnvironment: { name: 'ssr' } }),
     devtools(),
     tailwindcss(),
     tanstackStart({
