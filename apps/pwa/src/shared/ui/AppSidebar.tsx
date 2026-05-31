@@ -41,7 +41,7 @@ export function AppSidebar() {
   return (
     <Sidebar
       collapsible="none"
-      className="hidden lg:flex border-r"
+      className="hidden lg:flex border-r h-screen"
       style={{ borderColor: 'var(--line)', background: 'var(--header-bg)', width: '220px' }}
     >
       {/* ロゴ */}
