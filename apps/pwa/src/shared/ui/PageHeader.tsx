@@ -23,6 +23,7 @@ export function PageHeader({ title, backTo, backLabel, action, className }: Prop
       {backTo && (
         <Link
           to={backTo as string}
+          search={{}}
           className="flex items-center gap-0.5 text-sm -ml-1 pr-2"
           style={{ color: 'var(--lagoon-deep)' }}
           aria-label={backLabel ?? '戻る'}

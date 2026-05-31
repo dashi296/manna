@@ -16,7 +16,7 @@ const fetchVersePosts = createServerFn({ method: 'POST' })
   .inputValidator((data: { collection: string; book: string; chapter: number; verses: number[] }) => data)
   .handler(async (ctx) => {
     const { collection, book, chapter, verses } = ctx.data
-    const serverSupabase = createSupabaseServer()
+    const serverSupabase = await createSupabaseServer()
     const { data: posts } = await serverSupabase
       .from('posts')
       .select(POST_SELECT)
@@ -32,7 +32,7 @@ const fetchChapterCounts = createServerFn({ method: 'POST' })
   .inputValidator((data: { collection: string; book: string; chapter: number }) => data)
   .handler(async (ctx) => {
     const { collection, book, chapter } = ctx.data
-    const serverSupabase = createSupabaseServer()
+    const serverSupabase = await createSupabaseServer()
     const { data: allPosts } = await serverSupabase
       .from('posts')
       .select('scripture_verses')

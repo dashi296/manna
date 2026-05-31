@@ -26,12 +26,11 @@ export async function getSession() {
   return session
 }
 
-export const getServerSession = createServerFn({ method: 'GET' }).handler(async () => {
+export async function createSupabaseServer() {
   const { createServerClient, parseCookieHeader } = await import('@supabase/ssr')
   const { getStartContext } = await import('@tanstack/start-storage-context')
-
   const cookieHeader = getStartContext()?.request?.headers.get('cookie') ?? ''
-  const serverSupabase = createServerClient<Database>(
+  return createServerClient<Database>(
     import.meta.env.VITE_SUPABASE_URL,
     import.meta.env.VITE_SUPABASE_KEY,
     {
@@ -45,6 +44,10 @@ export const getServerSession = createServerFn({ method: 'GET' }).handler(async 
       },
     },
   )
+}
+
+export const getServerSession = createServerFn({ method: 'GET' }).handler(async () => {
+  const serverSupabase = await createSupabaseServer()
   const {
     data: { session },
   } = await serverSupabase.auth.getSession()
