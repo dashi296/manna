@@ -1,7 +1,9 @@
-import { HeadContent, Scripts, Outlet, createRootRoute, redirect } from '@tanstack/react-router'
+import { HeadContent, Scripts, Outlet, createRootRoute, redirect, useRouterState } from '@tanstack/react-router'
 import { getSession, getServerSession } from '@/shared/lib/auth'
+import { AppSidebar } from '@/shared/ui/AppSidebar'
 import { BottomNav } from '@/shared/ui/BottomNav'
 import { DevTools } from '@/shared/ui/DevTools'
+import { SidebarInset, SidebarProvider } from '@/shared/ui/sidebar'
 import appCss from '@/src/styles.css?url'
 
 const isDev = import.meta.env.DEV
@@ -52,12 +54,25 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 }
 
 function RootLayout() {
+  const { location } = useRouterState()
+  const isAuthPage =
+    location.pathname === '/login' || location.pathname.startsWith('/auth/')
+
+  if (isAuthPage) {
+    return <Outlet />
+  }
+
   return (
-    <div className="max-w-md mx-auto min-h-screen flex flex-col">
-      <main className="flex-1 pb-16">
-        <Outlet />
-      </main>
-      <BottomNav />
-    </div>
+    <SidebarProvider>
+      <AppSidebar />
+      <SidebarInset className="flex flex-col min-h-screen min-w-0">
+        <main className="flex-1 pb-16 lg:pb-0">
+          <div className="max-w-md mx-auto">
+            <Outlet />
+          </div>
+        </main>
+        <BottomNav />
+      </SidebarInset>
+    </SidebarProvider>
   )
 }
