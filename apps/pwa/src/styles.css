@@ -3,7 +3,7 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
-@theme {
+@theme inline {
   --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Fraunces", Georgia, serif;
 
@@ -29,6 +29,15 @@
   --color-primary-foreground: #ffffff;
   --color-secondary: var(--palm);
   --color-secondary-foreground: #ffffff;
+  --color-card: var(--surface-strong);
+  --color-card-foreground: var(--sea-ink);
+  --color-accent: var(--sand);
+  --color-accent-foreground: var(--sea-ink);
+  --color-destructive: #dc2626;
+  --color-destructive-foreground: #ffffff;
+  --color-input: var(--line);
+  --color-popover: var(--surface-strong);
+  --color-popover-foreground: var(--sea-ink);
   --color-border: var(--line);
   --color-ring: var(--lagoon);
 
