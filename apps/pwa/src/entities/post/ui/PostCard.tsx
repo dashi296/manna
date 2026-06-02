@@ -17,7 +17,7 @@ type Props = { post: PostWithUser }
 
 function formatDate(iso: string): string {
   const d = new Date(iso)
-  return d.toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' })
+  return d.toLocaleDateString('ja-JP', { month: 'short', day: 'numeric', timeZone: 'Asia/Tokyo' })
 }
 
 function Initials({ name }: { name: string }) {
