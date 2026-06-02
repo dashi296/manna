@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildScriptureUrl, getScriptureLabel, getBook } from '@/entities/scripture'
+import { buildScriptureUrl, getScriptureLabel, getBook, getCollection, getAllCollections } from '@/entities/scripture'
 
 describe('buildScriptureUrl', () => {
   it('章のURLを生成する', () => {
@@ -49,5 +49,25 @@ describe('getBook', () => {
 
   it('存在しない書籍はundefinedを返す', () => {
     expect(getBook('bofm', 'unknown')).toBeUndefined()
+  })
+})
+
+describe('getCollection', () => {
+  it('コレクションデータを返す', () => {
+    const col = getCollection('bofm')
+    expect(col?.id).toBe('bofm')
+    expect(Array.isArray(col?.books)).toBe(true)
+  })
+
+  it('存在しないコレクションはundefinedを返す', () => {
+    expect(getCollection('unknown')).toBeUndefined()
+  })
+})
+
+describe('getAllCollections', () => {
+  it('全5コレクションを返す', () => {
+    const cols = getAllCollections()
+    expect(cols).toHaveLength(5)
+    expect(cols.map((c) => c.id)).toEqual(['bofm', 'dc-testament', 'pgp', 'ot', 'nt'])
   })
 })
