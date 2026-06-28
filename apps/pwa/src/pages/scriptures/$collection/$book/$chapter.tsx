@@ -124,7 +124,7 @@ function ChapterPage() {
           action={
             <Link
               to="/posts/new"
-              search={{ collection, book: book.id, chapter, verses }}
+              search={{ collection, book: book.id, chapter: String(chapter), verses: verses.join(',') }}
               className="text-xs px-3 py-1.5 rounded-full font-semibold"
               style={{ background: 'var(--lagoon)', color: '#fff' }}
             >

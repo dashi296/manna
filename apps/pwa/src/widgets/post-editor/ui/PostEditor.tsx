@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { MarkdownRenderer } from '@/shared/ui/MarkdownRenderer'
+import { MarkdownRenderer } from '@/shared/ui'
 import { Button } from '@/shared/ui/button'
 import { supabase } from '@/shared/lib/supabase'
 import { VisibilitySelector } from '@/features/choose-visibility'
@@ -22,6 +22,8 @@ function loadDraft(): Draft {
   return { content: '', visibility: 'public', scripture: {} }
 }
 
+type Visibility = 'public' | 'followers' | 'family' | 'private'
+
 type Props = {
   initialScripture?: ScriptureRefPartial
 }
@@ -29,7 +31,6 @@ type Props = {
 export function PostEditor({ initialScripture }: Props) {
   const navigate = useNavigate()
   const [tab, setTab] = useState<'edit' | 'preview'>('edit')
-  type Visibility = 'public' | 'followers' | 'family' | 'private'
   const [content, setContent] = useState('')
   const [visibility, setVisibility] = useState<Visibility>('public')
   const [scripture, setScripture] = useState<ScriptureRefPartial>({})
@@ -54,7 +55,11 @@ export function PostEditor({ initialScripture }: Props) {
     if (!content.trim() || submitting) return
     setSubmitting(true)
 
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { setSubmitting(false); return }
+
     const { error } = await supabase.from('posts').insert({
+      user_id: user.id,
       content,
       visibility,
       scripture_collection: scripture.collection ?? null,

@@ -20,7 +20,7 @@ type Props = {
   onChange: (ref: ScriptureRefPartial) => void
 }
 
-function parseVerses(input: string): number[] {
+export function parseVerses(input: string): number[] {
   return input
     .split(',')
     .map((s) => parseInt(s.trim(), 10))
