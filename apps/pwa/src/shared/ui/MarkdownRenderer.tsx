@@ -2,6 +2,8 @@ import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { cn } from '@/shared/lib/utils'
 
+const REMARK_PLUGINS = [remarkGfm]
+
 type Props = {
   content: string
   className?: string
@@ -10,7 +12,7 @@ type Props = {
 export function MarkdownRenderer({ content, className }: Props) {
   return (
     <div className={cn('prose prose-sm max-w-none break-words', className)}>
-      <Markdown remarkPlugins={[remarkGfm]}>{content}</Markdown>
+      <Markdown remarkPlugins={REMARK_PLUGINS}>{content}</Markdown>
     </div>
   )
 }

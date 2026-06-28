@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { MarkdownRenderer } from '@/shared/ui'
 import { Button } from '@/shared/ui/button'
@@ -14,6 +14,8 @@ const TABS = [
 ]
 
 const containerStyle = { borderColor: 'var(--line)', background: 'var(--surface)' }
+const textareaStyle = { ...containerStyle, color: 'var(--sea-ink)' }
+const softTextStyle = { color: 'var(--sea-ink-soft)' }
 
 type Draft = {
   content: string
@@ -36,17 +38,12 @@ type Props = {
 export function PostEditor({ initialScripture }: Props) {
   const navigate = useNavigate()
   const [tab, setTab] = useState<'edit' | 'preview'>('edit')
-  const [content, setContent] = useState('')
-  const [visibility, setVisibility] = useState<Visibility>('public')
-  const [scripture, setScripture] = useState<ScriptureRefPartial>({})
+  const [content, setContent] = useState(() => loadDraft().content)
+  const [visibility, setVisibility] = useState<Visibility>(() => loadDraft().visibility)
+  const [scripture, setScripture] = useState<ScriptureRefPartial>(
+    () => initialScripture?.collection ? initialScripture : loadDraft().scripture,
+  )
   const [submitting, setSubmitting] = useState(false)
-
-  useEffect(() => {
-    const draft = loadDraft()
-    setContent(draft.content)
-    setVisibility(draft.visibility)
-    setScripture(initialScripture?.collection ? initialScripture : draft.scripture)
-  }, [])
 
   const saveTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined)
   useEffect(() => {
@@ -108,7 +105,7 @@ export function PostEditor({ initialScripture }: Props) {
           onChange={(e) => setContent(e.target.value)}
           placeholder="聖典を読んで感じたことを書いてみましょう..."
           className="w-full min-h-[200px] rounded-md border p-3 text-sm resize-y focus:outline-none focus:ring-2"
-          style={{ ...containerStyle, color: 'var(--sea-ink)' }}
+          style={textareaStyle}
         />
       ) : (
         <div
@@ -118,7 +115,7 @@ export function PostEditor({ initialScripture }: Props) {
           {content ? (
             <MarkdownRenderer content={content} />
           ) : (
-            <p className="text-sm" style={{ color: 'var(--sea-ink-soft)' }}>
+            <p className="text-sm" style={softTextStyle}>
               プレビューする内容がありません
             </p>
           )}
@@ -127,14 +124,14 @@ export function PostEditor({ initialScripture }: Props) {
 
       <div className="space-y-4">
         <div>
-          <p className="text-xs font-medium mb-2" style={{ color: 'var(--sea-ink-soft)' }}>
+          <p className="text-xs font-medium mb-2" style={softTextStyle}>
             聖典参照（任意）
           </p>
           <ScriptureSelector value={scripture} onChange={setScripture} />
         </div>
 
         <div>
-          <p className="text-xs font-medium mb-2" style={{ color: 'var(--sea-ink-soft)' }}>
+          <p className="text-xs font-medium mb-2" style={softTextStyle}>
             公開範囲
           </p>
           <VisibilitySelector value={visibility} onChange={setVisibility} />
