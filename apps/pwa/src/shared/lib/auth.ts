@@ -1,5 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
 import type { Database } from '@manna/database'
+import type { SetAllCookies } from '@supabase/ssr'
 
 export async function signInWithGoogle() {
   const { supabase } = await import('./supabase')
@@ -26,21 +27,32 @@ export async function getSession() {
   return session
 }
 
-export async function createSupabaseServer() {
+export async function createSupabaseServer(opts?: {
+  request?: Request
+  onSetAll?: SetAllCookies
+}) {
   const { createServerClient, parseCookieHeader } = await import('@supabase/ssr')
-  const { getStartContext } = await import('@tanstack/start-storage-context')
-  const cookieHeader = getStartContext()?.request?.headers.get('cookie') ?? ''
+
+  let cookieHeader: string
+  if (opts?.request) {
+    cookieHeader = opts.request.headers.get('cookie') ?? ''
+  } else {
+    const { getStartContext } = await import('@tanstack/start-storage-context')
+    cookieHeader = getStartContext()?.request?.headers.get('cookie') ?? ''
+  }
+
+  const parsedCookies = parseCookieHeader(cookieHeader).map(({ name, value }) => ({
+    name,
+    value: value ?? '',
+  }))
+
   return createServerClient<Database>(
     import.meta.env.VITE_SUPABASE_URL,
     import.meta.env.VITE_SUPABASE_KEY,
     {
       cookies: {
-        getAll: () =>
-          parseCookieHeader(cookieHeader).map(({ name, value }) => ({
-            name,
-            value: value ?? '',
-          })),
-        setAll: () => {},
+        getAll: () => parsedCookies,
+        setAll: opts?.onSetAll ?? (() => {}),
       },
     },
   )

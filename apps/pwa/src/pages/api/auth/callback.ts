@@ -1,7 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { createServerClient, parseCookieHeader, serializeCookieHeader } from '@supabase/ssr'
-import type { Database } from '@manna/database'
-import { isCodeReuseError } from '@/shared/lib/auth'
+import { serializeCookieHeader } from '@supabase/ssr'
+import { createSupabaseServer, isCodeReuseError } from '@/shared/lib/auth'
 
 export const Route = createFileRoute('/api/auth/callback')({
   server: {
@@ -13,31 +12,20 @@ export const Route = createFileRoute('/api/auth/callback')({
           return new Response(null, { status: 302, headers: { Location: '/' } })
         }
 
-        // setAll 内でシリアライズ済みの文字列として収集する（型互換問題を回避）
         const setCookieStrings: string[] = []
         const extraResponseHeaders: Record<string, string> = {}
 
-        const parsedCookies = parseCookieHeader(request.headers.get('cookie') ?? '').map(
-          ({ name, value }) => ({ name, value: value ?? '' }),
-        )
-
-        const supabase = createServerClient<Database>(
-          import.meta.env.VITE_SUPABASE_URL,
-          import.meta.env.VITE_SUPABASE_KEY,
-          {
-            cookies: {
-              getAll: () => parsedCookies,
-              setAll: (cookies, additionalHeaders) => {
-                for (const { name, value, options } of cookies) {
-                  setCookieStrings.push(
-                    serializeCookieHeader(name, value, options as Parameters<typeof serializeCookieHeader>[2]),
-                  )
-                }
-                Object.assign(extraResponseHeaders, additionalHeaders)
-              },
-            },
+        const supabase = await createSupabaseServer({
+          request,
+          onSetAll: (cookies, additionalHeaders) => {
+            for (const { name, value, options } of cookies) {
+              setCookieStrings.push(
+                serializeCookieHeader(name, value, options as Parameters<typeof serializeCookieHeader>[2]),
+              )
+            }
+            Object.assign(extraResponseHeaders, additionalHeaders)
           },
-        )
+        })
 
         const { error } = await supabase.auth.exchangeCodeForSession(code)
 
