@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { getAllCollections, getCollection, getBook } from '@/entities/scripture'
 import {
   Select,
@@ -32,6 +33,11 @@ export function ScriptureSelector({ value, onChange }: Props) {
   const selectedCollection = value.collection ? getCollection(value.collection) : undefined
   const selectedBook =
     value.collection && value.book ? getBook(value.collection, value.book) : undefined
+
+  const [versesInput, setVersesInput] = useState(value.verses?.join(', ') ?? '')
+  useEffect(() => {
+    setVersesInput(value.verses?.join(', ') ?? '')
+  }, [value.verses?.join(',')])
 
   return (
     <div className="space-y-3">
@@ -93,11 +99,12 @@ export function ScriptureSelector({ value, onChange }: Props) {
       <Input
         placeholder="節 (例: 7, 9)"
         disabled={!value.chapter}
-        value={value.verses?.join(', ') ?? ''}
-        onChange={(e) =>
+        value={versesInput}
+        onChange={(e) => setVersesInput(e.target.value)}
+        onBlur={() =>
           onChange({
             ...value,
-            verses: e.target.value ? parseVerses(e.target.value) : undefined,
+            verses: versesInput ? parseVerses(versesInput) : undefined,
           })
         }
       />
