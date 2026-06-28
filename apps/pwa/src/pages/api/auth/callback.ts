@@ -17,16 +17,16 @@ export const Route = createFileRoute('/api/auth/callback')({
         const setCookieStrings: string[] = []
         const extraResponseHeaders: Record<string, string> = {}
 
+        const parsedCookies = parseCookieHeader(request.headers.get('cookie') ?? '').map(
+          ({ name, value }) => ({ name, value: value ?? '' }),
+        )
+
         const supabase = createServerClient<Database>(
           import.meta.env.VITE_SUPABASE_URL,
           import.meta.env.VITE_SUPABASE_KEY,
           {
             cookies: {
-              getAll: () =>
-                parseCookieHeader(request.headers.get('cookie') ?? '').map(({ name, value }) => ({
-                  name,
-                  value: value ?? '',
-                })),
+              getAll: () => parsedCookies,
               setAll: (cookies, additionalHeaders) => {
                 for (const { name, value, options } of cookies) {
                   setCookieStrings.push(
