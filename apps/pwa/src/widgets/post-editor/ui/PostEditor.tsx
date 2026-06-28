@@ -38,10 +38,11 @@ type Props = {
 export function PostEditor({ initialScripture }: Props) {
   const navigate = useNavigate()
   const [tab, setTab] = useState<'edit' | 'preview'>('edit')
-  const [content, setContent] = useState(() => loadDraft().content)
-  const [visibility, setVisibility] = useState<Visibility>(() => loadDraft().visibility)
+  const [draft] = useState(loadDraft)
+  const [content, setContent] = useState(draft.content)
+  const [visibility, setVisibility] = useState(draft.visibility)
   const [scripture, setScripture] = useState<ScriptureRefPartial>(
-    () => initialScripture?.collection ? initialScripture : loadDraft().scripture,
+    initialScripture?.collection ? initialScripture : draft.scripture,
   )
   const [submitting, setSubmitting] = useState(false)
 
