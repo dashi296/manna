@@ -18,7 +18,7 @@ function loadDraft(): Draft {
   try {
     const raw = localStorage.getItem(DRAFT_KEY)
     if (raw) return JSON.parse(raw)
-  } catch { /* ignore */ }
+  } catch {}
   return { content: '', visibility: 'public', scripture: {} }
 }
 
@@ -29,20 +29,17 @@ type Props = {
 export function PostEditor({ initialScripture }: Props) {
   const navigate = useNavigate()
   const [tab, setTab] = useState<'edit' | 'preview'>('edit')
+  type Visibility = 'public' | 'followers' | 'family' | 'private'
   const [content, setContent] = useState('')
-  const [visibility, setVisibility] = useState('public')
+  const [visibility, setVisibility] = useState<Visibility>('public')
   const [scripture, setScripture] = useState<ScriptureRefPartial>({})
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
-    if (initialScripture?.collection) {
-      setScripture(initialScripture)
-      return
-    }
     const draft = loadDraft()
     setContent(draft.content)
-    setVisibility(draft.visibility)
-    setScripture(draft.scripture)
+    setVisibility(draft.visibility as Visibility)
+    setScripture(initialScripture?.collection ? initialScripture : draft.scripture)
   }, [])
 
   const saveDraft = useCallback(() => {
@@ -59,7 +56,7 @@ export function PostEditor({ initialScripture }: Props) {
 
     const { error } = await supabase.from('posts').insert({
       content,
-      visibility: visibility as 'public' | 'followers' | 'family' | 'private',
+      visibility,
       scripture_collection: scripture.collection ?? null,
       scripture_book: scripture.book ?? null,
       scripture_chapter: scripture.chapter ?? null,
@@ -141,7 +138,7 @@ export function PostEditor({ initialScripture }: Props) {
           <p className="text-xs font-medium mb-2" style={{ color: 'var(--sea-ink-soft)' }}>
             公開範囲
           </p>
-          <VisibilitySelector value={visibility} onChange={setVisibility} />
+          <VisibilitySelector value={visibility} onChange={(v) => setVisibility(v as Visibility)} />
         </div>
       </div>
 
