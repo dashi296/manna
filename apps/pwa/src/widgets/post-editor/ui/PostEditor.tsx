@@ -1,16 +1,23 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { MarkdownRenderer } from '@/shared/ui'
 import { Button } from '@/shared/ui/button'
 import { supabase } from '@/shared/lib/supabase'
-import { VisibilitySelector } from '@/features/choose-visibility'
+import { VisibilitySelector, type Visibility } from '@/features/choose-visibility'
 import { ScriptureSelector, type ScriptureRefPartial } from '@/features/select-scripture'
 
 const DRAFT_KEY = 'manna:post-draft'
 
+const TABS = [
+  { id: 'edit' as const, label: '編集' },
+  { id: 'preview' as const, label: 'プレビュー' },
+]
+
+const containerStyle = { borderColor: 'var(--line)', background: 'var(--surface)' }
+
 type Draft = {
   content: string
-  visibility: string
+  visibility: Visibility
   scripture: ScriptureRefPartial
 }
 
@@ -21,8 +28,6 @@ function loadDraft(): Draft {
   } catch {}
   return { content: '', visibility: 'public', scripture: {} }
 }
-
-type Visibility = 'public' | 'followers' | 'family' | 'private'
 
 type Props = {
   initialScripture?: ScriptureRefPartial
@@ -39,17 +44,18 @@ export function PostEditor({ initialScripture }: Props) {
   useEffect(() => {
     const draft = loadDraft()
     setContent(draft.content)
-    setVisibility(draft.visibility as Visibility)
+    setVisibility(draft.visibility)
     setScripture(initialScripture?.collection ? initialScripture : draft.scripture)
   }, [])
 
-  const saveDraft = useCallback(() => {
-    localStorage.setItem(DRAFT_KEY, JSON.stringify({ content, visibility, scripture }))
-  }, [content, visibility, scripture])
-
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined)
   useEffect(() => {
-    saveDraft()
-  }, [saveDraft])
+    clearTimeout(saveTimerRef.current)
+    saveTimerRef.current = setTimeout(() => {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ content, visibility, scripture }))
+    }, 500)
+    return () => clearTimeout(saveTimerRef.current)
+  }, [content, visibility, scripture])
 
   const handleSubmit = async () => {
     if (!content.trim() || submitting) return
@@ -80,28 +86,20 @@ export function PostEditor({ initialScripture }: Props) {
   return (
     <div className="flex flex-col gap-4 p-4">
       <div className="flex gap-2 border-b" style={{ borderColor: 'var(--line)' }}>
-        <button
-          type="button"
-          onClick={() => setTab('edit')}
-          className="px-3 py-2 text-sm font-medium border-b-2 transition-colors"
-          style={{
-            borderColor: tab === 'edit' ? 'var(--lagoon-deep)' : 'transparent',
-            color: tab === 'edit' ? 'var(--lagoon-deep)' : 'var(--sea-ink-soft)',
-          }}
-        >
-          編集
-        </button>
-        <button
-          type="button"
-          onClick={() => setTab('preview')}
-          className="px-3 py-2 text-sm font-medium border-b-2 transition-colors"
-          style={{
-            borderColor: tab === 'preview' ? 'var(--lagoon-deep)' : 'transparent',
-            color: tab === 'preview' ? 'var(--lagoon-deep)' : 'var(--sea-ink-soft)',
-          }}
-        >
-          プレビュー
-        </button>
+        {TABS.map(({ id, label }) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => setTab(id)}
+            className="px-3 py-2 text-sm font-medium border-b-2 transition-colors"
+            style={{
+              borderColor: tab === id ? 'var(--lagoon-deep)' : 'transparent',
+              color: tab === id ? 'var(--lagoon-deep)' : 'var(--sea-ink-soft)',
+            }}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
       {tab === 'edit' ? (
@@ -110,16 +108,12 @@ export function PostEditor({ initialScripture }: Props) {
           onChange={(e) => setContent(e.target.value)}
           placeholder="聖典を読んで感じたことを書いてみましょう..."
           className="w-full min-h-[200px] rounded-md border p-3 text-sm resize-y focus:outline-none focus:ring-2"
-          style={{
-            borderColor: 'var(--line)',
-            background: 'var(--surface)',
-            color: 'var(--sea-ink)',
-          }}
+          style={{ ...containerStyle, color: 'var(--sea-ink)' }}
         />
       ) : (
         <div
           className="min-h-[200px] rounded-md border p-3"
-          style={{ borderColor: 'var(--line)', background: 'var(--surface)' }}
+          style={containerStyle}
         >
           {content ? (
             <MarkdownRenderer content={content} />
@@ -143,7 +137,7 @@ export function PostEditor({ initialScripture }: Props) {
           <p className="text-xs font-medium mb-2" style={{ color: 'var(--sea-ink-soft)' }}>
             公開範囲
           </p>
-          <VisibilitySelector value={visibility} onChange={(v) => setVisibility(v as Visibility)} />
+          <VisibilitySelector value={visibility} onChange={setVisibility} />
         </div>
       </div>
 

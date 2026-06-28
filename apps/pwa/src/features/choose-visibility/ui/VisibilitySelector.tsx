@@ -1,16 +1,18 @@
 import { Globe, Users, Heart, Lock } from 'lucide-react'
 import { ToggleGroup, ToggleGroupItem } from '@/shared/ui/toggle-group'
 
+export type Visibility = 'public' | 'followers' | 'family' | 'private'
+
 const VISIBILITY_OPTIONS = [
   { value: 'public', label: '全体公開', Icon: Globe },
   { value: 'followers', label: 'フォロワー', Icon: Users },
   { value: 'family', label: 'ファミリー', Icon: Heart },
   { value: 'private', label: '自分のみ', Icon: Lock },
-] as const
+] as const satisfies readonly { value: Visibility; label: string; Icon: typeof Globe }[]
 
 type Props = {
-  value: string
-  onChange: (value: string) => void
+  value: Visibility
+  onChange: (value: Visibility) => void
 }
 
 export function VisibilitySelector({ value, onChange }: Props) {
@@ -18,7 +20,7 @@ export function VisibilitySelector({ value, onChange }: Props) {
     <ToggleGroup
       type="single"
       value={value}
-      onValueChange={(v) => { if (v) onChange(v) }}
+      onValueChange={(v) => { if (v) onChange(v as Visibility) }}
       className="flex-wrap gap-2"
     >
       {VISIBILITY_OPTIONS.map(({ value: v, label, Icon }) => (
