@@ -6,7 +6,7 @@ export async function signInWithGoogle() {
   const { error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: `${window.location.origin}/auth/callback`,
+      redirectTo: `${window.location.origin}/api/auth/callback`,
     },
   })
   if (error) throw error
@@ -53,3 +53,12 @@ export const getServerSession = createServerFn({ method: 'GET' }).handler(async 
   } = await serverSupabase.auth.getSession()
   return session
 })
+
+export function isCodeReuseError(err: unknown): boolean {
+  const msg = (err instanceof Error ? err.message : String(err)).toLowerCase()
+  return (
+    msg.includes('otp_expired') ||
+    msg.includes('invalid_grant') ||
+    msg.includes('invalid request')
+  )
+}
