@@ -17,3 +17,4 @@ todos.json
 apps/pwa/.cta.json
 .playwright-mcp/
 **/.env.production
+screenshots/
