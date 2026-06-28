@@ -38,13 +38,17 @@ type Props = {
 export function PostEditor({ initialScripture }: Props) {
   const navigate = useNavigate()
   const [tab, setTab] = useState<'edit' | 'preview'>('edit')
-  const [draft] = useState(loadDraft)
-  const [content, setContent] = useState(draft.content)
-  const [visibility, setVisibility] = useState(draft.visibility)
-  const [scripture, setScripture] = useState<ScriptureRefPartial>(
-    initialScripture?.collection ? initialScripture : draft.scripture,
-  )
+  const [content, setContent] = useState('')
+  const [visibility, setVisibility] = useState<Visibility>('public')
+  const [scripture, setScripture] = useState<ScriptureRefPartial>({})
   const [submitting, setSubmitting] = useState(false)
+
+  useEffect(() => {
+    const draft = loadDraft()
+    setContent(draft.content)
+    setVisibility(draft.visibility)
+    setScripture(initialScripture?.collection ? initialScripture : draft.scripture)
+  }, [])
 
   const saveTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined)
   useEffect(() => {
