@@ -1,8 +1,9 @@
 import Markdown from 'react-markdown'
+import remarkBreaks from 'remark-breaks'
 import remarkGfm from 'remark-gfm'
 import { cn } from '@/shared/lib/utils'
 
-const REMARK_PLUGINS = [remarkGfm]
+const REMARK_PLUGINS = [remarkGfm, remarkBreaks]
 
 type Props = {
   content: string

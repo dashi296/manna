@@ -102,12 +102,15 @@ export function ScriptureSelector({ value, onChange }: Props) {
         disabled={!value.chapter}
         value={versesInput}
         onChange={(e) => setVersesInput(e.target.value)}
-        onBlur={() =>
-          onChange({
-            ...value,
-            verses: versesInput ? parseVerses(versesInput) : undefined,
-          })
-        }
+        onBlur={() => {
+          const maxVerse = selectedBook && value.chapter
+            ? selectedBook.verses[value.chapter - 1]
+            : undefined
+          const parsed = versesInput
+            ? parseVerses(versesInput).filter((n) => !maxVerse || n <= maxVerse)
+            : undefined
+          onChange({ ...value, verses: parsed?.length ? parsed : undefined })
+        }}
       />
     </div>
   )
