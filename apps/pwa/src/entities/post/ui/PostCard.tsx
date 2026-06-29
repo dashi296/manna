@@ -1,4 +1,5 @@
 import { getScriptureLabel, buildScriptureUrl } from '@/shared/lib/scriptureUtils'
+import { MarkdownRenderer } from '@/shared/ui'
 
 export type PostWithUser = {
   id: string
@@ -99,12 +100,9 @@ export function PostCard({ post }: Props) {
           )}
         </div>
       </div>
-      <p
-        className="text-sm leading-relaxed whitespace-pre-wrap ml-12"
-        style={{ color: 'var(--sea-ink)' }}
-      >
-        {post.content}
-      </p>
+      <div className="ml-12" style={{ color: 'var(--sea-ink)' }}>
+        <MarkdownRenderer content={post.content} />
+      </div>
     </article>
   )
 }
