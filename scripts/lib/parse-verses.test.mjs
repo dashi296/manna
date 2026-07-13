@@ -48,3 +48,21 @@ describe('parseVerses', () => {
     assert.ok(verses.every(v => v.verse > 0))
   })
 })
+
+describe('parseVerses with trailing space in verse-number (OT format)', () => {
+  const OT_HTML = `
+<div class="body-block">
+<p class="verse" data-aid="100" id="p1"><span class="verse-number">1 </span>はじめに<ruby><rb>神</rb><rt>かみ</rt></ruby>は<ruby><rb>天</rb><rt>てん</rt></ruby>と<ruby><rb>地</rb><rt>ち</rt></ruby>とを<ruby><rb>創造</rb><rt>そうぞう</rt></ruby>された。</p>
+</div>
+`
+  const verses = parseVerses(OT_HTML)
+
+  it('parses verse with trailing space in verse-number span', () => {
+    assert.strictEqual(verses.length, 1)
+    assert.strictEqual(verses[0].verse, 1)
+  })
+
+  it('produces correct plain text', () => {
+    assert.strictEqual(verses[0].text, 'はじめに神は天と地とを創造された。')
+  })
+})

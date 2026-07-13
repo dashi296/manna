@@ -6,13 +6,13 @@ export function parseVerses(html) {
   while ((match = verseRegex.exec(html)) !== null) {
     const innerHtml = match[1]
 
-    const verseNumMatch = innerHtml.match(/<span class="verse-number">(\d+)<\/span>/)
+    const verseNumMatch = innerHtml.match(/<span class="verse-number">(\d+)\s*<\/span>/)
     if (!verseNumMatch) continue
     const verseNum = parseInt(verseNumMatch[1], 10)
 
     let cleaned = innerHtml
     // Remove verse-number span
-    cleaned = cleaned.replace(/<span class="verse-number">\d+<\/span>/, '')
+    cleaned = cleaned.replace(/<span class="verse-number">\d+\s*<\/span>/, '')
     // Remove sup.marker elements
     cleaned = cleaned.replace(/<sup class="marker"[^>]*>.*?<\/sup>/g, '')
     // Unwrap study-note-ref anchors (keep inner text)
