@@ -21,6 +21,7 @@ function buildChapterList() {
           collectionId: col.id,
           bookId: book.id,
           chapter: ch,
+          expectedVerses: book.verses[ch - 1],
         })
       }
     }
@@ -93,12 +94,16 @@ async function main() {
 
   let inserted = 0
   for (let i = 0; i < todo.length; i++) {
-    const { collectionId, bookId, chapter } = todo[i]
+    const { collectionId, bookId, chapter, expectedVerses } = todo[i]
     const label = `${collectionId}/${bookId}/${chapter}`
 
     try {
       const html = await fetchChapter(collectionId, bookId, chapter)
       const verses = parseVerses(html)
+
+      if (verses.length !== expectedVerses) {
+        console.warn(`Warning: Expected ${expectedVerses} verses but parsed ${verses.length} for ${label}`)
+      }
 
       if (verses.length > 0) {
         insertVerses(collectionId, bookId, chapter, verses)
@@ -116,4 +121,7 @@ async function main() {
   console.log(`\nDone: ${inserted} verses inserted`)
 }
 
-main()
+main().catch(err => {
+  console.error('Fatal:', err.message)
+  process.exit(1)
+})
