@@ -36,12 +36,12 @@ export function FamilyButton({ targetUserId, currentUserId, initialStatus }: Pro
 
   const remove = async () => {
     setPending(true)
-    await supabase.from('family_relationships').delete()
+    const { error } = await supabase.from('family_relationships').delete()
       .or(
         `and(requester_id.eq.${currentUserId},addressee_id.eq.${targetUserId}),` +
         `and(requester_id.eq.${targetUserId},addressee_id.eq.${currentUserId})`
       )
-    setStatus('none')
+    if (!error) setStatus('none')
     setPending(false)
   }
 

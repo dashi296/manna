@@ -73,7 +73,7 @@ describe('PostCard', () => {
 
   it('聖典バッジのクリックは外側リンクへ伝播しない', () => {
     render(<PostCard post={basePost} />)
-    const badge = screen.getByText(/第1ニーファイ書/).closest('a')!
+    const badge = screen.getByText(/第1ニーファイ書/).closest('span[role="link"]')!
     const clickEvent = new MouseEvent('click', { bubbles: true, cancelable: true })
     const stopSpy = vi.spyOn(clickEvent, 'stopPropagation')
     badge.dispatchEvent(clickEvent)

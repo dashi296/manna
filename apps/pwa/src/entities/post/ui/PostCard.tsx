@@ -86,12 +86,22 @@ export function PostCard({ post }: Props) {
               </time>
             </div>
             {scriptureLabel && scriptureUrl && (
-              <a
-                href={scriptureUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                className="inline-flex items-center mt-0.5 px-2 py-0.5 rounded-full text-[11px] font-medium"
+              <span
+                role="link"
+                tabIndex={0}
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  window.open(scriptureUrl, '_blank', 'noopener,noreferrer')
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    window.open(scriptureUrl, '_blank', 'noopener,noreferrer')
+                  }
+                }}
+                className="inline-flex items-center mt-0.5 px-2 py-0.5 rounded-full text-[11px] font-medium cursor-pointer"
                 style={{
                   background: 'var(--chip-bg)',
                   border: '1px solid var(--chip-line)',
@@ -99,7 +109,7 @@ export function PostCard({ post }: Props) {
                 }}
               >
                 <span aria-hidden="true">📖</span> {scriptureLabel}
-              </a>
+              </span>
             )}
           </div>
         </div>
