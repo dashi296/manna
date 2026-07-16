@@ -1,3 +1,4 @@
+import { Link } from '@tanstack/react-router'
 import { getScriptureLabel, buildScriptureUrl } from '@/shared/lib/scriptureUtils'
 import { MarkdownRenderer } from '@/shared/ui'
 
@@ -59,50 +60,53 @@ export function PostCard({ post }: Props) {
       : null
 
   return (
-    <article className="px-4 py-4 border-b" style={{ borderColor: 'var(--line)' }}>
-      <div className="flex items-start gap-3 mb-2">
-        {avatarUrl ? (
-          <img
-            src={avatarUrl}
-            alt={displayName}
-            className="w-9 h-9 rounded-full object-cover shrink-0"
-          />
-        ) : (
-          <Initials name={displayName} />
-        )}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-baseline justify-between gap-2">
-            <span className="text-sm font-semibold truncate" style={{ color: 'var(--sea-ink)' }}>
-              {displayName}
-            </span>
-            <time
-              dateTime={post.created_at}
-              className="text-xs shrink-0"
-              style={{ color: 'var(--sea-ink-soft)' }}
-            >
-              {formatDate(post.created_at)}
-            </time>
-          </div>
-          {scriptureLabel && scriptureUrl && (
-            <a
-              href={scriptureUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center mt-0.5 px-2 py-0.5 rounded-full text-[11px] font-medium"
-              style={{
-                background: 'var(--chip-bg)',
-                border: '1px solid var(--chip-line)',
-                color: 'var(--palm)',
-              }}
-            >
-              <span aria-hidden="true">📖</span> {scriptureLabel}
-            </a>
+    <Link to="/posts/$id" params={{ id: post.id }} className="block">
+      <article className="px-4 py-4 border-b" style={{ borderColor: 'var(--line)' }}>
+        <div className="flex items-start gap-3 mb-2">
+          {avatarUrl ? (
+            <img
+              src={avatarUrl}
+              alt={displayName}
+              className="w-9 h-9 rounded-full object-cover shrink-0"
+            />
+          ) : (
+            <Initials name={displayName} />
           )}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="text-sm font-semibold truncate" style={{ color: 'var(--sea-ink)' }}>
+                {displayName}
+              </span>
+              <time
+                dateTime={post.created_at}
+                className="text-xs shrink-0"
+                style={{ color: 'var(--sea-ink-soft)' }}
+              >
+                {formatDate(post.created_at)}
+              </time>
+            </div>
+            {scriptureLabel && scriptureUrl && (
+              <a
+                href={scriptureUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="inline-flex items-center mt-0.5 px-2 py-0.5 rounded-full text-[11px] font-medium"
+                style={{
+                  background: 'var(--chip-bg)',
+                  border: '1px solid var(--chip-line)',
+                  color: 'var(--palm)',
+                }}
+              >
+                <span aria-hidden="true">📖</span> {scriptureLabel}
+              </a>
+            )}
+          </div>
         </div>
-      </div>
-      <div className="ml-12" style={{ color: 'var(--sea-ink)' }}>
-        <MarkdownRenderer content={post.content} />
-      </div>
-    </article>
+        <div className="ml-12" style={{ color: 'var(--sea-ink)' }}>
+          <MarkdownRenderer content={post.content} />
+        </div>
+      </article>
+    </Link>
   )
 }

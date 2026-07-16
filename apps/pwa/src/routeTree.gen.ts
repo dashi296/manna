@@ -15,6 +15,7 @@ import { Route as IndexRouteImport } from './pages/index'
 import { Route as ScripturesIndexRouteImport } from './pages/scriptures/index'
 import { Route as ProfileIndexRouteImport } from './pages/profile/index'
 import { Route as PostsNewRouteImport } from './pages/posts/new'
+import { Route as PostsIdRouteImport } from './pages/posts/$id'
 import { Route as ScripturesCollectionIndexRouteImport } from './pages/scriptures/$collection/index'
 import { Route as ApiAuthCallbackRouteImport } from './pages/api/auth/callback'
 import { Route as ScripturesCollectionBookIndexRouteImport } from './pages/scriptures/$collection/$book/index'
@@ -50,6 +51,11 @@ const PostsNewRoute = PostsNewRouteImport.update({
   path: '/posts/new',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PostsIdRoute = PostsIdRouteImport.update({
+  id: '/posts/$id',
+  path: '/posts/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ScripturesCollectionIndexRoute =
   ScripturesCollectionIndexRouteImport.update({
     id: '/scriptures/$collection/',
@@ -78,6 +84,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/notifications': typeof NotificationsRoute
+  '/posts/$id': typeof PostsIdRoute
   '/posts/new': typeof PostsNewRoute
   '/profile/': typeof ProfileIndexRoute
   '/scriptures/': typeof ScripturesIndexRoute
@@ -90,6 +97,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/notifications': typeof NotificationsRoute
+  '/posts/$id': typeof PostsIdRoute
   '/posts/new': typeof PostsNewRoute
   '/profile': typeof ProfileIndexRoute
   '/scriptures': typeof ScripturesIndexRoute
@@ -103,6 +111,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/notifications': typeof NotificationsRoute
+  '/posts/$id': typeof PostsIdRoute
   '/posts/new': typeof PostsNewRoute
   '/profile/': typeof ProfileIndexRoute
   '/scriptures/': typeof ScripturesIndexRoute
@@ -117,6 +126,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/notifications'
+    | '/posts/$id'
     | '/posts/new'
     | '/profile/'
     | '/scriptures/'
@@ -129,6 +139,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/notifications'
+    | '/posts/$id'
     | '/posts/new'
     | '/profile'
     | '/scriptures'
@@ -141,6 +152,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/notifications'
+    | '/posts/$id'
     | '/posts/new'
     | '/profile/'
     | '/scriptures/'
@@ -154,6 +166,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   LoginRoute: typeof LoginRoute
   NotificationsRoute: typeof NotificationsRoute
+  PostsIdRoute: typeof PostsIdRoute
   PostsNewRoute: typeof PostsNewRoute
   ProfileIndexRoute: typeof ProfileIndexRoute
   ScripturesIndexRoute: typeof ScripturesIndexRoute
@@ -207,6 +220,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PostsNewRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/posts/$id': {
+      id: '/posts/$id'
+      path: '/posts/$id'
+      fullPath: '/posts/$id'
+      preLoaderRoute: typeof PostsIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/scriptures/$collection/': {
       id: '/scriptures/$collection/'
       path: '/scriptures/$collection'
@@ -242,6 +262,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LoginRoute: LoginRoute,
   NotificationsRoute: NotificationsRoute,
+  PostsIdRoute: PostsIdRoute,
   PostsNewRoute: PostsNewRoute,
   ProfileIndexRoute: ProfileIndexRoute,
   ScripturesIndexRoute: ScripturesIndexRoute,

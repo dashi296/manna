@@ -1,6 +1,17 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { PostCard, type PostWithUser } from '@/entities/post'
+
+vi.mock('@tanstack/react-router', () => ({
+  Link: ({ to, params, children, ...props }: { to: string; params?: Record<string, string>; children: React.ReactNode; [key: string]: unknown }) => {
+    const href = params ? Object.entries(params).reduce((acc, [k, v]) => acc.replace(`$${k}`, v), to) : to
+    return (
+      <a href={href} {...props}>
+        {children}
+      </a>
+    )
+  },
+}))
 
 const basePost: PostWithUser = {
   id: 'post-1',
@@ -52,5 +63,20 @@ describe('PostCard', () => {
     }
     render(<PostCard post={post} />)
     expect(screen.queryByText(/第1ニーファイ書/)).not.toBeInTheDocument()
+  })
+
+  it('カード全体が投稿詳細ページへのリンクになっている', () => {
+    render(<PostCard post={basePost} />)
+    const links = screen.getAllByRole('link')
+    expect(links[0]).toHaveAttribute('href', '/posts/post-1')
+  })
+
+  it('聖典バッジのクリックは外側リンクへ伝播しない', () => {
+    render(<PostCard post={basePost} />)
+    const badge = screen.getByText(/第1ニーファイ書/).closest('a')!
+    const clickEvent = new MouseEvent('click', { bubbles: true, cancelable: true })
+    const stopSpy = vi.spyOn(clickEvent, 'stopPropagation')
+    badge.dispatchEvent(clickEvent)
+    expect(stopSpy).toHaveBeenCalled()
   })
 })
