@@ -14,6 +14,7 @@ import { Route as LoginRouteImport } from './pages/login'
 import { Route as IndexRouteImport } from './pages/index'
 import { Route as ScripturesIndexRouteImport } from './pages/scriptures/index'
 import { Route as ProfileIndexRouteImport } from './pages/profile/index'
+import { Route as ProfileUserIdRouteImport } from './pages/profile/$userId'
 import { Route as PostsNewRouteImport } from './pages/posts/new'
 import { Route as PostsIdRouteImport } from './pages/posts/$id'
 import { Route as ScripturesCollectionIndexRouteImport } from './pages/scriptures/$collection/index'
@@ -44,6 +45,11 @@ const ScripturesIndexRoute = ScripturesIndexRouteImport.update({
 const ProfileIndexRoute = ProfileIndexRouteImport.update({
   id: '/profile/',
   path: '/profile/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfileUserIdRoute = ProfileUserIdRouteImport.update({
+  id: '/profile/$userId',
+  path: '/profile/$userId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PostsNewRoute = PostsNewRouteImport.update({
@@ -86,6 +92,7 @@ export interface FileRoutesByFullPath {
   '/notifications': typeof NotificationsRoute
   '/posts/$id': typeof PostsIdRoute
   '/posts/new': typeof PostsNewRoute
+  '/profile/$userId': typeof ProfileUserIdRoute
   '/profile/': typeof ProfileIndexRoute
   '/scriptures/': typeof ScripturesIndexRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
@@ -99,6 +106,7 @@ export interface FileRoutesByTo {
   '/notifications': typeof NotificationsRoute
   '/posts/$id': typeof PostsIdRoute
   '/posts/new': typeof PostsNewRoute
+  '/profile/$userId': typeof ProfileUserIdRoute
   '/profile': typeof ProfileIndexRoute
   '/scriptures': typeof ScripturesIndexRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
@@ -113,6 +121,7 @@ export interface FileRoutesById {
   '/notifications': typeof NotificationsRoute
   '/posts/$id': typeof PostsIdRoute
   '/posts/new': typeof PostsNewRoute
+  '/profile/$userId': typeof ProfileUserIdRoute
   '/profile/': typeof ProfileIndexRoute
   '/scriptures/': typeof ScripturesIndexRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
@@ -128,6 +137,7 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/posts/$id'
     | '/posts/new'
+    | '/profile/$userId'
     | '/profile/'
     | '/scriptures/'
     | '/api/auth/callback'
@@ -141,6 +151,7 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/posts/$id'
     | '/posts/new'
+    | '/profile/$userId'
     | '/profile'
     | '/scriptures'
     | '/api/auth/callback'
@@ -154,6 +165,7 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/posts/$id'
     | '/posts/new'
+    | '/profile/$userId'
     | '/profile/'
     | '/scriptures/'
     | '/api/auth/callback'
@@ -168,6 +180,7 @@ export interface RootRouteChildren {
   NotificationsRoute: typeof NotificationsRoute
   PostsIdRoute: typeof PostsIdRoute
   PostsNewRoute: typeof PostsNewRoute
+  ProfileUserIdRoute: typeof ProfileUserIdRoute
   ProfileIndexRoute: typeof ProfileIndexRoute
   ScripturesIndexRoute: typeof ScripturesIndexRoute
   ApiAuthCallbackRoute: typeof ApiAuthCallbackRoute
@@ -211,6 +224,13 @@ declare module '@tanstack/react-router' {
       path: '/profile'
       fullPath: '/profile/'
       preLoaderRoute: typeof ProfileIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profile/$userId': {
+      id: '/profile/$userId'
+      path: '/profile/$userId'
+      fullPath: '/profile/$userId'
+      preLoaderRoute: typeof ProfileUserIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/posts/new': {
@@ -264,6 +284,7 @@ const rootRouteChildren: RootRouteChildren = {
   NotificationsRoute: NotificationsRoute,
   PostsIdRoute: PostsIdRoute,
   PostsNewRoute: PostsNewRoute,
+  ProfileUserIdRoute: ProfileUserIdRoute,
   ProfileIndexRoute: ProfileIndexRoute,
   ScripturesIndexRoute: ScripturesIndexRoute,
   ApiAuthCallbackRoute: ApiAuthCallbackRoute,
