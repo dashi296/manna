@@ -101,6 +101,33 @@ const needsAuth =
 
 ---
 
+## ローカル DB 操作
+
+```bash
+# DBリセット（マイグレーション + seed + 節データ自動復元）
+bash scripts/db-reset.sh
+
+# 節データの初回取得（約26分、中断再開可能）
+node scripts/fetch-scriptures.mjs
+
+# 節データをローカルseedにエクスポート（db-reset.sh で自動復元されるようになる）
+node scripts/export-verses-seed.mjs
+```
+
+- `supabase/seed.sql` — コレクション・書のメタデータ（git管理）
+- `supabase/seed-verses.sql` — 節テキスト 41,959行（`.gitignore`、ローカルのみ）
+- `npx supabase db reset` を直接実行すると節データが消えるため、代わりに `bash scripts/db-reset.sh` を使う
+
+### 聖典テーブル構成
+
+| テーブル | 内容 |
+|---|---|
+| `scripture_collections` | コレクション（モルモン書、旧約聖書など）|
+| `scripture_books` | 書（第1ニーファイ書、創世記など）|
+| `scripture_verses` | 節テキスト（`text`: プレーン、`text_html`: ルビ付き）|
+
+---
+
 ## コーディング規約
 
 - コメントは原則不要。WHY が自明でない場合のみ1行で記載
