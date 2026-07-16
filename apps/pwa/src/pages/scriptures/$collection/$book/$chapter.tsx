@@ -3,7 +3,7 @@ import { createServerFn } from '@tanstack/react-start'
 import { getBook, buildScriptureUrl, getScriptureLabel } from '@/entities/scripture'
 import { PostCard, type PostWithUser } from '@/entities/post'
 import { createSupabaseServer } from '@/shared/lib/auth'
-import { PageHeader } from '@/shared/ui'
+import { PageHeader, ScriptureText, SanitizedVerseHtml } from '@/shared/ui'
 
 const POST_SELECT = `
   id, content, visibility, created_at,
@@ -26,6 +26,27 @@ const fetchVersePosts = createServerFn({ method: 'POST' })
       .overlaps('scripture_verses', verses)
       .order('created_at', { ascending: false })
     return (posts ?? []) as PostWithUser[]
+  })
+
+type VerseText = { verse: number; text_html: string }
+
+const fetchVerseTexts = createServerFn({ method: 'POST' })
+  .inputValidator((data: { collection: string; book: string; chapter: number; verses?: number[] }) => data)
+  .handler(async (ctx) => {
+    const { collection, book, chapter, verses } = ctx.data
+    const serverSupabase = await createSupabaseServer()
+    let query = serverSupabase
+      .from('scripture_verses')
+      .select('verse, text_html')
+      .eq('collection_id', collection)
+      .eq('book_id', book)
+      .eq('chapter', chapter)
+      .order('verse', { ascending: true })
+    if (verses?.length) {
+      query = query.in('verse', verses)
+    }
+    const { data } = await query
+    return (data ?? []) as VerseText[]
   })
 
 const fetchChapterCounts = createServerFn({ method: 'POST' })
@@ -69,14 +90,24 @@ export const Route = createFileRoute('/scriptures/$collection/$book/$chapter')({
     if (deps.verses?.length) {
       const verseCount = book.verses[chapterNum - 1]
       if (deps.verses.some((v) => v < 1 || v > verseCount)) throw notFound()
-      const posts = await fetchVersePosts({
-        data: {
-          collection: params.collection,
-          book: params.book,
-          chapter: chapterNum,
-          verses: deps.verses,
-        },
-      })
+      const [posts, verseTexts] = await Promise.all([
+        fetchVersePosts({
+          data: {
+            collection: params.collection,
+            book: params.book,
+            chapter: chapterNum,
+            verses: deps.verses,
+          },
+        }),
+        fetchVerseTexts({
+          data: {
+            collection: params.collection,
+            book: params.book,
+            chapter: chapterNum,
+            verses: deps.verses,
+          },
+        }),
+      ])
       return {
         book,
         chapter: chapterNum,
@@ -85,16 +116,26 @@ export const Route = createFileRoute('/scriptures/$collection/$book/$chapter')({
         verses: deps.verses,
         posts,
         countByVerse: {} as Record<number, number>,
+        verseTexts,
       }
     }
 
-    const countByVerse = await fetchChapterCounts({
-      data: {
-        collection: params.collection,
-        book: params.book,
-        chapter: chapterNum,
-      },
-    })
+    const [countByVerse, verseTexts] = await Promise.all([
+      fetchChapterCounts({
+        data: {
+          collection: params.collection,
+          book: params.book,
+          chapter: chapterNum,
+        },
+      }),
+      fetchVerseTexts({
+        data: {
+          collection: params.collection,
+          book: params.book,
+          chapter: chapterNum,
+        },
+      }),
+    ])
 
     return {
       book,
@@ -104,13 +145,14 @@ export const Route = createFileRoute('/scriptures/$collection/$book/$chapter')({
       verses: [] as number[],
       posts: [] as PostWithUser[],
       countByVerse,
+      verseTexts,
     }
   },
   component: ChapterPage,
 })
 
 function ChapterPage() {
-  const { book, chapter, collection, mode, verses, posts, countByVerse } = Route.useLoaderData()
+  const { book, chapter, collection, mode, verses, posts, countByVerse, verseTexts } = Route.useLoaderData()
 
   if (mode === 'verse') {
     const scriptureLabel = getScriptureLabel({ collection, book: book.id, chapter, verses })
@@ -144,6 +186,13 @@ function ChapterPage() {
           </a>
           <span className="text-xs ml-3" style={{ color: 'var(--sea-ink-soft)' }}>新着順</span>
         </div>
+        {verseTexts.length > 0 && (
+          <div className="px-4 py-3 border-b" style={{ borderColor: 'var(--line)', background: 'var(--surface)' }}>
+            {verseTexts.map((vt) => (
+              <ScriptureText key={vt.verse} verse={vt.verse} textHtml={vt.text_html} />
+            ))}
+          </div>
+        )}
         {posts.length === 0 ? (
           <div className="p-8 text-center text-sm" style={{ color: 'var(--sea-ink-soft)' }}>
             この節への投稿はまだありません
@@ -183,19 +232,31 @@ function ChapterPage() {
         <ul className="overflow-hidden rounded-xl" style={{ border: '1px solid var(--line)' }}>
           {Array.from({ length: book.verses[chapter - 1] }, (_, i) => i + 1).map((verse) => {
             const count = countByVerse[verse] ?? 0
+            const vt = verseTexts.find((t) => t.verse === verse)
             return (
               <li key={verse} className="border-b last:border-b-0" style={{ borderColor: 'var(--line)' }}>
                 <Link
                   to="/scriptures/$collection/$book/$chapter"
                   params={{ collection, book: book.id, chapter: String(chapter) }}
                   search={{ verses: [verse] }}
-                  className="flex items-center justify-between px-4 py-3 transition-colors"
+                  className="flex items-start justify-between gap-2 px-4 py-3 transition-colors"
                   style={{ color: 'var(--sea-ink)' }}
                 >
-                  <span className="text-sm">第{verse}節</span>
+                  <div className="flex-1 min-w-0">
+                    <span className="text-xs font-medium" style={{ color: 'var(--sea-ink-soft)' }}>
+                      {verse}
+                    </span>
+                    {vt && (
+                      <SanitizedVerseHtml
+                        html={vt.text_html}
+                        className="ml-2 text-sm"
+                        style={{ color: 'var(--sea-ink)' }}
+                      />
+                    )}
+                  </div>
                   {count > 0 && (
                     <span
-                      className="text-xs px-2 py-0.5 rounded-full font-medium"
+                      className="text-xs px-2 py-0.5 rounded-full font-medium shrink-0"
                       style={{
                         background: 'var(--chip-bg)',
                         border: '1px solid var(--chip-line)',
