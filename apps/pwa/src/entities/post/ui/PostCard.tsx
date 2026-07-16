@@ -1,6 +1,7 @@
 import { Link } from '@tanstack/react-router'
 import { getScriptureLabel, buildScriptureUrl } from '@/shared/lib/scriptureUtils'
-import { MarkdownRenderer } from '@/shared/ui'
+import { formatDate } from '@/shared/lib/date'
+import { MarkdownRenderer, UserAvatar } from '@/shared/ui'
 
 export type PostWithUser = {
   id: string
@@ -15,63 +16,32 @@ export type PostWithUser = {
   users: { display_name: string | null; avatar_url: string | null } | null
 }
 
+export const POST_SELECT = `
+  id, content, visibility, created_at,
+  scripture_collection, scripture_book, scripture_chapter,
+  scripture_verses, user_id,
+  users ( display_name, avatar_url )
+`
+
 type Props = { post: PostWithUser }
-
-function formatDate(iso: string): string {
-  const d = new Date(iso)
-  return d.toLocaleDateString('ja-JP', { month: 'short', day: 'numeric', timeZone: 'Asia/Tokyo' })
-}
-
-function Initials({ name }: { name: string }) {
-  const ch = name.charAt(0).toUpperCase()
-  return (
-    <div
-      className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold shrink-0"
-      style={{ background: 'var(--lagoon)', color: '#fff' }}
-      aria-hidden="true"
-    >
-      {ch}
-    </div>
-  )
-}
 
 export function PostCard({ post }: Props) {
   const displayName = post.users?.display_name ?? '匿名ユーザー'
-  const avatarUrl = post.users?.avatar_url
+  const avatarUrl = post.users?.avatar_url ?? null
 
-  const scriptureLabel =
+  const scriptureRef =
     post.scripture_collection && post.scripture_book && post.scripture_chapter
-      ? getScriptureLabel({
-          collection: post.scripture_collection,
-          book: post.scripture_book,
-          chapter: post.scripture_chapter,
-          verses: post.scripture_verses ?? undefined,
-        })
+      ? { collection: post.scripture_collection, book: post.scripture_book, chapter: post.scripture_chapter, verses: post.scripture_verses ?? undefined }
       : null
 
-  const scriptureUrl =
-    post.scripture_collection && post.scripture_book && post.scripture_chapter
-      ? buildScriptureUrl({
-          collection: post.scripture_collection,
-          book: post.scripture_book,
-          chapter: post.scripture_chapter,
-          verses: post.scripture_verses ?? undefined,
-        })
-      : null
+  const scriptureLabel = scriptureRef ? getScriptureLabel(scriptureRef) : null
+  const scriptureUrl = scriptureRef ? buildScriptureUrl(scriptureRef) : null
 
   return (
     <Link to="/posts/$id" params={{ id: post.id }} className="block">
       <article className="px-4 py-4 border-b" style={{ borderColor: 'var(--line)' }}>
         <div className="flex items-start gap-3 mb-2">
-          {avatarUrl ? (
-            <img
-              src={avatarUrl}
-              alt={displayName}
-              className="w-9 h-9 rounded-full object-cover shrink-0"
-            />
-          ) : (
-            <Initials name={displayName} />
-          )}
+          <UserAvatar name={displayName} url={avatarUrl} size="sm" />
           <div className="flex-1 min-w-0">
             <div className="flex items-baseline justify-between gap-2">
               <span className="text-sm font-semibold truncate" style={{ color: 'var(--sea-ink)' }}>

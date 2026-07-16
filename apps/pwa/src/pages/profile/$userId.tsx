@@ -1,17 +1,10 @@
 import { createFileRoute, notFound } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
-import { PostCard, type PostWithUser } from '@/entities/post'
+import { PostCard, POST_SELECT, type PostWithUser } from '@/entities/post'
 import { FollowButton } from '@/features/follow-user'
 import { FamilyButton, type FamilyStatus } from '@/features/manage-family'
-import { PageHeader } from '@/shared/ui'
+import { PageHeader, UserAvatar } from '@/shared/ui'
 import { createSupabaseServer } from '@/shared/lib/auth'
-
-const POST_SELECT = `
-  id, content, visibility, created_at,
-  scripture_collection, scripture_book, scripture_chapter,
-  scripture_verses, user_id,
-  users ( display_name, avatar_url )
-`
 
 const fetchProfileData = createServerFn({ method: 'POST' })
   .inputValidator((data: { userId: string }) => data)
@@ -110,20 +103,7 @@ function ProfilePage() {
       <PageHeader title={displayName} backTo="/" backLabel="フィード" />
       <div className="p-4 border-b" style={{ borderColor: 'var(--line)' }}>
         <div className="flex items-start gap-4">
-          {avatarUrl ? (
-            <img
-              src={avatarUrl}
-              alt={displayName}
-              className="w-16 h-16 rounded-full object-cover shrink-0"
-            />
-          ) : (
-            <div
-              className="w-16 h-16 rounded-full flex items-center justify-center text-xl font-bold shrink-0"
-              style={{ background: 'var(--lagoon)', color: '#fff' }}
-            >
-              {displayName.charAt(0).toUpperCase()}
-            </div>
-          )}
+          <UserAvatar name={displayName} url={avatarUrl} size="lg" />
           <div className="flex-1 min-w-0">
             <h2 className="text-lg font-bold truncate" style={{ color: 'var(--sea-ink)' }}>
               {displayName}

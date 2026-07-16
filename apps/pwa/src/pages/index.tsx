@@ -1,16 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { useState } from 'react'
-import { PostCard, type PostWithUser } from '@/entities/post'
+import { PostCard, POST_SELECT, type PostWithUser } from '@/entities/post'
 import { PageHeader } from '@/shared/ui'
 import { createSupabaseServer } from '@/shared/lib/auth'
-
-const POST_SELECT = `
-  id, content, visibility, created_at,
-  scripture_collection, scripture_book, scripture_chapter,
-  scripture_verses, user_id,
-  users ( display_name, avatar_url )
-`
 
 const fetchPublicPosts = createServerFn({ method: 'GET' })
   .handler(async () => {

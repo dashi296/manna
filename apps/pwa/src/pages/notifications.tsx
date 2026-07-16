@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { useEffect } from 'react'
-import { PageHeader } from '@/shared/ui'
+import { PageHeader, UserAvatar } from '@/shared/ui'
+import { formatDate } from '@/shared/lib/date'
 import { createSupabaseServer } from '@/shared/lib/auth'
 import { supabase } from '@/shared/lib/supabase'
 
@@ -37,23 +38,17 @@ export const Route = createFileRoute('/notifications')({
   component: NotificationsPage,
 })
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('ja-JP', {
-    month: 'short',
-    day: 'numeric',
-    timeZone: 'Asia/Tokyo',
-  })
-}
-
 function NotificationsPage() {
   const notifications = Route.useLoaderData()
 
   useEffect(() => {
-    supabase
-      .from('notifications')
-      .update({ read: true })
-      .eq('read', false)
-      .then(() => {})
+    if (notifications.some((n) => !n.read)) {
+      supabase
+        .from('notifications')
+        .update({ read: true })
+        .eq('read', false)
+        .then(() => {})
+    }
   }, [])
 
   return (
@@ -78,16 +73,7 @@ function NotificationsPage() {
                 }}
               >
                 <Link to="/profile/$userId" params={{ userId: n.actor_id }}>
-                  {avatarUrl ? (
-                    <img src={avatarUrl} alt={actorName} className="w-9 h-9 rounded-full object-cover shrink-0" />
-                  ) : (
-                    <div
-                      className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold shrink-0"
-                      style={{ background: 'var(--lagoon)', color: '#fff' }}
-                    >
-                      {actorName.charAt(0).toUpperCase()}
-                    </div>
-                  )}
+                  <UserAvatar name={actorName} url={avatarUrl} size="sm" />
                 </Link>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm" style={{ color: 'var(--sea-ink)' }}>

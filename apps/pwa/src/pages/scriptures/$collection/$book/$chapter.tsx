@@ -1,16 +1,9 @@
 import { createFileRoute, Link, notFound } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { getBook, buildScriptureUrl, getScriptureLabel } from '@/entities/scripture'
-import { PostCard, type PostWithUser } from '@/entities/post'
+import { PostCard, POST_SELECT, type PostWithUser } from '@/entities/post'
 import { createSupabaseServer } from '@/shared/lib/auth'
 import { PageHeader, ScriptureText, SanitizedVerseHtml } from '@/shared/ui'
-
-const POST_SELECT = `
-  id, content, visibility, created_at,
-  scripture_collection, scripture_book, scripture_chapter,
-  scripture_verses, user_id,
-  users ( display_name, avatar_url )
-`
 
 const fetchVersePosts = createServerFn({ method: 'POST' })
   .inputValidator((data: { collection: string; book: string; chapter: number; verses: number[] }) => data)
@@ -209,6 +202,7 @@ function ChapterPage() {
   }
 
   const officialUrl = buildScriptureUrl({ collection, book: book.id, chapter })
+  const verseTextMap = new Map(verseTexts.map((vt) => [vt.verse, vt]))
   return (
     <div>
       <PageHeader
@@ -232,7 +226,7 @@ function ChapterPage() {
         <ul className="overflow-hidden rounded-xl" style={{ border: '1px solid var(--line)' }}>
           {Array.from({ length: book.verses[chapter - 1] }, (_, i) => i + 1).map((verse) => {
             const count = countByVerse[verse] ?? 0
-            const vt = verseTexts.find((t) => t.verse === verse)
+            const vt = verseTextMap.get(verse)
             return (
               <li key={verse} className="border-b last:border-b-0" style={{ borderColor: 'var(--line)' }}>
                 <Link

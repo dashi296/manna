@@ -1,16 +1,10 @@
 import { createFileRoute, Link, notFound } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
-import { MarkdownRenderer, PageHeader } from '@/shared/ui'
+import { POST_SELECT, type PostWithUser } from '@/entities/post'
+import { getScriptureLabel, buildScriptureUrl } from '@/entities/scripture'
+import { MarkdownRenderer, PageHeader, UserAvatar } from '@/shared/ui'
+import { formatDate } from '@/shared/lib/date'
 import { createSupabaseServer } from '@/shared/lib/auth'
-import { getScriptureLabel, buildScriptureUrl } from '@/shared/lib/scriptureUtils'
-import type { PostWithUser } from '@/entities/post'
-
-const POST_SELECT = `
-  id, content, visibility, created_at,
-  scripture_collection, scripture_book, scripture_chapter,
-  scripture_verses, user_id,
-  users ( display_name, avatar_url )
-`
 
 const fetchPost = createServerFn({ method: 'POST' })
   .inputValidator((data: { id: string }) => data)
@@ -33,62 +27,31 @@ export const Route = createFileRoute('/posts/$id')({
   component: PostDetailPage,
 })
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('ja-JP', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    timeZone: 'Asia/Tokyo',
-  })
-}
-
 function PostDetailPage() {
   const { post } = Route.useLoaderData()
   const displayName = post.users?.display_name ?? '匿名ユーザー'
-  const avatarUrl = post.users?.avatar_url
+  const avatarUrl = post.users?.avatar_url ?? null
 
-  const scriptureLabel =
+  const scriptureRef =
     post.scripture_collection && post.scripture_book && post.scripture_chapter
-      ? getScriptureLabel({
-          collection: post.scripture_collection,
-          book: post.scripture_book,
-          chapter: post.scripture_chapter,
-          verses: post.scripture_verses ?? undefined,
-        })
+      ? { collection: post.scripture_collection, book: post.scripture_book, chapter: post.scripture_chapter, verses: post.scripture_verses ?? undefined }
       : null
 
-  const officialUrl =
-    post.scripture_collection && post.scripture_book && post.scripture_chapter
-      ? buildScriptureUrl({
-          collection: post.scripture_collection,
-          book: post.scripture_book,
-          chapter: post.scripture_chapter,
-          verses: post.scripture_verses ?? undefined,
-        })
-      : null
+  const scriptureLabel = scriptureRef ? getScriptureLabel(scriptureRef) : null
+  const officialUrl = scriptureRef ? buildScriptureUrl(scriptureRef) : null
 
   return (
     <div>
       <PageHeader title="投稿" backTo="/" backLabel="フィード" />
       <div className="p-4">
         <div className="flex items-center gap-3 mb-4">
-          {avatarUrl ? (
-            <img src={avatarUrl} alt={displayName} className="w-10 h-10 rounded-full object-cover" />
-          ) : (
-            <div
-              className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold"
-              style={{ background: 'var(--lagoon)', color: '#fff' }}
-              aria-hidden="true"
-            >
-              {displayName.charAt(0).toUpperCase()}
-            </div>
-          )}
+          <UserAvatar name={displayName} url={avatarUrl} size="md" />
           <div>
             <span className="font-semibold text-sm" style={{ color: 'var(--sea-ink)' }}>
               {displayName}
             </span>
             <div className="text-xs" style={{ color: 'var(--sea-ink-soft)' }}>
-              {formatDate(post.created_at)}
+              {formatDate(post.created_at, { year: true })}
             </div>
           </div>
         </div>
