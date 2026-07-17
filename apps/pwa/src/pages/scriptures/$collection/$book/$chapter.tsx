@@ -42,6 +42,22 @@ const fetchVerseTexts = createServerFn({ method: 'POST' })
     return (data ?? []) as VerseText[]
   })
 
+const fetchChapterPosts = createServerFn({ method: 'POST' })
+  .inputValidator((data: { collection: string; book: string; chapter: number }) => data)
+  .handler(async (ctx) => {
+    const { collection, book, chapter } = ctx.data
+    const serverSupabase = await createSupabaseServer()
+    const { data: posts } = await serverSupabase
+      .from('posts')
+      .select(POST_SELECT)
+      .eq('scripture_collection', collection)
+      .eq('scripture_book', book)
+      .eq('scripture_chapter', chapter)
+      .is('scripture_verses', null)
+      .order('created_at', { ascending: false })
+    return (posts ?? []) as PostWithUser[]
+  })
+
 const fetchChapterCounts = createServerFn({ method: 'POST' })
   .inputValidator((data: { collection: string; book: string; chapter: number }) => data)
   .handler(async (ctx) => {
@@ -96,15 +112,16 @@ export const Route = createFileRoute('/scriptures/$collection/$book/$chapter')({
       }
     }
 
-    const [countByVerse, verseTexts] = await Promise.all([
+    const [countByVerse, verseTexts, posts] = await Promise.all([
       fetchChapterCounts({ data: base }),
       fetchVerseTexts({ data: base }),
+      fetchChapterPosts({ data: base }),
     ])
 
     return {
       book, chapter: chapterNum, collection: params.collection,
       mode: 'chapter' as const, verses: [] as number[],
-      posts: [] as PostWithUser[], countByVerse, verseTexts,
+      posts, countByVerse, verseTexts,
     }
   },
   component: ChapterPage,
@@ -187,6 +204,16 @@ function ChapterPage() {
           </a>
         }
       />
+      {posts.length > 0 && (
+        <div className="border-b" style={{ borderColor: 'var(--line)' }}>
+          <p className="px-4 pt-3 pb-1 text-xs font-medium" style={{ color: 'var(--sea-ink-soft)' }}>
+            この章への投稿
+          </p>
+          {posts.map((post) => (
+            <PostCard key={post.id} post={post} />
+          ))}
+        </div>
+      )}
       <div className="p-4">
         <p className="text-xs mb-4" style={{ color: 'var(--sea-ink-soft)' }}>節を選んで投稿を見る・書く</p>
         <ul className="overflow-hidden rounded-xl" style={{ border: '1px solid var(--line)' }}>
