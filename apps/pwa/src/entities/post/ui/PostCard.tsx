@@ -1,7 +1,37 @@
+import type { ReactNode, KeyboardEvent, MouseEvent } from 'react'
 import { Link } from '@tanstack/react-router'
+import type { Components } from 'react-markdown'
 import { getScriptureLabel, buildScriptureUrl } from '@/shared/lib/scriptureUtils'
 import { formatDate } from '@/shared/lib/date'
 import { MarkdownRenderer, UserAvatar } from '@/shared/ui'
+
+function NestedLink({ href, className, style, children }: { href: string; className?: string; style?: React.CSSProperties; children: ReactNode }) {
+  const open = (e: MouseEvent | KeyboardEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    window.open(href, '_blank', 'noopener,noreferrer')
+  }
+  return (
+    <span
+      role="link"
+      tabIndex={0}
+      onClick={open}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') open(e) }}
+      className={className ?? 'underline cursor-pointer'}
+      style={style}
+    >
+      {children}
+    </span>
+  )
+}
+
+const NESTED_COMPONENTS: Components = {
+  a: ({ href, children }) => (
+    <NestedLink href={href ?? '#'} className="underline cursor-pointer" style={{ color: 'var(--lagoon-deep)' }}>
+      {children}
+    </NestedLink>
+  ),
+}
 
 export type PostWithUser = {
   id: string
@@ -23,17 +53,19 @@ export const POST_SELECT = `
   users ( display_name, avatar_url )
 `
 
+export function toScriptureRef(post: PostWithUser) {
+  return post.scripture_collection && post.scripture_book && post.scripture_chapter
+    ? { collection: post.scripture_collection, book: post.scripture_book, chapter: post.scripture_chapter, verses: post.scripture_verses ?? undefined }
+    : null
+}
+
 type Props = { post: PostWithUser }
 
 export function PostCard({ post }: Props) {
   const displayName = post.users?.display_name ?? '匿名ユーザー'
   const avatarUrl = post.users?.avatar_url ?? null
 
-  const scriptureRef =
-    post.scripture_collection && post.scripture_book && post.scripture_chapter
-      ? { collection: post.scripture_collection, book: post.scripture_book, chapter: post.scripture_chapter, verses: post.scripture_verses ?? undefined }
-      : null
-
+  const scriptureRef = toScriptureRef(post)
   const scriptureLabel = scriptureRef ? getScriptureLabel(scriptureRef) : null
   const scriptureUrl = scriptureRef ? buildScriptureUrl(scriptureRef) : null
 
@@ -56,51 +88,18 @@ export function PostCard({ post }: Props) {
               </time>
             </div>
             {scriptureLabel && scriptureUrl && (
-              <span
-                role="link"
-                tabIndex={0}
-                onClick={(e) => {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  window.open(scriptureUrl, '_blank', 'noopener,noreferrer')
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault()
-                    e.stopPropagation()
-                    window.open(scriptureUrl, '_blank', 'noopener,noreferrer')
-                  }
-                }}
+              <NestedLink
+                href={scriptureUrl}
                 className="inline-flex items-center mt-0.5 px-2 py-0.5 rounded-full text-[11px] font-medium cursor-pointer"
-                style={{
-                  background: 'var(--chip-bg)',
-                  border: '1px solid var(--chip-line)',
-                  color: 'var(--palm)',
-                }}
+                style={{ background: 'var(--chip-bg)', border: '1px solid var(--chip-line)', color: 'var(--palm)' }}
               >
                 <span aria-hidden="true">📖</span> {scriptureLabel}
-              </span>
+              </NestedLink>
             )}
           </div>
         </div>
         <div className="ml-12" style={{ color: 'var(--sea-ink)' }}>
-          <MarkdownRenderer
-            content={post.content}
-            components={{
-              a: ({ href, children }) => (
-                <span
-                  role="link"
-                  tabIndex={0}
-                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (href) window.open(href, '_blank', 'noopener,noreferrer') }}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); if (href) window.open(href, '_blank', 'noopener,noreferrer') } }}
-                  className="underline cursor-pointer"
-                  style={{ color: 'var(--lagoon-deep)' }}
-                >
-                  {children}
-                </span>
-              ),
-            }}
-          />
+          <MarkdownRenderer content={post.content} components={NESTED_COMPONENTS} />
         </div>
       </article>
     </Link>

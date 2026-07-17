@@ -1,6 +1,6 @@
 import { createFileRoute, Link, notFound } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
-import { POST_SELECT, type PostWithUser } from '@/entities/post'
+import { POST_SELECT, toScriptureRef, type PostWithUser } from '@/entities/post'
 import { getScriptureLabel, buildScriptureUrl } from '@/entities/scripture'
 import { MarkdownRenderer, PageHeader, UserAvatar } from '@/shared/ui'
 import { formatDate } from '@/shared/lib/date'
@@ -32,11 +32,7 @@ function PostDetailPage() {
   const displayName = post.users?.display_name ?? '匿名ユーザー'
   const avatarUrl = post.users?.avatar_url ?? null
 
-  const scriptureRef =
-    post.scripture_collection && post.scripture_book && post.scripture_chapter
-      ? { collection: post.scripture_collection, book: post.scripture_book, chapter: post.scripture_chapter, verses: post.scripture_verses ?? undefined }
-      : null
-
+  const scriptureRef = toScriptureRef(post)
   const scriptureLabel = scriptureRef ? getScriptureLabel(scriptureRef) : null
   const officialUrl = scriptureRef ? buildScriptureUrl(scriptureRef) : null
 
