@@ -43,8 +43,9 @@ function NotificationsPage() {
   const notifications = Route.useLoaderData()
 
   useEffect(() => {
-    if (notifications.some((n) => !n.read)) {
-      void supabase.from('notifications').update({ read: true }).eq('read', false).then()
+    const unreadIds = notifications.filter((n) => !n.read).map((n) => n.id)
+    if (unreadIds.length > 0) {
+      void supabase.from('notifications').update({ read: true }).in('id', unreadIds).then()
     }
   }, [])
 

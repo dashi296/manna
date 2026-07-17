@@ -39,9 +39,16 @@ function runPsql(sql) {
 
 function getCompletedChapters() {
   const result = runPsql(
-    `SELECT collection_id || '/' || book_id || '/' || chapter FROM scripture_verses GROUP BY collection_id, book_id, chapter;`
+    `SELECT collection_id || '/' || book_id || '/' || chapter || '/' || COUNT(*) FROM scripture_verses GROUP BY collection_id, book_id, chapter;`
   )
-  return new Set(result.trim().split('\n').filter(Boolean))
+  const map = new Map()
+  for (const line of result.trim().split('\n').filter(Boolean)) {
+    const lastSlash = line.lastIndexOf('/')
+    const key = line.slice(0, lastSlash)
+    const count = parseInt(line.slice(lastSlash + 1), 10)
+    map.set(key, count)
+  }
+  return map
 }
 
 async function fetchChapter(collectionId, bookId, chapter) {
@@ -85,12 +92,14 @@ function sleep(ms) {
 
 async function main() {
   const allChapters = buildChapterList()
-  const completed = getCompletedChapters()
-  const todo = allChapters.filter(
-    c => !completed.has(`${c.collectionId}/${c.bookId}/${c.chapter}`)
-  )
+  const completedCounts = getCompletedChapters()
+  const todo = allChapters.filter(c => {
+    const key = `${c.collectionId}/${c.bookId}/${c.chapter}`
+    const count = completedCounts.get(key)
+    return count === undefined || count !== c.expectedVerses
+  })
 
-  console.log(`Total: ${allChapters.length} chapters, Skipping: ${completed.size}, Remaining: ${todo.length}`)
+  console.log(`Total: ${allChapters.length} chapters, Skipping: ${allChapters.length - todo.length}, Remaining: ${todo.length}`)
 
   let inserted = 0
   for (let i = 0; i < todo.length; i++) {
@@ -106,6 +115,10 @@ async function main() {
       }
 
       if (verses.length > 0) {
+        const key = `${collectionId}/${bookId}/${chapter}`
+        if (completedCounts.has(key)) {
+          runPsql(`DELETE FROM scripture_verses WHERE collection_id='${sqlQuote(collectionId)}' AND book_id='${sqlQuote(bookId)}' AND chapter=${chapter};`)
+        }
         insertVerses(collectionId, bookId, chapter, verses)
         inserted += verses.length
       }
