@@ -2,6 +2,7 @@ import type { ReactNode, KeyboardEvent, MouseEvent } from 'react'
 import { Link } from '@tanstack/react-router'
 import type { Components } from 'react-markdown'
 import { getScriptureLabel, buildScriptureUrl } from '@/shared/lib/scriptureUtils'
+import { ANONYMOUS_DISPLAY_NAME } from '@/shared/lib/constants'
 import { formatDate } from '@/shared/lib/date'
 import { MarkdownRenderer, UserAvatar } from '@/shared/ui'
 
@@ -62,7 +63,7 @@ export function toScriptureRef(post: PostWithUser) {
 type Props = { post: PostWithUser }
 
 export function PostCard({ post }: Props) {
-  const displayName = post.users?.display_name ?? '匿名ユーザー'
+  const displayName = post.users?.display_name ?? ANONYMOUS_DISPLAY_NAME
   const avatarUrl = post.users?.avatar_url ?? null
 
   const scriptureRef = toScriptureRef(post)

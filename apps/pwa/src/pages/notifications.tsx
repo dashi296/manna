@@ -2,6 +2,7 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { useEffect } from 'react'
 import { PageHeader, UserAvatar } from '@/shared/ui'
+import { ANONYMOUS_DISPLAY_NAME } from '@/shared/lib/constants'
 import { formatDate } from '@/shared/lib/date'
 import { createSupabaseServer } from '@/shared/lib/auth'
 import { supabase } from '@/shared/lib/supabase'
@@ -61,7 +62,7 @@ function NotificationsPage() {
       ) : (
         <ul>
           {notifications.map((n) => {
-            const actorName = n.users?.display_name ?? '匿名ユーザー'
+            const actorName = n.users?.display_name ?? ANONYMOUS_DISPLAY_NAME
             const avatarUrl = n.users?.avatar_url ?? null
             return (
               <li

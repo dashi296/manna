@@ -80,65 +80,31 @@ export const Route = createFileRoute('/scriptures/$collection/$book/$chapter')({
     const chapterNum = parseInt(params.chapter, 10)
     if (chapterNum < 1 || chapterNum > book.chapters) throw notFound()
 
+    const base = { collection: params.collection, book: params.book, chapter: chapterNum }
+
     if (deps.verses?.length) {
       const verseCount = book.verses[chapterNum - 1]
       if (deps.verses.some((v) => v < 1 || v > verseCount)) throw notFound()
       const [posts, verseTexts] = await Promise.all([
-        fetchVersePosts({
-          data: {
-            collection: params.collection,
-            book: params.book,
-            chapter: chapterNum,
-            verses: deps.verses,
-          },
-        }),
-        fetchVerseTexts({
-          data: {
-            collection: params.collection,
-            book: params.book,
-            chapter: chapterNum,
-            verses: deps.verses,
-          },
-        }),
+        fetchVersePosts({ data: { ...base, verses: deps.verses } }),
+        fetchVerseTexts({ data: { ...base, verses: deps.verses } }),
       ])
       return {
-        book,
-        chapter: chapterNum,
-        collection: params.collection,
-        mode: 'verse' as const,
-        verses: deps.verses,
-        posts,
-        countByVerse: {} as Record<number, number>,
-        verseTexts,
+        book, chapter: chapterNum, collection: params.collection,
+        mode: 'verse' as const, verses: deps.verses,
+        posts, countByVerse: {} as Record<number, number>, verseTexts,
       }
     }
 
     const [countByVerse, verseTexts] = await Promise.all([
-      fetchChapterCounts({
-        data: {
-          collection: params.collection,
-          book: params.book,
-          chapter: chapterNum,
-        },
-      }),
-      fetchVerseTexts({
-        data: {
-          collection: params.collection,
-          book: params.book,
-          chapter: chapterNum,
-        },
-      }),
+      fetchChapterCounts({ data: base }),
+      fetchVerseTexts({ data: base }),
     ])
 
     return {
-      book,
-      chapter: chapterNum,
-      collection: params.collection,
-      mode: 'chapter' as const,
-      verses: [] as number[],
-      posts: [] as PostWithUser[],
-      countByVerse,
-      verseTexts,
+      book, chapter: chapterNum, collection: params.collection,
+      mode: 'chapter' as const, verses: [] as number[],
+      posts: [] as PostWithUser[], countByVerse, verseTexts,
     }
   },
   component: ChapterPage,

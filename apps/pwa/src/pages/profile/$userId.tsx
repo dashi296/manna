@@ -4,6 +4,7 @@ import { PostCard, POST_SELECT, type PostWithUser } from '@/entities/post'
 import { FollowButton } from '@/features/follow-user'
 import { FamilyButton, type FamilyStatus } from '@/features/manage-family'
 import { PageHeader, UserAvatar } from '@/shared/ui'
+import { ANONYMOUS_DISPLAY_NAME } from '@/shared/lib/constants'
 import { createSupabaseServer } from '@/shared/lib/auth'
 
 const fetchProfileData = createServerFn({ method: 'POST' })
@@ -95,7 +96,7 @@ function ProfilePage() {
   const { profile, posts, currentUserId, isOwn, isFollowing, familyStatus, followerCount, followingCount } =
     Route.useLoaderData()
 
-  const displayName = profile.display_name ?? '匿名ユーザー'
+  const displayName = profile.display_name ?? ANONYMOUS_DISPLAY_NAME
   const avatarUrl = profile.avatar_url as string | null
 
   return (
