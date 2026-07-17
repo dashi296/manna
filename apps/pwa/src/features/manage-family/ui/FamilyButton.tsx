@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Button } from '@/shared/ui/button'
+import { familyPairFilter } from '@/shared/lib/familyQuery'
 import { supabase } from '@/shared/lib/supabase'
 
 export type FamilyStatus = 'none' | 'pending_sent' | 'pending_received' | 'accepted'
@@ -37,10 +38,7 @@ export function FamilyButton({ targetUserId, currentUserId, initialStatus }: Pro
   const remove = async () => {
     setPending(true)
     const { error } = await supabase.from('family_relationships').delete()
-      .or(
-        `and(requester_id.eq.${currentUserId},addressee_id.eq.${targetUserId}),` +
-        `and(requester_id.eq.${targetUserId},addressee_id.eq.${currentUserId})`
-      )
+      .or(familyPairFilter(currentUserId, targetUserId))
     if (!error) setStatus('none')
     setPending(false)
   }

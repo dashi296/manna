@@ -28,7 +28,7 @@ function NestedLink({ href, className, style, children }: { href: string; classN
 
 const NESTED_COMPONENTS: Components = {
   a: ({ href, children }) => (
-    <NestedLink href={href ?? '#'} className="underline cursor-pointer" style={{ color: 'var(--lagoon-deep)' }}>
+    <NestedLink href={href ?? '#'} style={{ color: 'var(--lagoon-deep)' }}>
       {children}
     </NestedLink>
   ),

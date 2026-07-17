@@ -5,6 +5,7 @@ import { FollowButton } from '@/features/follow-user'
 import { FamilyButton, type FamilyStatus } from '@/features/manage-family'
 import { PageHeader, UserAvatar } from '@/shared/ui'
 import { ANONYMOUS_DISPLAY_NAME } from '@/shared/lib/constants'
+import { familyPairFilter } from '@/shared/lib/familyQuery'
 import { createSupabaseServer } from '@/shared/lib/auth'
 
 const fetchProfileData = createServerFn({ method: 'POST' })
@@ -57,10 +58,7 @@ const fetchProfileData = createServerFn({ method: 'POST' })
         serverSupabase
           .from('family_relationships')
           .select('*')
-          .or(
-            `and(requester_id.eq.${currentUser.id},addressee_id.eq.${userId}),` +
-              `and(requester_id.eq.${userId},addressee_id.eq.${currentUser.id})`,
-          )
+          .or(familyPairFilter(currentUser.id, userId))
           .maybeSingle(),
       ])
       isFollowing = !!followData

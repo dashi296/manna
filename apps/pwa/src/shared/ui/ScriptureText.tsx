@@ -1,5 +1,6 @@
 import { useEffect, useRef, type CSSProperties } from 'react'
 import DOMPurify from 'dompurify'
+import { cn } from '@/shared/lib/utils'
 
 const PURIFY_CONFIG = {
   ALLOWED_TAGS: ['ruby', 'rb', 'rt'],
@@ -44,7 +45,7 @@ type Props = {
 
 export function ScriptureText({ verse, textHtml, className }: Props) {
   return (
-    <div className={`flex gap-2 py-2 text-sm leading-relaxed ${className ?? ''}`}>
+    <div className={cn('flex gap-2 py-2 text-sm leading-relaxed', className)}>
       <span
         className="shrink-0 w-6 text-right text-xs font-medium pt-0.5"
         style={{ color: 'var(--sea-ink-soft)' }}
