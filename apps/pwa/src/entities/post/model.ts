@@ -15,7 +15,7 @@ export const POST_SELECT = `
   id, content, visibility, created_at,
   scripture_collection, scripture_book, scripture_chapter,
   scripture_verses, user_id,
-  users ( display_name, avatar_url )
+  users!posts_user_id_fkey ( display_name, avatar_url )
 `
 
 export function toScriptureRef(post: PostWithUser) {
