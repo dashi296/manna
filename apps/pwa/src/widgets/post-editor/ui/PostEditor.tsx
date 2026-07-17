@@ -42,16 +42,19 @@ export function PostEditor({ initialScripture }: Props) {
   const [visibility, setVisibility] = useState<Visibility>('public')
   const [scripture, setScripture] = useState<ScriptureRefPartial>({})
   const [submitting, setSubmitting] = useState(false)
+  const draftLoaded = useRef(false)
 
   useEffect(() => {
     const draft = loadDraft()
     setContent(draft.content)
     setVisibility(draft.visibility)
     setScripture(initialScripture?.collection ? initialScripture : draft.scripture)
+    draftLoaded.current = true
   }, [])
 
   const saveTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined)
   useEffect(() => {
+    if (!draftLoaded.current) return
     clearTimeout(saveTimerRef.current)
     saveTimerRef.current = setTimeout(() => {
       localStorage.setItem(DRAFT_KEY, JSON.stringify({ content, visibility, scripture }))
