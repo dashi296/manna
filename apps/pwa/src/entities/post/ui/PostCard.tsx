@@ -1,7 +1,7 @@
 import type { ReactNode, KeyboardEvent, MouseEvent } from 'react'
 import { Link } from '@tanstack/react-router'
 import type { Components } from 'react-markdown'
-import { toScriptureRef, type PostWithUser } from '@/entities/post/model'
+import { toScriptureRef, type PostWithUser } from '@/entities/post'
 import { getScriptureLabel, buildScriptureUrl } from '@/shared/lib/scriptureUtils'
 import { resolveUserIdentity } from '@/shared/lib/constants'
 import { formatDate } from '@/shared/lib/date'

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { MarkdownRenderer } from '@/shared/ui'
+import { MarkdownRenderer, TabBar } from '@/shared/ui'
 import { Button } from '@/shared/ui/button'
 import { supabase } from '@/shared/lib/supabase'
 import { VisibilitySelector, type Visibility } from '@/features/choose-visibility'
@@ -90,22 +90,7 @@ export function PostEditor({ initialScripture }: Props) {
 
   return (
     <div className="flex flex-col gap-4 p-4">
-      <div className="flex gap-2 border-b" style={{ borderColor: 'var(--line)' }}>
-        {TABS.map(({ id, label }) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => setTab(id)}
-            className="px-3 py-2 text-sm font-medium border-b-2 transition-colors"
-            style={{
-              borderColor: tab === id ? 'var(--lagoon-deep)' : 'transparent',
-              color: tab === id ? 'var(--lagoon-deep)' : 'var(--sea-ink-soft)',
-            }}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      <TabBar tabs={TABS} active={tab} onChange={setTab} />
 
       {tab === 'edit' ? (
         <textarea

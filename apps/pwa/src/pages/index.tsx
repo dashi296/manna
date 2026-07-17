@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { useState } from 'react'
 import { PostCard, POST_SELECT, type PostWithUser } from '@/entities/post'
-import { PageHeader } from '@/shared/ui'
+import { PageHeader, TabBar } from '@/shared/ui'
 import { createSupabaseServer } from '@/shared/lib/auth'
 
 const fetchPublicPosts = createServerFn({ method: 'GET' })
@@ -64,21 +64,13 @@ function FeedPage() {
   return (
     <div>
       <PageHeader title="Manna" />
-      <div className="flex border-b sticky top-0 z-10" style={{ borderColor: 'var(--line)', background: 'var(--header-bg)', backdropFilter: 'blur(8px)' }}>
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            className="flex-1 py-3 text-sm font-medium border-b-2 transition-colors"
-            style={{
-              borderColor: tab === t.id ? 'var(--lagoon-deep)' : 'transparent',
-              color: tab === t.id ? 'var(--lagoon-deep)' : 'var(--sea-ink-soft)',
-            }}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <TabBar
+        tabs={TABS}
+        active={tab}
+        onChange={setTab}
+        className="sticky top-0 z-10"
+        style={{ background: 'var(--header-bg)', backdropFilter: 'blur(8px)' }}
+      />
       {posts.length === 0 ? (
         <div className="p-8 text-center text-sm" style={{ color: 'var(--sea-ink-soft)' }}>
           {tab === 'following'

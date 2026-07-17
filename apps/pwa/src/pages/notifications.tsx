@@ -44,11 +44,7 @@ function NotificationsPage() {
 
   useEffect(() => {
     if (notifications.some((n) => !n.read)) {
-      supabase
-        .from('notifications')
-        .update({ read: true })
-        .eq('read', false)
-        .then(() => {})
+      supabase.from('notifications').update({ read: true }).eq('read', false)
     }
   }, [])
 

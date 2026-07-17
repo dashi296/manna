@@ -35,10 +35,11 @@ export function ScriptureSelector({ value, onChange }: Props) {
   const selectedBook =
     value.collection && value.book ? getBook(value.collection, value.book) : undefined
 
+  const versesKey = JSON.stringify(value.verses ?? null)
   const [versesInput, setVersesInput] = useState(value.verses?.join(', ') ?? '')
   useEffect(() => {
     setVersesInput(value.verses?.join(', ') ?? '')
-  }, [value.verses?.join(',')])
+  }, [versesKey])
 
   return (
     <div className="space-y-3">
