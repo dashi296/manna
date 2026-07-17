@@ -84,7 +84,23 @@ export function PostCard({ post }: Props) {
           </div>
         </div>
         <div className="ml-12" style={{ color: 'var(--sea-ink)' }}>
-          <MarkdownRenderer content={post.content} />
+          <MarkdownRenderer
+            content={post.content}
+            components={{
+              a: ({ href, children }) => (
+                <span
+                  role="link"
+                  tabIndex={0}
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (href) window.open(href, '_blank', 'noopener,noreferrer') }}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); if (href) window.open(href, '_blank', 'noopener,noreferrer') } }}
+                  className="underline cursor-pointer"
+                  style={{ color: 'var(--lagoon-deep)' }}
+                >
+                  {children}
+                </span>
+              ),
+            }}
+          />
         </div>
       </article>
     </Link>
