@@ -3,7 +3,7 @@ import { createServerFn } from '@tanstack/react-start'
 import { POST_SELECT, toScriptureRef, type PostWithUser } from '@/entities/post'
 import { getScriptureLabel, buildScriptureUrl } from '@/entities/scripture'
 import { MarkdownRenderer, PageHeader, UserAvatar } from '@/shared/ui'
-import { ANONYMOUS_DISPLAY_NAME } from '@/shared/lib/constants'
+import { resolveUserIdentity } from '@/shared/lib/constants'
 import { formatDate } from '@/shared/lib/date'
 import { createSupabaseServer } from '@/shared/lib/auth'
 
@@ -30,8 +30,7 @@ export const Route = createFileRoute('/posts/$id')({
 
 function PostDetailPage() {
   const { post } = Route.useLoaderData()
-  const displayName = post.users?.display_name ?? ANONYMOUS_DISPLAY_NAME
-  const avatarUrl = post.users?.avatar_url ?? null
+  const { displayName, avatarUrl } = resolveUserIdentity(post.users)
 
   const scriptureRef = toScriptureRef(post)
   const scriptureLabel = scriptureRef ? getScriptureLabel(scriptureRef) : null

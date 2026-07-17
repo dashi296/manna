@@ -1,8 +1,9 @@
 import type { ReactNode, KeyboardEvent, MouseEvent } from 'react'
 import { Link } from '@tanstack/react-router'
 import type { Components } from 'react-markdown'
+import { toScriptureRef, type PostWithUser } from '@/entities/post/model'
 import { getScriptureLabel, buildScriptureUrl } from '@/shared/lib/scriptureUtils'
-import { ANONYMOUS_DISPLAY_NAME } from '@/shared/lib/constants'
+import { resolveUserIdentity } from '@/shared/lib/constants'
 import { formatDate } from '@/shared/lib/date'
 import { MarkdownRenderer, UserAvatar } from '@/shared/ui'
 
@@ -34,37 +35,10 @@ const NESTED_COMPONENTS: Components = {
   ),
 }
 
-export type PostWithUser = {
-  id: string
-  content: string
-  visibility: string
-  created_at: string
-  scripture_collection: string | null
-  scripture_book: string | null
-  scripture_chapter: number | null
-  scripture_verses: number[] | null
-  user_id: string
-  users: { display_name: string | null; avatar_url: string | null } | null
-}
-
-export const POST_SELECT = `
-  id, content, visibility, created_at,
-  scripture_collection, scripture_book, scripture_chapter,
-  scripture_verses, user_id,
-  users ( display_name, avatar_url )
-`
-
-export function toScriptureRef(post: PostWithUser) {
-  return post.scripture_collection && post.scripture_book && post.scripture_chapter
-    ? { collection: post.scripture_collection, book: post.scripture_book, chapter: post.scripture_chapter, verses: post.scripture_verses ?? undefined }
-    : null
-}
-
 type Props = { post: PostWithUser }
 
 export function PostCard({ post }: Props) {
-  const displayName = post.users?.display_name ?? ANONYMOUS_DISPLAY_NAME
-  const avatarUrl = post.users?.avatar_url ?? null
+  const { displayName, avatarUrl } = resolveUserIdentity(post.users)
 
   const scriptureRef = toScriptureRef(post)
   const scriptureLabel = scriptureRef ? getScriptureLabel(scriptureRef) : null

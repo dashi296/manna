@@ -4,7 +4,7 @@ import { PostCard, POST_SELECT, type PostWithUser } from '@/entities/post'
 import { FollowButton } from '@/features/follow-user'
 import { FamilyButton, type FamilyStatus } from '@/features/manage-family'
 import { PageHeader, UserAvatar } from '@/shared/ui'
-import { ANONYMOUS_DISPLAY_NAME } from '@/shared/lib/constants'
+import { resolveUserIdentity } from '@/shared/lib/constants'
 import { familyPairFilter } from '@/shared/lib/familyQuery'
 import { createSupabaseServer } from '@/shared/lib/auth'
 
@@ -94,8 +94,7 @@ function ProfilePage() {
   const { profile, posts, currentUserId, isOwn, isFollowing, familyStatus, followerCount, followingCount } =
     Route.useLoaderData()
 
-  const displayName = profile.display_name ?? ANONYMOUS_DISPLAY_NAME
-  const avatarUrl = profile.avatar_url as string | null
+  const { displayName, avatarUrl } = resolveUserIdentity(profile)
 
   return (
     <div>

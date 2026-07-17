@@ -1,2 +1,3 @@
-export type { PostWithUser } from './ui/PostCard'
-export { PostCard, POST_SELECT, toScriptureRef } from './ui/PostCard'
+export type { PostWithUser } from './model'
+export { POST_SELECT, toScriptureRef } from './model'
+export { PostCard } from './ui/PostCard'

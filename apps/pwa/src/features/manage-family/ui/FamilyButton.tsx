@@ -15,33 +15,27 @@ export function FamilyButton({ targetUserId, currentUserId, initialStatus }: Pro
   const [status, setStatus] = useState(initialStatus)
   const [pending, setPending] = useState(false)
 
-  const sendRequest = async () => {
+  const run = async (action: () => PromiseLike<{ error: unknown }>, next: FamilyStatus) => {
     setPending(true)
-    const { error } = await supabase.from('family_relationships').insert({
-      requester_id: currentUserId,
-      addressee_id: targetUserId,
-    })
-    if (!error) setStatus('pending_sent')
+    const { error } = await action()
+    if (!error) setStatus(next)
     setPending(false)
   }
 
-  const accept = async () => {
-    setPending(true)
-    const { error } = await supabase.from('family_relationships')
-      .update({ status: 'accepted' })
-      .eq('requester_id', targetUserId)
-      .eq('addressee_id', currentUserId)
-    if (!error) setStatus('accepted')
-    setPending(false)
-  }
+  const sendRequest = () => run(
+    () => supabase.from('family_relationships').insert({ requester_id: currentUserId, addressee_id: targetUserId }),
+    'pending_sent',
+  )
 
-  const remove = async () => {
-    setPending(true)
-    const { error } = await supabase.from('family_relationships').delete()
-      .or(familyPairFilter(currentUserId, targetUserId))
-    if (!error) setStatus('none')
-    setPending(false)
-  }
+  const accept = () => run(
+    () => supabase.from('family_relationships').update({ status: 'accepted' }).eq('requester_id', targetUserId).eq('addressee_id', currentUserId),
+    'accepted',
+  )
+
+  const remove = () => run(
+    () => supabase.from('family_relationships').delete().or(familyPairFilter(currentUserId, targetUserId)),
+    'none',
+  )
 
   if (status === 'accepted') {
     return (
