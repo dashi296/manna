@@ -1,9 +1,7 @@
 import { readFileSync } from 'node:fs'
-import { execFileSync } from 'node:child_process'
 import { parseVerses } from './lib/parse-verses.mjs'
+import { runPsql } from './lib/db.mjs'
 
-const DB_URL = process.env.DATABASE_URL
-  || 'postgresql://postgres:postgres@127.0.0.1:54322/postgres'
 const API_BASE = 'https://www.churchofjesuschrist.org/study/api/v3/language-pages/type/content'
 const RATE_MS = 1000
 const MAX_RETRIES = 3
@@ -29,24 +27,14 @@ function buildChapterList() {
   return chapters
 }
 
-function runPsql(sql) {
-  return execFileSync('psql', [DB_URL, '-t', '-A'], {
-    input: sql,
-    encoding: 'utf8',
-    stdio: ['pipe', 'pipe', 'pipe'],
-  })
-}
-
 function getCompletedChapters() {
   const result = runPsql(
-    `SELECT collection_id || '/' || book_id || '/' || chapter || '/' || COUNT(*) FROM scripture_verses GROUP BY collection_id, book_id, chapter;`
+    `SELECT collection_id, book_id, chapter, COUNT(*) FROM scripture_verses GROUP BY collection_id, book_id, chapter;`
   )
   const map = new Map()
   for (const line of result.trim().split('\n').filter(Boolean)) {
-    const lastSlash = line.lastIndexOf('/')
-    const key = line.slice(0, lastSlash)
-    const count = parseInt(line.slice(lastSlash + 1), 10)
-    map.set(key, count)
+    const [collectionId, bookId, chapter, count] = line.split('|')
+    map.set(`${collectionId}/${bookId}/${chapter}`, parseInt(count, 10))
   }
   return map
 }
@@ -83,7 +71,7 @@ function insertVerses(collectionId, bookId, chapter, verses) {
   })
 
   const sql = `INSERT INTO scripture_verses (collection_id, book_id, chapter, verse, text, text_html) VALUES ${values.join(',')};`
-  execFileSync('psql', [DB_URL], { input: sql, stdio: ['pipe', 'pipe', 'pipe'] })
+  runPsql(sql)
 }
 
 function sleep(ms) {
@@ -115,8 +103,7 @@ async function main() {
       }
 
       if (verses.length > 0) {
-        const key = `${collectionId}/${bookId}/${chapter}`
-        if (completedCounts.has(key)) {
+        if (completedCounts.has(label)) {
           runPsql(`DELETE FROM scripture_verses WHERE collection_id='${sqlQuote(collectionId)}' AND book_id='${sqlQuote(bookId)}' AND chapter=${chapter};`)
         }
         insertVerses(collectionId, bookId, chapter, verses)

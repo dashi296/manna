@@ -1,14 +1,19 @@
+import type { Database } from '@manna/database'
+import type { UserSummary } from '@/shared/lib/constants'
+
+export type Visibility = Database['public']['Enums']['visibility_type']
+
 export type PostWithUser = {
   id: string
   content: string
-  visibility: string
+  visibility: Visibility
   created_at: string
   scripture_collection: string | null
   scripture_book: string | null
   scripture_chapter: number | null
   scripture_verses: number[] | null
   user_id: string
-  users: { display_name: string | null; avatar_url: string | null } | null
+  users: UserSummary | null
 }
 
 export const POST_SELECT = `

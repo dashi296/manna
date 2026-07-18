@@ -3,7 +3,8 @@ import { useNavigate } from '@tanstack/react-router'
 import { MarkdownRenderer, TabBar } from '@/shared/ui'
 import { Button } from '@/shared/ui/button'
 import { supabase } from '@/shared/lib/supabase'
-import { VisibilitySelector, type Visibility } from '@/features/choose-visibility'
+import type { Visibility } from '@/entities/post'
+import { VisibilitySelector } from '@/features/choose-visibility'
 import { ScriptureSelector, type ScriptureRefPartial } from '@/features/select-scripture'
 
 const DRAFT_KEY = 'manna:post-draft'
@@ -52,14 +53,12 @@ export function PostEditor({ initialScripture }: Props) {
     draftLoaded.current = true
   }, [])
 
-  const saveTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined)
   useEffect(() => {
     if (!draftLoaded.current) return
-    clearTimeout(saveTimerRef.current)
-    saveTimerRef.current = setTimeout(() => {
+    const timer = setTimeout(() => {
       localStorage.setItem(DRAFT_KEY, JSON.stringify({ content, visibility, scripture }))
     }, 500)
-    return () => clearTimeout(saveTimerRef.current)
+    return () => clearTimeout(timer)
   }, [content, visibility, scripture])
 
   const handleSubmit = async () => {

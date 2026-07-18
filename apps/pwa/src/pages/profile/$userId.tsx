@@ -1,11 +1,11 @@
 import { createFileRoute, notFound } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { PostCard, POST_SELECT, type PostWithUser } from '@/entities/post'
+import { familyPairFilter, resolveFamilyStatus } from '@/entities/family'
 import { FollowButton } from '@/features/follow-user'
-import { FamilyButton, type FamilyStatus } from '@/features/manage-family'
-import { PageHeader, UserAvatar } from '@/shared/ui'
+import { FamilyButton } from '@/features/manage-family'
+import { EmptyState, PageHeader, UserAvatar } from '@/shared/ui'
 import { resolveUserIdentity } from '@/shared/lib/constants'
-import { familyPairFilter } from '@/shared/lib/familyQuery'
 import { createSupabaseServer } from '@/shared/lib/auth'
 
 const fetchProfileData = createServerFn({ method: 'POST' })
@@ -13,6 +13,25 @@ const fetchProfileData = createServerFn({ method: 'POST' })
   .handler(async (ctx) => {
     const { userId } = ctx.data
     const serverSupabase = await createSupabaseServer()
+
+    const userPromise = serverSupabase.auth.getUser()
+    const relationsPromise = userPromise.then(async ({ data: { user } }) => {
+      if (!user || user.id === userId) return null
+      const [{ data: followData }, { data: familyData }] = await Promise.all([
+        serverSupabase
+          .from('follows')
+          .select('follower_id')
+          .eq('follower_id', user.id)
+          .eq('following_id', userId)
+          .maybeSingle(),
+        serverSupabase
+          .from('family_relationships')
+          .select('*')
+          .or(familyPairFilter(user.id, userId))
+          .maybeSingle(),
+      ])
+      return { isFollowing: !!followData, familyData }
+    })
 
     const [
       { data: profile },
@@ -22,9 +41,10 @@ const fetchProfileData = createServerFn({ method: 'POST' })
       { data: posts },
       { count: followerCount },
       { count: followingCount },
+      relations,
     ] = await Promise.all([
       serverSupabase.from('users').select('*').eq('id', userId).single(),
-      serverSupabase.auth.getUser(),
+      userPromise,
       serverSupabase
         .from('posts')
         .select(POST_SELECT)
@@ -39,43 +59,17 @@ const fetchProfileData = createServerFn({ method: 'POST' })
         .from('follows')
         .select('*', { count: 'exact', head: true })
         .eq('follower_id', userId),
+      relationsPromise,
     ])
 
     if (!profile) return null
-
-    const isOwn = currentUser?.id === userId
-    let isFollowing = false
-    let familyStatus: FamilyStatus = 'none'
-
-    if (currentUser && !isOwn) {
-      const [{ data: followData }, { data: familyData }] = await Promise.all([
-        serverSupabase
-          .from('follows')
-          .select('follower_id')
-          .eq('follower_id', currentUser.id)
-          .eq('following_id', userId)
-          .maybeSingle(),
-        serverSupabase
-          .from('family_relationships')
-          .select('*')
-          .or(familyPairFilter(currentUser.id, userId))
-          .maybeSingle(),
-      ])
-      isFollowing = !!followData
-      if (familyData) {
-        if (familyData.status === 'accepted') familyStatus = 'accepted'
-        else if (familyData.requester_id === currentUser.id) familyStatus = 'pending_sent'
-        else familyStatus = 'pending_received'
-      }
-    }
 
     return {
       profile,
       posts: (posts ?? []) as PostWithUser[],
       currentUserId: currentUser?.id ?? null,
-      isOwn,
-      isFollowing,
-      familyStatus,
+      isFollowing: relations?.isFollowing ?? false,
+      familyStatus: resolveFamilyStatus(relations?.familyData, currentUser?.id ?? ''),
       followerCount: followerCount ?? 0,
       followingCount: followingCount ?? 0,
     }
@@ -91,7 +85,7 @@ export const Route = createFileRoute('/profile/$userId')({
 })
 
 function ProfilePage() {
-  const { profile, posts, currentUserId, isOwn, isFollowing, familyStatus, followerCount, followingCount } =
+  const { profile, posts, currentUserId, isFollowing, familyStatus, followerCount, followingCount } =
     Route.useLoaderData()
 
   const { displayName, avatarUrl } = resolveUserIdentity(profile)
@@ -121,7 +115,7 @@ function ProfilePage() {
             </div>
           </div>
         </div>
-        {!isOwn && currentUserId && (
+        {currentUserId && currentUserId !== profile.id && (
           <div className="flex gap-2 mt-3">
             <FollowButton
               targetUserId={profile.id}
@@ -138,9 +132,7 @@ function ProfilePage() {
       </div>
       <div>
         {posts.length === 0 ? (
-          <div className="p-8 text-center text-sm" style={{ color: 'var(--sea-ink-soft)' }}>
-            投稿はまだありません
-          </div>
+          <EmptyState>投稿はまだありません</EmptyState>
         ) : (
           posts.map((post) => <PostCard key={post.id} post={post} />)
         )}

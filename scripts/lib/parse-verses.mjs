@@ -23,13 +23,10 @@ export function parseVerses(html) {
       .trim()
 
     // Plain text: extract rb content from ruby tags, strip all other tags
-    let plainText = cleaned
-      // Replace ruby tags with just their rb content
+    const text = cleaned
       .replace(/<ruby>.*?<rb>([^<]*)<\/rb>.*?<\/ruby>/g, '$1')
-      // Strip remaining tags
       .replace(/<[^>]+>/g, '')
       .trim()
-    const text = plainText
 
     verses.push({ verse: verseNum, text, textHtml })
   }

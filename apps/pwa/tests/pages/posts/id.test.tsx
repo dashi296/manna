@@ -1,6 +1,7 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeAll } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import type { PostWithUser } from '@/entities/post'
+import { routeComponent } from '../../helpers/tanstack'
 
 const basePost: PostWithUser = {
   id: 'post-1',
@@ -15,42 +16,30 @@ const basePost: PostWithUser = {
   users: { display_name: 'テスト太郎', avatar_url: null },
 }
 
-vi.mock('@tanstack/react-router', () => ({
-  createFileRoute: () => (config: any) => ({
-    ...config,
-    useLoaderData: () => ({ post: basePost }),
-  }),
-  Link: ({ children, ...props }: any) => <a {...props}>{children}</a>,
-  notFound: () => new Error('not found'),
-}))
+vi.mock('@tanstack/react-router', async () =>
+  (await import('../../helpers/tanstack')).routerMock(() => ({ post: basePost })),
+)
 
-vi.mock('@tanstack/react-start', () => ({
-  createServerFn: () => ({
-    handler: () => vi.fn(),
-    inputValidator: () => ({
-      handler: () => vi.fn(),
-    }),
-  }),
-}))
+vi.mock('@tanstack/react-start', async () => (await import('../../helpers/tanstack')).startMock())
+
+let PostDetailPage: React.ComponentType
+
+beforeAll(async () => {
+  PostDetailPage = routeComponent(await import('@/pages/posts/$id'))
+})
 
 describe('PostDetailPage', () => {
-  it('投稿本文を表示する', async () => {
-    const mod = await import('@/pages/posts/$id')
-    const PostDetailPage = (mod.Route as unknown as { component: React.ComponentType }).component
+  it('投稿本文を表示する', () => {
     render(<PostDetailPage />)
     expect(screen.getByText('これは試験投稿の本文です。')).toBeInTheDocument()
   })
 
-  it('投稿者名を表示する', async () => {
-    const mod = await import('@/pages/posts/$id')
-    const PostDetailPage = (mod.Route as unknown as { component: React.ComponentType }).component
+  it('投稿者名を表示する', () => {
     render(<PostDetailPage />)
     expect(screen.getByText('テスト太郎')).toBeInTheDocument()
   })
 
-  it('聖典参照ラベルと公式サイトへのリンクを表示する', async () => {
-    const mod = await import('@/pages/posts/$id')
-    const PostDetailPage = (mod.Route as unknown as { component: React.ComponentType }).component
+  it('聖典参照ラベルと公式サイトへのリンクを表示する', () => {
     render(<PostDetailPage />)
     expect(screen.getByText(/第1ニーファイ書/)).toBeInTheDocument()
     expect(screen.getByText('公式サイトで読む →')).toHaveAttribute(
@@ -59,9 +48,7 @@ describe('PostDetailPage', () => {
     )
   })
 
-  it('フィードへの戻るリンクを表示する', async () => {
-    const mod = await import('@/pages/posts/$id')
-    const PostDetailPage = (mod.Route as unknown as { component: React.ComponentType }).component
+  it('フィードへの戻るリンクを表示する', () => {
     render(<PostDetailPage />)
     expect(screen.getByText('フィード')).toBeInTheDocument()
   })

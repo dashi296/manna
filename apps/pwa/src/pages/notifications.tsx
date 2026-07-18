@@ -1,20 +1,21 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { useEffect } from 'react'
-import { PageHeader, UserAvatar } from '@/shared/ui'
-import { resolveUserIdentity } from '@/shared/lib/constants'
+import type { Database } from '@manna/database'
+import { EmptyState, PageHeader, UserAvatar } from '@/shared/ui'
+import { resolveUserIdentity, type UserSummary } from '@/shared/lib/constants'
 import { formatDate } from '@/shared/lib/date'
 import { createSupabaseServer } from '@/shared/lib/auth'
 import { supabase } from '@/shared/lib/supabase'
 
 type NotificationRow = {
   id: string
-  type: 'liked' | 'followed' | 'family_requested' | 'family_accepted'
+  type: Database['public']['Enums']['notification_type']
   read: boolean
   created_at: string
   post_id: string | null
   actor_id: string
-  users: { display_name: string | null; avatar_url: string | null } | null
+  users: UserSummary | null
 }
 
 const LABELS: Record<NotificationRow['type'], string> = {
@@ -53,9 +54,7 @@ function NotificationsPage() {
     <div>
       <PageHeader title="通知" />
       {notifications.length === 0 ? (
-        <div className="p-8 text-center text-sm" style={{ color: 'var(--sea-ink-soft)' }}>
-          通知はまだありません
-        </div>
+        <EmptyState>通知はまだありません</EmptyState>
       ) : (
         <ul>
           {notifications.map((n) => {

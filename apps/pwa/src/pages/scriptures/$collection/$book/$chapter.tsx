@@ -3,81 +3,77 @@ import { createServerFn } from '@tanstack/react-start'
 import { getBook, buildScriptureUrl, getScriptureLabel } from '@/entities/scripture'
 import { PostCard, POST_SELECT, type PostWithUser } from '@/entities/post'
 import { createSupabaseServer } from '@/shared/lib/auth'
-import { PageHeader, ScriptureText, SanitizedVerseHtml } from '@/shared/ui'
-
-const fetchVersePosts = createServerFn({ method: 'POST' })
-  .inputValidator((data: { collection: string; book: string; chapter: number; verses: number[] }) => data)
-  .handler(async (ctx) => {
-    const { collection, book, chapter, verses } = ctx.data
-    const serverSupabase = await createSupabaseServer()
-    const { data: posts } = await serverSupabase
-      .from('posts')
-      .select(POST_SELECT)
-      .eq('scripture_collection', collection)
-      .eq('scripture_book', book)
-      .eq('scripture_chapter', chapter)
-      .overlaps('scripture_verses', verses)
-      .order('created_at', { ascending: false })
-    return (posts ?? []) as PostWithUser[]
-  })
+import { EmptyState, PageHeader, ScriptureText, SanitizedVerseHtml } from '@/shared/ui'
 
 type VerseText = { verse: number; text_html: string }
+type SupabaseServer = Awaited<ReturnType<typeof createSupabaseServer>>
+type ChapterRef = { collection: string; book: string; chapter: number }
 
-const fetchVerseTexts = createServerFn({ method: 'POST' })
-  .inputValidator((data: { collection: string; book: string; chapter: number; verses?: number[] }) => data)
+async function queryVerseTexts(supabase: SupabaseServer, { collection, book, chapter }: ChapterRef, verses?: number[]) {
+  let query = supabase
+    .from('scripture_verses')
+    .select('verse, text_html')
+    .eq('collection_id', collection)
+    .eq('book_id', book)
+    .eq('chapter', chapter)
+    .order('verse', { ascending: true })
+  if (verses?.length) {
+    query = query.in('verse', verses)
+  }
+  const { data } = await query
+  return (data ?? []) as VerseText[]
+}
+
+const fetchVerseData = createServerFn({ method: 'POST' })
+  .inputValidator((data: ChapterRef & { verses: number[] }) => data)
   .handler(async (ctx) => {
     const { collection, book, chapter, verses } = ctx.data
     const serverSupabase = await createSupabaseServer()
-    let query = serverSupabase
-      .from('scripture_verses')
-      .select('verse, text_html')
-      .eq('collection_id', collection)
-      .eq('book_id', book)
-      .eq('chapter', chapter)
-      .order('verse', { ascending: true })
-    if (verses?.length) {
-      query = query.in('verse', verses)
-    }
-    const { data } = await query
-    return (data ?? []) as VerseText[]
+    const [{ data: posts }, verseTexts] = await Promise.all([
+      serverSupabase
+        .from('posts')
+        .select(POST_SELECT)
+        .eq('scripture_collection', collection)
+        .eq('scripture_book', book)
+        .eq('scripture_chapter', chapter)
+        .overlaps('scripture_verses', verses)
+        .order('created_at', { ascending: false }),
+      queryVerseTexts(serverSupabase, ctx.data, verses),
+    ])
+    return { posts: (posts ?? []) as PostWithUser[], verseTexts }
   })
 
-const fetchChapterPosts = createServerFn({ method: 'POST' })
-  .inputValidator((data: { collection: string; book: string; chapter: number }) => data)
+const fetchChapterData = createServerFn({ method: 'POST' })
+  .inputValidator((data: ChapterRef) => data)
   .handler(async (ctx) => {
     const { collection, book, chapter } = ctx.data
     const serverSupabase = await createSupabaseServer()
-    const { data: posts } = await serverSupabase
-      .from('posts')
-      .select(POST_SELECT)
-      .eq('scripture_collection', collection)
-      .eq('scripture_book', book)
-      .eq('scripture_chapter', chapter)
-      .is('scripture_verses', null)
-      .order('created_at', { ascending: false })
-    return (posts ?? []) as PostWithUser[]
-  })
-
-const fetchChapterCounts = createServerFn({ method: 'POST' })
-  .inputValidator((data: { collection: string; book: string; chapter: number }) => data)
-  .handler(async (ctx) => {
-    const { collection, book, chapter } = ctx.data
-    const serverSupabase = await createSupabaseServer()
-    const { data: allPosts } = await serverSupabase
-      .from('posts')
-      .select('scripture_verses')
-      .eq('scripture_collection', collection)
-      .eq('scripture_book', book)
-      .eq('scripture_chapter', chapter)
-      .not('scripture_verses', 'is', null)
+    const [{ data: posts }, { data: versePosts }, verseTexts] = await Promise.all([
+      serverSupabase
+        .from('posts')
+        .select(POST_SELECT)
+        .eq('scripture_collection', collection)
+        .eq('scripture_book', book)
+        .eq('scripture_chapter', chapter)
+        .is('scripture_verses', null)
+        .order('created_at', { ascending: false }),
+      serverSupabase
+        .from('posts')
+        .select('scripture_verses')
+        .eq('scripture_collection', collection)
+        .eq('scripture_book', book)
+        .eq('scripture_chapter', chapter)
+        .not('scripture_verses', 'is', null),
+      queryVerseTexts(serverSupabase, ctx.data),
+    ])
 
     const countByVerse: Record<number, number> = {}
-    allPosts?.forEach((p) => {
+    versePosts?.forEach((p) => {
       ;(p.scripture_verses as number[] | null)?.forEach((v) => {
         countByVerse[v] = (countByVerse[v] ?? 0) + 1
       })
     })
-    return countByVerse
+    return { posts: (posts ?? []) as PostWithUser[], countByVerse, verseTexts }
   })
 
 export const Route = createFileRoute('/scriptures/$collection/$book/$chapter')({
@@ -101,10 +97,7 @@ export const Route = createFileRoute('/scriptures/$collection/$book/$chapter')({
     if (deps.verses?.length) {
       const verseCount = book.verses[chapterNum - 1]
       if (deps.verses.some((v) => v < 1 || v > verseCount)) throw notFound()
-      const [posts, verseTexts] = await Promise.all([
-        fetchVersePosts({ data: { ...base, verses: deps.verses } }),
-        fetchVerseTexts({ data: { ...base, verses: deps.verses } }),
-      ])
+      const { posts, verseTexts } = await fetchVerseData({ data: { ...base, verses: deps.verses } })
       return {
         book, chapter: chapterNum, collection: params.collection,
         mode: 'verse' as const, verses: deps.verses,
@@ -112,11 +105,7 @@ export const Route = createFileRoute('/scriptures/$collection/$book/$chapter')({
       }
     }
 
-    const [countByVerse, verseTexts, posts] = await Promise.all([
-      fetchChapterCounts({ data: base }),
-      fetchVerseTexts({ data: base }),
-      fetchChapterPosts({ data: base }),
-    ])
+    const { posts, countByVerse, verseTexts } = await fetchChapterData({ data: base })
 
     return {
       book, chapter: chapterNum, collection: params.collection,
@@ -170,9 +159,7 @@ function ChapterPage() {
           </div>
         )}
         {posts.length === 0 ? (
-          <div className="p-8 text-center text-sm" style={{ color: 'var(--sea-ink-soft)' }}>
-            この節への投稿はまだありません
-          </div>
+          <EmptyState>この節への投稿はまだありません</EmptyState>
         ) : (
           <div>
             {posts.map((post) => (

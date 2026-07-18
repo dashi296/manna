@@ -1,4 +1,5 @@
--- Auto-generated from scriptures.json
+-- Auto-generated from apps/pwa/src/shared/config/scriptures.json
+-- Re-generate: node scripts/export-books-seed.mjs
 -- Collections
 INSERT INTO scripture_collections (id, name, sort_order) VALUES
   ('bofm', 'モルモン書', 0),

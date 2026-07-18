@@ -1,9 +1,8 @@
 import { useState } from 'react'
+import { familyPairFilter, type FamilyStatus } from '@/entities/family'
 import { Button } from '@/shared/ui/button'
-import { familyPairFilter } from '@/shared/lib/familyQuery'
 import { supabase } from '@/shared/lib/supabase'
-
-export type FamilyStatus = 'none' | 'pending_sent' | 'pending_received' | 'accepted'
+import { useSupabaseAction } from '@/shared/lib/useSupabaseAction'
 
 type Props = {
   targetUserId: string
@@ -13,28 +12,21 @@ type Props = {
 
 export function FamilyButton({ targetUserId, currentUserId, initialStatus }: Props) {
   const [status, setStatus] = useState(initialStatus)
-  const [pending, setPending] = useState(false)
-
-  const run = async (action: () => PromiseLike<{ error: unknown }>, next: FamilyStatus) => {
-    setPending(true)
-    const { error } = await action()
-    if (!error) setStatus(next)
-    setPending(false)
-  }
+  const { pending, run } = useSupabaseAction()
 
   const sendRequest = () => run(
     () => supabase.from('family_relationships').insert({ requester_id: currentUserId, addressee_id: targetUserId }),
-    'pending_sent',
+    () => setStatus('pending_sent'),
   )
 
   const accept = () => run(
     () => supabase.from('family_relationships').update({ status: 'accepted' }).eq('requester_id', targetUserId).eq('addressee_id', currentUserId),
-    'accepted',
+    () => setStatus('accepted'),
   )
 
   const remove = () => run(
     () => supabase.from('family_relationships').delete().or(familyPairFilter(currentUserId, targetUserId)),
-    'none',
+    () => setStatus('none'),
   )
 
   if (status === 'accepted') {

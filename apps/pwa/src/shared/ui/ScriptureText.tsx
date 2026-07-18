@@ -11,7 +11,7 @@ const PURIFY_CONFIG = {
 // runtime (Cloudflare Workers via TanStack Start) has no DOM at all, so
 // `sanitizeVerseHtml` must only ever run in the browser — e.g. from a
 // `useEffect` after mount, never during a server render.
-export function sanitizeVerseHtml(textHtml: string): string {
+function sanitizeVerseHtml(textHtml: string): string {
   return DOMPurify.sanitize(textHtml, PURIFY_CONFIG)
 }
 

@@ -9,24 +9,11 @@ import {
 } from '@/shared/ui/select'
 import { Input } from '@/shared/ui/input'
 
-export type ScriptureRefPartial = {
-  collection?: string
-  book?: string
-  chapter?: number
-  verses?: number[]
-}
+import { parseVerses, type ScriptureRefPartial } from '../model'
 
 type Props = {
   value: ScriptureRefPartial
   onChange: (ref: ScriptureRefPartial) => void
-}
-
-export function parseVerses(input: string): number[] {
-  const parsed = input
-    .split(',')
-    .map((s) => parseInt(s.trim(), 10))
-    .filter((n) => !isNaN(n) && n > 0)
-  return [...new Set(parsed)]
 }
 
 export function ScriptureSelector({ value, onChange }: Props) {
@@ -35,11 +22,11 @@ export function ScriptureSelector({ value, onChange }: Props) {
   const selectedBook =
     value.collection && value.book ? getBook(value.collection, value.book) : undefined
 
-  const versesKey = JSON.stringify(value.verses ?? null)
-  const [versesInput, setVersesInput] = useState(value.verses?.join(', ') ?? '')
+  const versesText = value.verses?.join(', ') ?? ''
+  const [versesInput, setVersesInput] = useState(versesText)
   useEffect(() => {
-    setVersesInput(value.verses?.join(', ') ?? '')
-  }, [versesKey])
+    setVersesInput(versesText)
+  }, [versesText])
 
   return (
     <div className="space-y-3">

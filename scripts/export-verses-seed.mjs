@@ -1,8 +1,5 @@
-import { execFileSync } from 'node:child_process'
 import { writeFileSync } from 'node:fs'
-
-const DB_URL = process.env.DATABASE_URL
-  || 'postgresql://postgres:postgres@127.0.0.1:54322/postgres'
+import { runPsql } from './lib/db.mjs'
 
 const sql = `COPY (
   SELECT collection_id, book_id, chapter, verse, text, text_html
@@ -10,10 +7,7 @@ const sql = `COPY (
   ORDER BY collection_id, book_id, chapter, verse
 ) TO STDOUT`
 
-const data = execFileSync('psql', [DB_URL, '-t', '-A', '-c', sql], {
-  encoding: 'utf8',
-  maxBuffer: 100 * 1024 * 1024,
-})
+const data = runPsql(sql, { maxBuffer: 100 * 1024 * 1024 })
 
 const rows = data.split('\n').filter(Boolean).length
 const output = `-- scripture_verses seed data (${rows} rows)

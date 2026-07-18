@@ -1,7 +1,6 @@
 import { Globe, Users, Heart, Lock } from 'lucide-react'
+import type { Visibility } from '@/entities/post'
 import { ToggleGroup, ToggleGroupItem } from '@/shared/ui/toggle-group'
-
-export type Visibility = 'public' | 'followers' | 'family' | 'private'
 
 const VISIBILITY_OPTIONS = [
   { value: 'public', label: '全体公開', Icon: Globe },

@@ -1,1 +1,1 @@
-export { VisibilitySelector, type Visibility } from './ui/VisibilitySelector'
+export { VisibilitySelector } from './ui/VisibilitySelector'

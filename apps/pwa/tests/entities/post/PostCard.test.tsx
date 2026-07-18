@@ -2,16 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { PostCard, type PostWithUser } from '@/entities/post'
 
-vi.mock('@tanstack/react-router', () => ({
-  Link: ({ to, params, children, ...props }: { to: string; params?: Record<string, string>; children: React.ReactNode; [key: string]: unknown }) => {
-    const href = params ? Object.entries(params).reduce((acc, [k, v]) => acc.replace(`$${k}`, v), to) : to
-    return (
-      <a href={href} {...props}>
-        {children}
-      </a>
-    )
-  },
-}))
+vi.mock('@tanstack/react-router', async () => (await import('../../helpers/tanstack')).routerMock())
 
 const basePost: PostWithUser = {
   id: 'post-1',

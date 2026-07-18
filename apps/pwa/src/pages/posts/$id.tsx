@@ -16,7 +16,7 @@ const fetchPost = createServerFn({ method: 'POST' })
       .select(POST_SELECT)
       .eq('id', ctx.data.id)
       .single()
-    return (post ?? null) as PostWithUser | null
+    return post as PostWithUser | null
   })
 
 export const Route = createFileRoute('/posts/$id')({
@@ -52,16 +52,16 @@ function PostDetailPage() {
           </div>
         </div>
 
-        {scriptureLabel && officialUrl && (
+        {scriptureRef && scriptureLabel && officialUrl && (
           <div className="mb-4 p-3 rounded-xl" style={{ background: 'var(--chip-bg)', border: '1px solid var(--chip-line)' }}>
             <Link
               to="/scriptures/$collection/$book/$chapter"
               params={{
-                collection: post.scripture_collection!,
-                book: post.scripture_book!,
-                chapter: String(post.scripture_chapter!),
+                collection: scriptureRef.collection,
+                book: scriptureRef.book,
+                chapter: String(scriptureRef.chapter),
               }}
-              search={post.scripture_verses ? { verses: post.scripture_verses } : {}}
+              search={scriptureRef.verses ? { verses: scriptureRef.verses } : {}}
               className="font-medium text-sm"
               style={{ color: 'var(--palm)' }}
             >

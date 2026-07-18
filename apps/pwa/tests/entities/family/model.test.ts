@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { familyPairFilter } from '@/shared/lib/familyQuery'
+import { familyPairFilter } from '@/entities/family'
 
 describe('familyPairFilter', () => {
   it('双方向のORフィルタ文字列を生成する', () => {
