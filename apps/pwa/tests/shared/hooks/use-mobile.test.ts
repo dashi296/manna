@@ -21,13 +21,7 @@ describe('useIsMobile', () => {
     vi.restoreAllMocks()
   })
 
-  it('innerWidth < 1024 のとき true を返す', () => {
-    setupMatchMedia(375)
-    const { result } = renderHook(() => useIsMobile())
-    expect(result.current).toBe(true)
-  })
-
-  it('タブレット帯（800px）も mobile 扱いになる（サイドバーの lg 境界と一致）', () => {
+  it('innerWidth < 1024 のとき true を返す（タブレット帯もサイドバーの lg 境界と一致して mobile 扱い）', () => {
     setupMatchMedia(800)
     const { result } = renderHook(() => useIsMobile())
     expect(result.current).toBe(true)

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, act } from '@testing-library/react'
 import { AppSidebar } from '@/shared/ui/AppSidebar'
 import { SidebarProvider } from '@/shared/ui/sidebar'
 const mockPathname = vi.fn(() => '/')
@@ -15,14 +15,19 @@ vi.mock('@/shared/lib/auth', () => ({
   getSession: mockGetSession,
 }))
 
-async function renderSidebar() {
+async function renderSidebar({ waitForUser = true } = {}) {
   const result = render(
     <SidebarProvider>
       <AppSidebar />
     </SidebarProvider>
   )
-  // getSession の resolve による setState を待つ（act 警告回避）
-  await screen.findByText('テスト太郎')
+  if (waitForUser) {
+    // getSession の resolve による setState を待つ（act 警告回避）
+    await screen.findByText('テスト太郎')
+  } else {
+    // getSession の resolve を flush する（フッター不在の検証はこの後で行う）
+    await act(async () => {})
+  }
   return result
 }
 
@@ -72,13 +77,7 @@ describe('AppSidebar', () => {
 
   it('未ログイン時はフッターのユーザー表示をレンダーしない', async () => {
     mockGetSession.mockResolvedValue(null)
-    render(
-      <SidebarProvider>
-        <AppSidebar />
-      </SidebarProvider>
-    )
-    // getSession の resolve を待ってからフッター不在を検証する
-    await waitFor(() => expect(mockGetSession).toHaveBeenCalled())
+    await renderSidebar({ waitForUser: false })
     expect(document.querySelector('[data-slot="sidebar-footer"]')).toBeNull()
     // ナビ自体は未ログインでも表示される
     expect(screen.getByRole('link', { name: /聖典/ })).toBeInTheDocument()
