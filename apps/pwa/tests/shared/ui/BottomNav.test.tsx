@@ -1,15 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { BottomNav } from '@/shared/ui/BottomNav'
-
 const mockPathname = vi.fn(() => '/')
 
-vi.mock('@tanstack/react-router', () => ({
-  useRouterState: () => ({ location: { pathname: mockPathname() } }),
-  Link: ({ to, children, className, ...props }: { to: string; children: React.ReactNode; className?: string; [key: string]: unknown }) => (
-    <a href={to} className={className} {...props}>{children}</a>
-  ),
-}))
+vi.mock('@tanstack/react-router', async () => {
+  const { routerMock } = await import('../../helpers/tanstack')
+  // ファクトリは mockPathname の初期化前に実行されるため、ラムダで遅延参照する
+  return routerMock(undefined, () => mockPathname())
+})
 
 describe('BottomNav', () => {
   beforeEach(() => {

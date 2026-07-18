@@ -1,1 +1,12 @@
 import '@testing-library/jest-dom'
+
+// jsdom は matchMedia を実装していない（useIsMobile が依存）
+if (!window.matchMedia) {
+  window.matchMedia = (query: string): MediaQueryList =>
+    ({
+      matches: false,
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    }) as unknown as MediaQueryList
+}

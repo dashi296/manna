@@ -75,14 +75,14 @@
   --link-bg-hover: rgba(255, 255, 255, 0.9);
   --hero-a: rgba(79, 184, 178, 0.36);
   --hero-b: rgba(47, 106, 74, 0.2);
-  --sidebar: hsl(0 0% 98%);
-  --sidebar-foreground: hsl(240 5.3% 26.1%);
-  --sidebar-primary: hsl(240 5.9% 10%);
-  --sidebar-primary-foreground: hsl(0 0% 98%);
-  --sidebar-accent: hsl(240 4.8% 95.9%);
-  --sidebar-accent-foreground: hsl(240 5.9% 10%);
-  --sidebar-border: hsl(220 13% 91%);
-  --sidebar-ring: hsl(217.2 91.2% 59.8%);
+  --sidebar: var(--header-bg);
+  --sidebar-foreground: var(--sea-ink-soft);
+  --sidebar-primary: var(--lagoon-deep);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: color-mix(in srgb, var(--lagoon) 12%, transparent);
+  --sidebar-accent-foreground: var(--lagoon-deep);
+  --sidebar-border: var(--line);
+  --sidebar-ring: var(--lagoon);
 }
 
 :root[data-theme="dark"] {
@@ -131,6 +131,13 @@
   }
 }
 
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 * {
   box-sizing: border-box;
 }
@@ -141,11 +148,16 @@ body,
   min-height: 100%;
 }
 
+/* オーバースクロール時に見えるキャンバス色（body の background ショートハンドは
+   background-color をリセットするため、html 側で指定する） */
+html {
+  background-color: var(--bg-base);
+}
+
 body {
   margin: 0;
   color: var(--sea-ink);
   font-family: var(--font-sans);
-  background-color: var(--bg-base);
   background:
     radial-gradient(1100px 620px at -8% -10%, var(--hero-a), transparent 58%),
     radial-gradient(1050px 620px at 112% -12%, var(--hero-b), transparent 62%),
@@ -313,16 +325,5 @@ a {
     opacity: 1;
     transform: translateY(0);
   }
-}
-
-.dark {
-  --sidebar: hsl(240 5.9% 10%);
-  --sidebar-foreground: hsl(240 4.8% 95.9%);
-  --sidebar-primary: hsl(224.3 76.3% 48%);
-  --sidebar-primary-foreground: hsl(0 0% 100%);
-  --sidebar-accent: hsl(240 3.7% 15.9%);
-  --sidebar-accent-foreground: hsl(240 4.8% 95.9%);
-  --sidebar-border: hsl(240 3.7% 15.9%);
-  --sidebar-ring: hsl(217.2 91.2% 59.8%);
 }
 

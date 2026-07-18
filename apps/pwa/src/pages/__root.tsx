@@ -1,9 +1,11 @@
 import { HeadContent, Scripts, Outlet, createRootRoute, redirect, useRouterState } from '@tanstack/react-router'
 import { getSession, getServerSession } from '@/shared/lib/auth'
+import { getCookieHeader } from '@/shared/lib/cookies'
 import { AppSidebar } from '@/shared/ui/AppSidebar'
 import { BottomNav } from '@/shared/ui/BottomNav'
 import { DevTools } from '@/shared/ui/DevTools'
-import { SidebarInset, SidebarProvider } from '@/shared/ui/sidebar'
+import { sidebarStateFromCookieHeader, SidebarInset, SidebarProvider } from '@/shared/ui/sidebar'
+import { TooltipProvider } from '@/shared/ui/tooltip'
 import appCss from '@/styles.css?url'
 
 const isDev = import.meta.env.DEV
@@ -39,6 +41,11 @@ export const Route = createRootRoute({
       if (!session) throw redirect({ to: '/login' })
     }
   },
+  loader: async () => ({
+    sidebarDefaultOpen: sidebarStateFromCookieHeader(await getCookieHeader()),
+  }),
+  // defaultOpen の種にしかならないため、ナビゲーションごとの再実行は不要
+  shouldReload: false,
   shellComponent: RootDocument,
   component: RootLayout,
 })
@@ -60,6 +67,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 
 function RootLayout() {
   const { location } = useRouterState()
+  const { sidebarDefaultOpen } = Route.useLoaderData()
   const isAuthPage =
     location.pathname === '/login' || location.pathname.startsWith('/auth/')
 
@@ -68,16 +76,18 @@ function RootLayout() {
   }
 
   return (
-    <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset className="flex flex-col min-h-screen min-w-0">
-        <main className="flex-1 pb-16 lg:pb-0">
-          <div className="max-w-md mx-auto">
-            <Outlet />
-          </div>
-        </main>
-        <BottomNav />
-      </SidebarInset>
-    </SidebarProvider>
+    <TooltipProvider>
+      <SidebarProvider defaultOpen={sidebarDefaultOpen}>
+        <AppSidebar />
+        <SidebarInset className="flex flex-col min-h-screen min-w-0">
+          <main className="flex-1 pb-16 lg:pb-0">
+            <div className="max-w-md mx-auto">
+              <Outlet />
+            </div>
+          </main>
+          <BottomNav />
+        </SidebarInset>
+      </SidebarProvider>
+    </TooltipProvider>
   )
 }
