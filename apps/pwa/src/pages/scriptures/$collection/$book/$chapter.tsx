@@ -100,15 +100,11 @@ const fetchChapterData = createServerFn({ method: 'POST' })
 type ChapterSearch = { verses?: number[]; select?: number[]; mode?: SelectionMode }
 
 export const Route = createFileRoute('/scriptures/$collection/$book/$chapter')({
-  validateSearch: (search: Record<string, unknown>): ChapterSearch => {
-    const verses = search.verses !== undefined ? parseSelection(search.verses) : undefined
-    const select = search.select !== undefined ? parseSelection(search.select) : undefined
-    return {
-      verses,
-      select,
-      mode: search.mode === 'select' ? 'select' : undefined,
-    }
-  },
+  validateSearch: (search: Record<string, unknown>): ChapterSearch => ({
+    verses: search.verses !== undefined ? parseSelection(search.verses) : undefined,
+    select: search.select !== undefined ? parseSelection(search.select) : undefined,
+    mode: search.mode === 'select' ? 'select' : undefined,
+  }),
   loaderDeps: ({ search }) => ({ verses: search.verses }),
   loader: async ({ params, deps }) => {
     const book = getBook(params.collection, params.book)
