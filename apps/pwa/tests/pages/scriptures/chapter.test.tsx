@@ -42,7 +42,7 @@ const baseChapterData: TestLoaderData = {
 }
 
 let loaderData: TestLoaderData
-let search: { select?: number[] } = { select: [1, 2] }
+let search: { select?: number[]; mode?: 'select' } = { select: [1, 2] }
 
 vi.mock('@tanstack/react-router', async () => {
   const { routerMock } = await import('../../helpers/tanstack')
@@ -67,7 +67,7 @@ let ChapterPage: React.ComponentType
 beforeAll(async () => {
   const mod = await import('@/pages/scriptures/$collection/$book/$chapter')
   const Route = mod.Route as unknown as {
-    useSearch: () => { select?: number[] }
+    useSearch: () => { select?: number[]; mode?: 'select' }
     useNavigate: () => ReturnType<typeof vi.fn>
   }
   Route.useSearch = () => search
@@ -86,7 +86,8 @@ describe('ChapterPage', () => {
     const user = userEvent.setup()
     render(<ChapterPage />)
 
-    await user.click(screen.getByRole('button', { name: '章に投稿' }))
+    await user.click(screen.getByRole('button', { name: /投稿/ }))
+    await user.click(await screen.findByRole('menuitem', { name: /章全体に投稿/ }))
 
     expect(screen.getByRole('dialog')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: '📖 第1ニーファイ書 第1章' })).toBeInTheDocument()
@@ -98,10 +99,10 @@ describe('ChapterPage', () => {
 
     render(<ChapterPage />)
 
-    expect(screen.queryByRole('button', { name: '章に投稿' })).toBeNull()
-    expect(screen.queryByRole('checkbox', { name: '1節を選択' })).toBeNull()
+    expect(screen.queryByRole('button', { name: /投稿/ })).toBeNull()
+    expect(screen.queryByRole('checkbox')).toBeNull()
     expect(screen.queryByTestId('selection-bar')).toBeNull()
-    expect(screen.getByText('節をタップして詳細を見ることができます')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'キャンセル' })).toBeNull()
   })
 
   it('未ログインの節表示では投稿導線を表示しない', () => {

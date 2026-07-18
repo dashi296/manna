@@ -1,13 +1,21 @@
 import { useMemo, useState } from 'react'
-import { createFileRoute, Link, notFound, useRouter } from '@tanstack/react-router'
+import { createFileRoute, notFound, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { getBook, buildScriptureUrl, getScriptureLabel } from '@/entities/scripture'
 import { PostCard, POST_SELECT, type PostWithUser } from '@/entities/post'
 import { createSupabaseServer } from '@/shared/lib/auth'
-import { EmptyState, PageHeader, ScriptureText, SanitizedVerseHtml } from '@/shared/ui'
+import { EmptyState, PageHeader, ScriptureText } from '@/shared/ui'
 import { Button } from '@/shared/ui/button'
 import { PostComposerSheet } from '@/widgets/post-composer-sheet'
-import { SelectionBar, VerseCheckbox, parseSelection, toggleVerse } from '@/features/select-scripture-verses'
+import { ComposeMenu } from '@/widgets/compose-menu'
+import {
+  SelectionModeHeader,
+  VerseRow,
+  parseSelection,
+  parseMode,
+  toggleVerse,
+  type SelectionMode,
+} from '@/features/select-scripture-verses'
 
 type VerseText = { verse: number; text_html: string }
 type Book = NonNullable<ReturnType<typeof getBook>>
@@ -90,7 +98,7 @@ const fetchChapterData = createServerFn({ method: 'POST' })
     return { posts: (posts ?? []) as PostWithUser[], countByVerse, verseTexts, userId }
   })
 
-type ChapterSearch = { verses?: number[]; select?: number[] }
+type ChapterSearch = { verses?: number[]; select?: number[]; mode?: SelectionMode }
 
 export const Route = createFileRoute('/scriptures/$collection/$book/$chapter')({
   validateSearch: (search: Record<string, unknown>): ChapterSearch => ({
@@ -104,6 +112,7 @@ export const Route = createFileRoute('/scriptures/$collection/$book/$chapter')({
           .map((v) => Number(v))
           .filter((n) => Number.isInteger(n) && n > 0)
       : undefined,
+    mode: parseMode(search.mode) === 'select' ? 'select' : undefined,
   }),
   loaderDeps: ({ search }) => ({ verses: search.verses }),
   loader: async ({ params, deps }) => {
@@ -271,50 +280,80 @@ function ChapterView({ book, chapter, collection, posts, countByVerse, verseText
     () => parseSelection(search.select, maxVerse),
     [search.select, maxVerse],
   )
+  const mode: SelectionMode = canCompose && search.mode === 'select' ? 'select' : 'read'
 
-  const setSelection = (next: number[]) => {
+  const updateSearch = (next: Partial<ChapterSearch>) => {
     navigate({
       to: '/scriptures/$collection/$book/$chapter',
       params: { collection, book: book.id, chapter: String(chapter) },
-      search: (prev) => ({ ...prev, select: next.length ? next : undefined }),
+      search: (prev) => ({
+        verses: prev.verses,
+        select: next.select !== undefined ? (next.select.length ? next.select : undefined) : prev.select,
+        mode: next.mode !== undefined ? next.mode : prev.mode,
+      }),
       replace: true,
     })
   }
 
+  const setSelection = (next: number[]) => updateSearch({ select: next })
+  const enterSelectMode = () => updateSearch({ mode: 'select' })
+  const exitSelectMode = () => updateSearch({ mode: undefined, select: [] })
+
+  const openComposerForChapter = () => {
+    setComposerVerses(undefined)
+    setSheetOpen(true)
+  }
+  const openComposerForSelection = () => {
+    setComposerVerses(selection)
+    setSheetOpen(true)
+  }
+
   const onSheetOpenChange = (open: boolean) => {
     setSheetOpen(open)
-    if (!open) router.invalidate()
+    if (!open) {
+      router.invalidate()
+      if (mode === 'select') exitSelectMode()
+    }
   }
+
+  const chapterHeader = (
+    <PageHeader
+      title={`${book.name} 第${chapter}章`}
+      backTo="/scriptures/$collection/$book"
+      backLabel={book.name}
+      action={
+        <div className="flex items-center gap-3">
+          <a
+            href={officialUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs underline"
+            style={{ color: 'var(--lagoon-deep)' }}
+          >
+            本文
+          </a>
+          {canCompose && (
+            <ComposeMenu
+              onSelectChapter={openComposerForChapter}
+              onSelectVerses={enterSelectMode}
+            />
+          )}
+        </div>
+      }
+    />
+  )
+
+  const selectionHeader = (
+    <SelectionModeHeader
+      count={selection.length}
+      onCancel={exitSelectMode}
+      onSubmit={openComposerForSelection}
+    />
+  )
 
   return (
     <div>
-      <PageHeader
-        title={`${book.name} 第${chapter}章`}
-        backTo="/scriptures/$collection/$book"
-        backLabel={book.name}
-        action={
-          <div className="flex items-center gap-2">
-            <a
-              href={officialUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs underline"
-              style={{ color: 'var(--lagoon-deep)' }}
-            >
-              本文
-            </a>
-            {canCompose && (
-              <ComposeButton
-                onClick={() => {
-                  setComposerVerses(undefined)
-                  setSheetOpen(true)
-                }}
-                label="章に投稿"
-              />
-            )}
-          </div>
-        }
-      />
+      {mode === 'select' ? selectionHeader : chapterHeader}
       {posts.length > 0 && (
         <div className="border-b" style={{ borderColor: 'var(--line)' }}>
           <p className="px-4 pt-3 pb-1 text-xs font-medium" style={{ color: 'var(--sea-ink-soft)' }}>
@@ -326,81 +365,33 @@ function ChapterView({ book, chapter, collection, posts, countByVerse, verseText
         </div>
       )}
       <div className="p-4 pb-24">
-        <p className="text-xs mb-4" style={{ color: 'var(--sea-ink-soft)' }}>
-          {canCompose
-            ? '節をタップして詳細を見る・チェックで複数選択して投稿できます'
-            : '節をタップして詳細を見ることができます'}
-        </p>
         <ul className="overflow-hidden rounded-xl" style={{ border: '1px solid var(--line)' }}>
           {verseNumbers.map((verse) => {
             const count = countByVerse[verse] ?? 0
             const vt = verseTextMap.get(verse)
-            const isSelected = canCompose && selection.includes(verse)
+            const isSelected = mode === 'select' && selection.includes(verse)
             return (
               <li
                 key={verse}
                 className="border-b last:border-b-0"
-                style={{
-                  borderColor: 'var(--line)',
-                  background: isSelected ? 'var(--chip-bg)' : 'transparent',
-                }}
+                style={{ borderColor: 'var(--line)' }}
               >
-                <div className="flex items-start gap-2 px-4 py-3">
-                  {canCompose && (
-                    <VerseCheckbox
-                      verse={verse}
-                      checked={isSelected}
-                      onToggle={(v) => setSelection(toggleVerse(selection, v))}
-                    />
-                  )}
-                  <Link
-                    to="/scriptures/$collection/$book/$chapter"
-                    params={{ collection, book: book.id, chapter: String(chapter) }}
-                    search={{ verses: [verse] }}
-                    className="flex-1 min-w-0 flex items-start justify-between gap-2"
-                    style={{ color: 'var(--sea-ink)' }}
-                  >
-                    <div className="flex-1 min-w-0">
-                      <span className="text-xs font-medium" style={{ color: 'var(--sea-ink-soft)' }}>
-                        {verse}
-                      </span>
-                      {vt && (
-                        <SanitizedVerseHtml
-                          html={vt.text_html}
-                          className="ml-2 text-sm"
-                          style={{ color: 'var(--sea-ink)' }}
-                        />
-                      )}
-                    </div>
-                    {count > 0 && (
-                      <span
-                        className="text-xs px-2 py-0.5 rounded-full font-medium shrink-0"
-                        style={{
-                          background: 'var(--chip-bg)',
-                          border: '1px solid var(--chip-line)',
-                          color: 'var(--palm)',
-                        }}
-                      >
-                        {count}件
-                      </span>
-                    )}
-                  </Link>
-                </div>
+                <VerseRow
+                  collection={collection}
+                  book={book.id}
+                  chapter={chapter}
+                  verse={verse}
+                  textHtml={vt?.text_html}
+                  count={count}
+                  mode={mode}
+                  selected={isSelected}
+                  onSelect={(v) => setSelection(toggleVerse(selection, v))}
+                />
               </li>
             )
           })}
         </ul>
       </div>
-      {canCompose && (
-        <SelectionBar
-          selection={selection}
-          onClear={() => setSelection([])}
-          onOpenComposer={() => {
-            setComposerVerses(selection)
-            setSheetOpen(true)
-          }}
-        />
-      )}
       <PostComposerSheet
         open={sheetOpen}
         onOpenChange={onSheetOpenChange}
