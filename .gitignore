@@ -18,3 +18,4 @@ apps/pwa/.cta.json
 .playwright-mcp/
 **/.env.production
 screenshots/
+supabase/seed-verses.sql

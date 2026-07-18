@@ -235,6 +235,94 @@ export type Database = {
           },
         ]
       }
+      scripture_books: {
+        Row: {
+          chapters: number
+          collection_id: string
+          id: string
+          name: string
+          sort_order: number
+          verses: number[]
+        }
+        Insert: {
+          chapters: number
+          collection_id: string
+          id: string
+          name: string
+          sort_order?: number
+          verses: number[]
+        }
+        Update: {
+          chapters?: number
+          collection_id?: string
+          id?: string
+          name?: string
+          sort_order?: number
+          verses?: number[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scripture_books_collection_id_fkey"
+            columns: ["collection_id"]
+            isOneToOne: false
+            referencedRelation: "scripture_collections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scripture_collections: {
+        Row: {
+          id: string
+          name: string
+          sort_order: number
+        }
+        Insert: {
+          id: string
+          name: string
+          sort_order?: number
+        }
+        Update: {
+          id?: string
+          name?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      scripture_verses: {
+        Row: {
+          book_id: string
+          chapter: number
+          collection_id: string
+          text: string
+          text_html: string
+          verse: number
+        }
+        Insert: {
+          book_id: string
+          chapter: number
+          collection_id: string
+          text: string
+          text_html: string
+          verse: number
+        }
+        Update: {
+          book_id?: string
+          chapter?: number
+          collection_id?: string
+          text?: string
+          text_html?: string
+          verse?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scripture_verses_collection_id_book_id_fkey"
+            columns: ["collection_id", "book_id"]
+            isOneToOne: false
+            referencedRelation: "scripture_books"
+            referencedColumns: ["collection_id", "id"]
+          },
+        ]
+      }
       users: {
         Row: {
           avatar_url: string | null
@@ -264,7 +352,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      is_family: { Args: { user_a: string; user_b: string }; Returns: boolean }
+      [_ in never]: never
     }
     Enums: {
       notification_type:

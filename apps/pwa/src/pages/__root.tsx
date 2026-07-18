@@ -14,12 +14,17 @@ export const Route = createRootRoute({
   head: () => ({
     meta: [
       { charSet: 'utf-8' },
-      { name: 'viewport', content: 'width=device-width, initial-scale=1' },
+      { name: 'viewport', content: 'width=device-width, initial-scale=1, viewport-fit=cover' },
       { title: 'Manna' },
+      { name: 'theme-color', content: '#2b7a72' },
+      { name: 'apple-mobile-web-app-capable', content: 'yes' },
+      { name: 'apple-mobile-web-app-status-bar-style', content: 'default' },
+      { name: 'description', content: '聖典学習の体験と感想を分かち合う' },
     ],
     links: [
       { rel: 'stylesheet', href: appCss },
       { rel: 'manifest', href: '/manifest.json' },
+      { rel: 'apple-touch-icon', href: '/logo192.png' },
     ],
   }),
   beforeLoad: async ({ location }) => {

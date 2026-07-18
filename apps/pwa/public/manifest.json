@@ -1,6 +1,12 @@
 {
+  "name": "Manna — 聖典学習共有",
   "short_name": "Manna",
-  "name": "Manna",
+  "description": "聖典学習の体験と感想を分かち合う",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f6f3ee",
+  "theme_color": "#2b7a72",
+  "lang": "ja",
   "icons": [
     {
       "src": "favicon.ico",
@@ -17,9 +23,5 @@
       "type": "image/png",
       "sizes": "512x512"
     }
-  ],
-  "start_url": ".",
-  "display": "standalone",
-  "theme_color": "#000000",
-  "background_color": "#ffffff"
+  ]
 }
