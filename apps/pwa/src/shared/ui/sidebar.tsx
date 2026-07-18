@@ -2,7 +2,8 @@
 
 // shadcn/ui Sidebar（Base UI 版）の vendored コード。upstream との意図的な差分:
 // - 表示ブレークポイントを md→lg に変更（BottomNav の境界に合わせる。lg:block / lg:flex の2箇所）
-// - SIDEBAR_COOKIE_NAME を export（__root.tsx が SSR で defaultOpen を復元するため）
+// - sidebarStateFromCookieHeader を追加・export（__root.tsx が SSR で defaultOpen を復元するため。
+//   cookie の書き込み側と値形式をこのファイル内で対にしている）
 
 import * as React from "react"
 import { mergeProps } from "@base-ui/react/merge-props"
@@ -35,6 +36,11 @@ const SIDEBAR_WIDTH = "16rem"
 const SIDEBAR_WIDTH_MOBILE = "18rem"
 const SIDEBAR_WIDTH_ICON = "3rem"
 const SIDEBAR_KEYBOARD_SHORTCUT = "b"
+
+// SidebarProvider が書き込む `${SIDEBAR_COOKIE_NAME}=true|false` を cookie ヘッダから読み取る
+function sidebarStateFromCookieHeader(cookieHeader: string): boolean {
+  return !cookieHeader.split("; ").includes(`${SIDEBAR_COOKIE_NAME}=false`)
+}
 
 type SidebarContextProps = {
   state: "expanded" | "collapsed"
@@ -700,7 +706,7 @@ function SidebarMenuSubButton({
 }
 
 export {
-  SIDEBAR_COOKIE_NAME,
+  sidebarStateFromCookieHeader,
   Sidebar,
   SidebarContent,
   SidebarFooter,

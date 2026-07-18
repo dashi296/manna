@@ -2,7 +2,10 @@ import { vi } from 'vitest'
 
 // createFileRoute('/path')(config) は「呼び出し可能を返す関数」なので、
 // プレーンオブジェクトを返すスタブだとページモジュールの評価時にクラッシュする。
-export function routerMock(useLoaderData: () => unknown = () => ({})) {
+export function routerMock(
+  useLoaderData: () => unknown = () => ({}),
+  getPathname: () => string = () => '/',
+) {
   return {
     createFileRoute: () => (config: Record<string, unknown>) => ({
       ...config,
@@ -19,7 +22,7 @@ export function routerMock(useLoaderData: () => unknown = () => ({})) {
       )
     },
     notFound: () => new Error('not found'),
-    useRouterState: () => ({ location: { pathname: '/' } }),
+    useRouterState: () => ({ location: { pathname: getPathname() } }),
   }
 }
 

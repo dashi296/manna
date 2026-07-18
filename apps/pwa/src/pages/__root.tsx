@@ -4,7 +4,7 @@ import { getCookieHeader } from '@/shared/lib/cookies'
 import { AppSidebar } from '@/shared/ui/AppSidebar'
 import { BottomNav } from '@/shared/ui/BottomNav'
 import { DevTools } from '@/shared/ui/DevTools'
-import { SIDEBAR_COOKIE_NAME, SidebarInset, SidebarProvider } from '@/shared/ui/sidebar'
+import { sidebarStateFromCookieHeader, SidebarInset, SidebarProvider } from '@/shared/ui/sidebar'
 import { TooltipProvider } from '@/shared/ui/tooltip'
 import appCss from '@/styles.css?url'
 
@@ -12,10 +12,6 @@ const isDev = import.meta.env.DEV
 
 const AUTH_REQUIRED_PREFIXES = ['/posts/new', '/profile', '/notifications']
 
-async function getSidebarDefaultOpen(): Promise<boolean> {
-  const cookie = await getCookieHeader()
-  return !cookie.split('; ').includes(`${SIDEBAR_COOKIE_NAME}=false`)
-}
 
 export const Route = createRootRoute({
   head: () => ({
@@ -46,7 +42,9 @@ export const Route = createRootRoute({
       if (!session) throw redirect({ to: '/login' })
     }
   },
-  loader: async () => ({ sidebarDefaultOpen: await getSidebarDefaultOpen() }),
+  loader: async () => ({
+    sidebarDefaultOpen: sidebarStateFromCookieHeader(await getCookieHeader()),
+  }),
   // defaultOpen の種にしかならないため、ナビゲーションごとの再実行は不要
   shouldReload: false,
   shellComponent: RootDocument,
