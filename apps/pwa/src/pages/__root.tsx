@@ -12,7 +12,6 @@ const isDev = import.meta.env.DEV
 
 const AUTH_REQUIRED_PREFIXES = ['/posts/new', '/profile', '/notifications']
 
-
 export const Route = createRootRoute({
   head: () => ({
     meta: [

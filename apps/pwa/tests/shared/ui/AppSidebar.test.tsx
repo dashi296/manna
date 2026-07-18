@@ -6,6 +6,7 @@ const mockPathname = vi.fn(() => '/')
 
 vi.mock('@tanstack/react-router', async () => {
   const { routerMock } = await import('../../helpers/tanstack')
+  // ファクトリは mockPathname の初期化前に実行されるため、ラムダで遅延参照する
   return routerMock(undefined, () => mockPathname())
 })
 
