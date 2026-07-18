@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/shared/ui/sheet'
 import { PostEditor } from '@/widgets/post-editor'
 import { type ScriptureRefPartial } from '@/features/select-scripture'
@@ -12,15 +12,14 @@ type Props = {
 
 const HISTORY_STATE_MARKER = { mannaComposer: true }
 
-function isCompleteRef(s: ScriptureRefPartial): s is Required<Pick<ScriptureRefPartial, 'collection' | 'book'>> & ScriptureRefPartial {
-  return !!s.collection && !!s.book
-}
-
 export function PostComposerSheet({ open, onOpenChange, initialScripture }: Props) {
+  const onOpenChangeRef = useRef(onOpenChange)
+  onOpenChangeRef.current = onOpenChange
+
   useEffect(() => {
     if (!open) return
     window.history.pushState(HISTORY_STATE_MARKER, '')
-    const handler = () => onOpenChange(false)
+    const handler = () => onOpenChangeRef.current(false)
     window.addEventListener('popstate', handler)
     return () => {
       window.removeEventListener('popstate', handler)
@@ -28,9 +27,9 @@ export function PostComposerSheet({ open, onOpenChange, initialScripture }: Prop
         window.history.back()
       }
     }
-  }, [open, onOpenChange])
+  }, [open])
 
-  const title = initialScripture && isCompleteRef(initialScripture)
+  const title = initialScripture?.collection && initialScripture.book
     ? `📖 ${getScriptureLabel({
         collection: initialScripture.collection,
         book: initialScripture.book,

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { createFileRoute, Link, notFound, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { getBook, buildScriptureUrl, getScriptureLabel } from '@/entities/scripture'
@@ -10,6 +10,7 @@ import { PostComposerSheet } from '@/widgets/post-composer-sheet'
 import { SelectionBar, VerseCheckbox, parseSelection, toggleVerse } from '@/features/select-scripture-verses'
 
 type VerseText = { verse: number; text_html: string }
+type Book = NonNullable<ReturnType<typeof getBook>>
 type SupabaseServer = Awaited<ReturnType<typeof createSupabaseServer>>
 type ChapterRef = { collection: string; book: string; chapter: number }
 
@@ -127,109 +128,135 @@ export const Route = createFileRoute('/scriptures/$collection/$book/$chapter')({
   component: ChapterPage,
 })
 
+function ComposeButton({ onClick, label }: { onClick: () => void; label: string }) {
+  return (
+    <Button
+      size="sm"
+      onClick={onClick}
+      className="text-xs px-3 py-1.5 rounded-full font-semibold"
+      style={{ background: 'var(--lagoon)', color: '#fff' }}
+    >
+      {label}
+    </Button>
+  )
+}
+
 function ChapterPage() {
-  const { book, chapter, collection, mode, verses, posts, countByVerse, verseTexts } = Route.useLoaderData()
+  const data = Route.useLoaderData()
+  if (data.mode === 'verse') {
+    return <VerseView
+      book={data.book}
+      chapter={data.chapter}
+      collection={data.collection}
+      verses={data.verses}
+      posts={data.posts}
+      verseTexts={data.verseTexts}
+    />
+  }
+  return <ChapterView
+    book={data.book}
+    chapter={data.chapter}
+    collection={data.collection}
+    posts={data.posts}
+    countByVerse={data.countByVerse}
+    verseTexts={data.verseTexts}
+  />
+}
+
+type VerseViewProps = {
+  book: Book
+  chapter: number
+  collection: string
+  verses: number[]
+  posts: PostWithUser[]
+  verseTexts: VerseText[]
+}
+
+function VerseView({ book, chapter, collection, verses, posts, verseTexts }: VerseViewProps) {
   const router = useRouter()
   const [sheetOpen, setSheetOpen] = useState(false)
+  const scriptureLabel = getScriptureLabel({ collection, book: book.id, chapter, verses })
+  const officialUrl = buildScriptureUrl({ collection, book: book.id, chapter, verses })
 
-  const onComposerClose = (open: boolean) => {
+  const onSheetOpenChange = (open: boolean) => {
     setSheetOpen(open)
     if (!open) router.invalidate()
   }
 
-  if (mode === 'verse') {
-    const scriptureLabel = getScriptureLabel({ collection, book: book.id, chapter, verses })
-    const officialUrl = buildScriptureUrl({ collection, book: book.id, chapter, verses })
-    return (
-      <div>
-        <PageHeader
-          title={`📖 ${scriptureLabel}`}
-          backTo="/scriptures/$collection/$book/$chapter"
-          backLabel={`第${chapter}章`}
-          action={
-            <Button
-              size="sm"
-              onClick={() => setSheetOpen(true)}
-              className="text-xs px-3 py-1.5 rounded-full font-semibold"
-              style={{ background: 'var(--lagoon)', color: '#fff' }}
-            >
-              投稿する
-            </Button>
-          }
-        />
-        <div className="px-4 py-2 border-b" style={{ borderColor: 'var(--line)' }}>
-          <a
-            href={officialUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm underline"
-            style={{ color: 'var(--lagoon-deep)' }}
-          >
-            公式サイトで読む →
-          </a>
-          <span className="text-xs ml-3" style={{ color: 'var(--sea-ink-soft)' }}>新着順</span>
-        </div>
-        {verseTexts.length > 0 && (
-          <div className="px-4 py-3 border-b" style={{ borderColor: 'var(--line)', background: 'var(--surface)' }}>
-            {verseTexts.map((vt) => (
-              <ScriptureText key={vt.verse} verse={vt.verse} textHtml={vt.text_html} />
-            ))}
-          </div>
-        )}
-        {posts.length === 0 ? (
-          <EmptyState>この節への投稿はまだありません</EmptyState>
-        ) : (
-          <div>
-            {posts.map((post) => (
-              <PostCard key={post.id} post={post} />
-            ))}
-          </div>
-        )}
-        <PostComposerSheet
-          open={sheetOpen}
-          onOpenChange={onComposerClose}
-          initialScripture={{ collection, book: book.id, chapter, verses }}
-        />
+  return (
+    <div>
+      <PageHeader
+        title={`📖 ${scriptureLabel}`}
+        backTo="/scriptures/$collection/$book/$chapter"
+        backLabel={`第${chapter}章`}
+        action={<ComposeButton onClick={() => setSheetOpen(true)} label="投稿する" />}
+      />
+      <div className="px-4 py-2 border-b" style={{ borderColor: 'var(--line)' }}>
+        <a
+          href={officialUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-sm underline"
+          style={{ color: 'var(--lagoon-deep)' }}
+        >
+          公式サイトで読む →
+        </a>
+        <span className="text-xs ml-3" style={{ color: 'var(--sea-ink-soft)' }}>新着順</span>
       </div>
-    )
-  }
-
-  return <ChapterView
-    book={book}
-    chapter={chapter}
-    collection={collection}
-    posts={posts}
-    countByVerse={countByVerse}
-    verseTexts={verseTexts}
-    sheetOpen={sheetOpen}
-    setSheetOpen={setSheetOpen}
-    onComposerClose={onComposerClose}
-  />
+      {verseTexts.length > 0 && (
+        <div className="px-4 py-3 border-b" style={{ borderColor: 'var(--line)', background: 'var(--surface)' }}>
+          {verseTexts.map((vt) => (
+            <ScriptureText key={vt.verse} verse={vt.verse} textHtml={vt.text_html} />
+          ))}
+        </div>
+      )}
+      {posts.length === 0 ? (
+        <EmptyState>この節への投稿はまだありません</EmptyState>
+      ) : (
+        <div>
+          {posts.map((post) => (
+            <PostCard key={post.id} post={post} />
+          ))}
+        </div>
+      )}
+      <PostComposerSheet
+        open={sheetOpen}
+        onOpenChange={onSheetOpenChange}
+        initialScripture={{ collection, book: book.id, chapter, verses }}
+      />
+    </div>
+  )
 }
 
 type ChapterViewProps = {
-  book: ReturnType<typeof getBook> & object
+  book: Book
   chapter: number
   collection: string
   posts: PostWithUser[]
   countByVerse: Record<number, number>
   verseTexts: VerseText[]
-  sheetOpen: boolean
-  setSheetOpen: (v: boolean) => void
-  onComposerClose: (open: boolean) => void
 }
 
-function ChapterView({
-  book, chapter, collection, posts, countByVerse, verseTexts,
-  sheetOpen, setSheetOpen, onComposerClose,
-}: ChapterViewProps) {
+function ChapterView({ book, chapter, collection, posts, countByVerse, verseTexts }: ChapterViewProps) {
+  const router = useRouter()
+  const [sheetOpen, setSheetOpen] = useState(false)
   const search = Route.useSearch()
   const navigate = Route.useNavigate()
   const officialUrl = buildScriptureUrl({ collection, book: book.id, chapter })
-  const verseTextMap = new Map(verseTexts.map((vt) => [vt.verse, vt]))
   const maxVerse = book.verses[chapter - 1]
 
-  const selection = parseSelection(search.select, maxVerse)
+  const verseTextMap = useMemo(
+    () => new Map(verseTexts.map((vt) => [vt.verse, vt])),
+    [verseTexts],
+  )
+  const verseNumbers = useMemo(
+    () => Array.from({ length: maxVerse }, (_, i) => i + 1),
+    [maxVerse],
+  )
+  const selection = useMemo(
+    () => parseSelection(search.select, maxVerse),
+    [search.select, maxVerse],
+  )
 
   const setSelection = (next: number[]) => {
     navigate({
@@ -240,11 +267,9 @@ function ChapterView({
     })
   }
 
-  const initialScripture = {
-    collection,
-    book: book.id,
-    chapter,
-    verses: selection.length ? selection : undefined,
+  const onSheetOpenChange = (open: boolean) => {
+    setSheetOpen(open)
+    if (!open) router.invalidate()
   }
 
   return (
@@ -264,14 +289,7 @@ function ChapterView({
             >
               本文
             </a>
-            <Button
-              size="sm"
-              onClick={() => setSheetOpen(true)}
-              className="text-xs px-3 py-1.5 rounded-full font-semibold"
-              style={{ background: 'var(--lagoon)', color: '#fff' }}
-            >
-              章に投稿
-            </Button>
+            <ComposeButton onClick={() => setSheetOpen(true)} label="章に投稿" />
           </div>
         }
       />
@@ -290,7 +308,7 @@ function ChapterView({
           節をタップして詳細を見る・チェックで複数選択して投稿できます
         </p>
         <ul className="overflow-hidden rounded-xl" style={{ border: '1px solid var(--line)' }}>
-          {Array.from({ length: maxVerse }, (_, i) => i + 1).map((verse) => {
+          {verseNumbers.map((verse) => {
             const count = countByVerse[verse] ?? 0
             const vt = verseTextMap.get(verse)
             const isSelected = selection.includes(verse)
@@ -354,8 +372,13 @@ function ChapterView({
       />
       <PostComposerSheet
         open={sheetOpen}
-        onOpenChange={onComposerClose}
-        initialScripture={initialScripture}
+        onOpenChange={onSheetOpenChange}
+        initialScripture={{
+          collection,
+          book: book.id,
+          chapter,
+          verses: selection.length ? selection : undefined,
+        }}
       />
     </div>
   )

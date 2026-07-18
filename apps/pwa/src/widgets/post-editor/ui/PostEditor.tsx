@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { MarkdownRenderer, TabBar } from '@/shared/ui'
 import { Button } from '@/shared/ui/button'
@@ -55,11 +55,6 @@ export function PostEditor({ initialScripture, mode = 'page', onSuccess }: Props
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const draftLoaded = useRef(false)
 
-  const draftKey = useMemo(
-    () => (mode === 'page' ? LEGACY_DRAFT_KEY : scriptureDraftKey(scripture)),
-    [mode, scripture],
-  )
-
   useEffect(() => {
     const key = mode === 'page' ? LEGACY_DRAFT_KEY : scriptureDraftKey(initialScripture ?? {})
     const draft = loadDraft(key)
@@ -71,11 +66,12 @@ export function PostEditor({ initialScripture, mode = 'page', onSuccess }: Props
 
   useEffect(() => {
     if (!draftLoaded.current) return
+    const key = mode === 'page' ? LEGACY_DRAFT_KEY : scriptureDraftKey(scripture)
     const timer = setTimeout(() => {
-      localStorage.setItem(draftKey, JSON.stringify({ content, visibility, scripture }))
+      localStorage.setItem(key, JSON.stringify({ content, visibility, scripture }))
     }, 500)
     return () => clearTimeout(timer)
-  }, [content, visibility, scripture, draftKey])
+  }, [content, visibility, scripture, mode])
 
   const handleSubmit = async () => {
     if (!content.trim() || submitting) return
@@ -105,7 +101,7 @@ export function PostEditor({ initialScripture, mode = 'page', onSuccess }: Props
       return
     }
 
-    localStorage.removeItem(draftKey)
+    localStorage.removeItem(mode === 'page' ? LEGACY_DRAFT_KEY : scriptureDraftKey(scripture))
     if (onSuccess) {
       onSuccess()
     } else {
