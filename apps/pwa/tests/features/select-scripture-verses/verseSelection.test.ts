@@ -50,3 +50,21 @@ describe('formatSelectionLabel', () => {
     expect(formatSelectionLabel([1, 2, 3, 4, 5])).toBe('1, 2, 3（他2件）')
   })
 })
+
+import { parseMode } from '@/features/select-scripture-verses'
+
+describe('parseMode', () => {
+  it("'select' を渡すと 'select' を返す", () => {
+    expect(parseMode('select')).toBe('select')
+  })
+
+  it("undefined は 'read' にフォールバック", () => {
+    expect(parseMode(undefined)).toBe('read')
+  })
+
+  it("不正な値は 'read' にフォールバック", () => {
+    expect(parseMode('foo')).toBe('read')
+    expect(parseMode(42)).toBe('read')
+    expect(parseMode(null)).toBe('read')
+  })
+})

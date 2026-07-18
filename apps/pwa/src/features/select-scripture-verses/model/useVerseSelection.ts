@@ -18,3 +18,9 @@ export function formatSelectionLabel(selection: number[]): string {
   if (selection.length <= 3) return selection.join(', ')
   return `${selection.slice(0, 3).join(', ')}（他${selection.length - 3}件）`
 }
+
+export type SelectionMode = 'read' | 'select'
+
+export function parseMode(input: unknown): SelectionMode {
+  return input === 'select' ? 'select' : 'read'
+}
