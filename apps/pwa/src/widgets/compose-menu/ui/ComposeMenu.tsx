@@ -40,7 +40,7 @@ export function ComposeMenu({ onSelectChapter, onSelectVerses }: Props) {
     </div>
   )
 
-  const triggerLabel = (
+  const triggerContent = (
     <>
       <PenLine size={12} aria-hidden="true" className="mr-1" />
       <span>投稿</span>
@@ -51,14 +51,13 @@ export function ComposeMenu({ onSelectChapter, onSelectVerses }: Props) {
     return (
       <>
         <Button
-          size="sm"
+          variant="accent"
+          size="pill"
           onClick={() => setOpen(true)}
           aria-haspopup="menu"
           aria-expanded={open}
-          className="text-xs px-3 py-1.5 rounded-full font-semibold"
-          style={{ background: 'var(--lagoon)', color: '#fff' }}
         >
-          {triggerLabel}
+          {triggerContent}
         </Button>
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetContent
@@ -80,13 +79,8 @@ export function ComposeMenu({ onSelectChapter, onSelectVerses }: Props) {
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
         render={
-          <Button
-            size="sm"
-            aria-haspopup="menu"
-            className="text-xs px-3 py-1.5 rounded-full font-semibold"
-            style={{ background: 'var(--lagoon)', color: '#fff' }}
-          >
-            {triggerLabel}
+          <Button variant="accent" size="pill" aria-haspopup="menu">
+            {triggerContent}
           </Button>
         }
       />

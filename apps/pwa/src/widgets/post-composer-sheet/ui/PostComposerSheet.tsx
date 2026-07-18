@@ -11,7 +11,8 @@ type Props = {
   initialScripture?: ScriptureRefPartial
 }
 
-const HISTORY_STATE_MARKER = { mannaComposer: true }
+type ComposerHistoryState = { mannaComposer: true }
+const HISTORY_STATE_MARKER: ComposerHistoryState = { mannaComposer: true }
 
 export function PostComposerSheet({ open, onOpenChange, initialScripture }: Props) {
   const isMobile = useIsMobile()
@@ -25,7 +26,7 @@ export function PostComposerSheet({ open, onOpenChange, initialScripture }: Prop
     window.addEventListener('popstate', handler)
     return () => {
       window.removeEventListener('popstate', handler)
-      if (window.history.state && (window.history.state as { mannaComposer?: boolean }).mannaComposer) {
+      if ((window.history.state as ComposerHistoryState | null)?.mannaComposer) {
         window.history.back()
       }
     }

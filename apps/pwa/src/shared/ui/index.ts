@@ -1,7 +1,7 @@
 export { AppSidebar } from './AppSidebar'
 export { EmptyState } from './EmptyState'
 export { MarkdownRenderer } from './MarkdownRenderer'
-export { PageHeader } from './PageHeader'
+export { PageHeader, stickyHeaderClassName, stickyHeaderStyle } from './PageHeader'
 export { ScriptureText, SanitizedVerseHtml } from './ScriptureText'
 export { Skeleton, PostCardSkeleton } from './skeleton'
 export { TabBar } from './TabBar'

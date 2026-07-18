@@ -63,9 +63,9 @@ describe('VerseRow', () => {
     )
     await waitFor(() => {
       expect(screen.queryByRole('link')).toBeNull()
-      expect(screen.getByTestId('verse-row-19')).toBeInTheDocument()
+      expect(screen.getByRole('checkbox', { name: '19節を選択' })).toBeInTheDocument()
     })
-    await userEvent.click(screen.getByTestId('verse-row-19'))
+    await userEvent.click(screen.getByRole('checkbox', { name: '19節を選択' }))
     expect(onSelect).toHaveBeenCalledWith(19)
   })
 

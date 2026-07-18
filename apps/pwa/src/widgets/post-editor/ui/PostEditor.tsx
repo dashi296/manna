@@ -31,6 +31,10 @@ function scriptureDraftKey(scripture: ScriptureRefPartial): string {
   return `${DRAFT_KEY_PREFIX}${scripture.collection}:${scripture.book ?? ''}:${scripture.chapter ?? ''}:${verses}`
 }
 
+function draftKey(mode: 'page' | 'sheet', scripture: ScriptureRefPartial): string {
+  return mode === 'page' ? LEGACY_DRAFT_KEY : scriptureDraftKey(scripture)
+}
+
 function loadDraft(key: string): Draft {
   try {
     const raw = localStorage.getItem(key)
@@ -56,7 +60,7 @@ export function PostEditor({ initialScripture, mode = 'page', onSuccess }: Props
   const draftLoaded = useRef(false)
 
   useEffect(() => {
-    const key = mode === 'page' ? LEGACY_DRAFT_KEY : scriptureDraftKey(initialScripture ?? {})
+    const key = draftKey(mode, initialScripture ?? {})
     const draft = loadDraft(key)
     setContent(draft.content)
     setVisibility(draft.visibility)
@@ -66,7 +70,7 @@ export function PostEditor({ initialScripture, mode = 'page', onSuccess }: Props
 
   useEffect(() => {
     if (!draftLoaded.current) return
-    const key = mode === 'page' ? LEGACY_DRAFT_KEY : scriptureDraftKey(scripture)
+    const key = draftKey(mode, scripture)
     const timer = setTimeout(() => {
       localStorage.setItem(key, JSON.stringify({ content, visibility, scripture }))
     }, 500)
@@ -101,7 +105,7 @@ export function PostEditor({ initialScripture, mode = 'page', onSuccess }: Props
       return
     }
 
-    localStorage.removeItem(mode === 'page' ? LEGACY_DRAFT_KEY : scriptureDraftKey(scripture))
+    localStorage.removeItem(draftKey(mode, scripture))
     if (onSuccess) {
       onSuccess()
     } else {

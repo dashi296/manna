@@ -92,19 +92,15 @@ export function VerseRow({
   )
 
   if (mode === 'select') {
-    const handleClick = () => {
-      onSelect(verse)
-    }
     return (
       <button
         type="button"
         role="checkbox"
         aria-checked={selected}
         aria-label={`${verse}節を選択`}
-        onClick={handleClick}
+        onClick={() => onSelect(verse)}
         className="w-full text-left"
         style={containerStyle}
-        data-testid={`verse-row-${verse}`}
       >
         {inner}
       </button>
@@ -118,7 +114,6 @@ export function VerseRow({
       search={{ verses: [verse] }}
       className="block"
       style={containerStyle}
-      data-testid={`verse-row-${verse}`}
     >
       {inner}
     </Link>

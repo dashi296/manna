@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { createFileRoute, notFound, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { getBook, buildScriptureUrl, getScriptureLabel } from '@/entities/scripture'
@@ -12,7 +12,6 @@ import {
   SelectionModeHeader,
   VerseRow,
   parseSelection,
-  parseMode,
   toggleVerse,
   type SelectionMode,
 } from '@/features/select-scripture-verses'
@@ -112,7 +111,7 @@ export const Route = createFileRoute('/scriptures/$collection/$book/$chapter')({
           .map((v) => Number(v))
           .filter((n) => Number.isInteger(n) && n > 0)
       : undefined,
-    mode: parseMode(search.mode) === 'select' ? 'select' : undefined,
+    mode: search.mode === 'select' ? 'select' : undefined,
   }),
   loaderDeps: ({ search }) => ({ verses: search.verses }),
   loader: async ({ params, deps }) => {
@@ -148,12 +147,7 @@ export const Route = createFileRoute('/scriptures/$collection/$book/$chapter')({
 
 function ComposeButton({ onClick, label }: { onClick: () => void; label: string }) {
   return (
-    <Button
-      size="sm"
-      onClick={onClick}
-      className="text-xs px-3 py-1.5 rounded-full font-semibold"
-      style={{ background: 'var(--lagoon)', color: '#fff' }}
-    >
+    <Button variant="accent" size="pill" onClick={onClick}>
       {label}
     </Button>
   )
@@ -240,11 +234,13 @@ function VerseView({ book, chapter, collection, verses, posts, verseTexts, canCo
           ))}
         </div>
       )}
-      <PostComposerSheet
-        open={sheetOpen}
-        onOpenChange={onSheetOpenChange}
-        initialScripture={{ collection, book: book.id, chapter, verses }}
-      />
+      {canCompose && (
+        <PostComposerSheet
+          open={sheetOpen}
+          onOpenChange={onSheetOpenChange}
+          initialScripture={{ collection, book: book.id, chapter, verses }}
+        />
+      )}
     </div>
   )
 }
@@ -272,32 +268,36 @@ function ChapterView({ book, chapter, collection, posts, countByVerse, verseText
     () => new Map(verseTexts.map((vt) => [vt.verse, vt])),
     [verseTexts],
   )
-  const verseNumbers = useMemo(
-    () => Array.from({ length: maxVerse }, (_, i) => i + 1),
-    [maxVerse],
-  )
+  const verseNumbers = Array.from({ length: maxVerse }, (_, i) => i + 1)
   const selection = useMemo(
     () => parseSelection(search.select, maxVerse),
     [search.select, maxVerse],
   )
+  const selectedSet = useMemo(() => new Set(selection), [selection])
   const mode: SelectionMode = canCompose && search.mode === 'select' ? 'select' : 'read'
 
-  const updateSearch = (next: Partial<ChapterSearch>, { replace = true }: { replace?: boolean } = {}) => {
+  const goToChapter = (search: (prev: ChapterSearch) => ChapterSearch, replace = true) => {
     navigate({
       to: '/scriptures/$collection/$book/$chapter',
       params: { collection, book: book.id, chapter: String(chapter) },
-      search: (prev) => ({
-        verses: prev.verses,
-        select: 'select' in next ? (next.select?.length ? next.select : undefined) : prev.select,
-        mode: 'mode' in next ? next.mode : prev.mode,
-      }),
+      search,
       replace,
     })
   }
 
-  const setSelection = (next: number[]) => updateSearch({ select: next })
-  const enterSelectMode = () => updateSearch({ mode: 'select' }, { replace: false })
-  const exitSelectMode = () => updateSearch({ mode: undefined, select: [] })
+  const setSelection = (next: number[]) =>
+    goToChapter((prev) => ({ ...prev, select: next.length ? next : undefined }))
+  const enterSelectMode = () =>
+    goToChapter((prev) => ({ ...prev, mode: 'select' }), false)
+  const exitSelectMode = () =>
+    goToChapter((prev) => ({ ...prev, mode: undefined, select: undefined }))
+
+  const handleToggleVerse = useCallback(
+    (v: number) => setSelection(toggleVerse(selection, v)),
+    // navigate は TanStack Router のフックが返す安定参照
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [selection],
+  )
 
   const openComposerForChapter = () => {
     setComposerVerses(undefined)
@@ -369,7 +369,7 @@ function ChapterView({ book, chapter, collection, posts, countByVerse, verseText
           {verseNumbers.map((verse) => {
             const count = countByVerse[verse] ?? 0
             const vt = verseTextMap.get(verse)
-            const isSelected = mode === 'select' && selection.includes(verse)
+            const isSelected = mode === 'select' && selectedSet.has(verse)
             return (
               <li
                 key={verse}
@@ -385,23 +385,25 @@ function ChapterView({ book, chapter, collection, posts, countByVerse, verseText
                   count={count}
                   mode={mode}
                   selected={isSelected}
-                  onSelect={(v) => setSelection(toggleVerse(selection, v))}
+                  onSelect={handleToggleVerse}
                 />
               </li>
             )
           })}
         </ul>
       </div>
-      <PostComposerSheet
-        open={sheetOpen}
-        onOpenChange={onSheetOpenChange}
-        initialScripture={{
-          collection,
-          book: book.id,
-          chapter,
-          verses: composerVerses,
-        }}
-      />
+      {canCompose && (
+        <PostComposerSheet
+          open={sheetOpen}
+          onOpenChange={onSheetOpenChange}
+          initialScripture={{
+            collection,
+            book: book.id,
+            chapter,
+            verses: composerVerses,
+          }}
+        />
+      )}
     </div>
   )
 }

@@ -1,5 +1,7 @@
 import { PenLine, X } from 'lucide-react'
 import { Button } from '@/shared/ui/button'
+import { stickyHeaderClassName, stickyHeaderStyle } from '@/shared/ui'
+import { cn } from '@/shared/lib/utils'
 
 type Props = {
   count: number
@@ -12,14 +14,7 @@ export function SelectionModeHeader({ count, onCancel, onSubmit }: Props) {
   const titleLabel = count === 0 ? '節を選んでください' : `${count}節選択中`
 
   return (
-    <header
-      className="sticky top-0 z-10 px-2 py-2 flex items-center gap-2"
-      style={{
-        background: 'var(--header-bg)',
-        borderBottom: '1px solid var(--line)',
-        backdropFilter: 'blur(8px)',
-      }}
-    >
+    <header className={cn(stickyHeaderClassName, 'px-2 py-2')} style={stickyHeaderStyle}>
       <Button
         variant="ghost"
         size="sm"
@@ -37,16 +32,12 @@ export function SelectionModeHeader({ count, onCancel, onSubmit }: Props) {
         {titleLabel}
       </h1>
       <Button
-        size="sm"
+        variant="accent"
+        size="pill"
         onClick={onSubmit}
         disabled={count === 0}
         aria-label={submitLabel}
-        className="shrink-0 text-xs px-3 py-1.5 rounded-full font-semibold gap-1"
-        style={
-          count > 0
-            ? { background: 'var(--lagoon)', color: '#fff' }
-            : undefined
-        }
+        className="shrink-0 gap-1"
       >
         <PenLine size={12} aria-hidden="true" />
         <span>投稿 ({count})</span>
