@@ -4,6 +4,11 @@
 
 詳細計画: [`docs/superpowers/plans/2026-05-19-manna-phase1.md`](docs/superpowers/plans/2026-05-19-manna-phase1.md)
 
+## 現在の状態（2026-07-18 時点）
+
+- **Phase 1（PWA）完了**: PR #37 で main にマージ済み
+- **次は Phase 2（Chrome 拡張 / Plasmo）**: 着手前に [`docs/superpowers/specs/2026-07-18-phase2-handoff.md`](docs/superpowers/specs/2026-07-18-phase2-handoff.md) を読むこと（再利用資産・見送った改善候補・環境のハマりどころを記載）
+
 ---
 
 ## 技術スタック

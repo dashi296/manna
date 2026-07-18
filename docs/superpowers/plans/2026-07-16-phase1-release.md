@@ -1,5 +1,7 @@
 # Phase 1 リリース Implementation Plan
 
+> ✅ **完了（2026-07-18）**: 全タスク実装済み。PR #37 で main にマージ。以降の引き継ぎは `docs/superpowers/specs/2026-07-18-phase2-handoff.md` を参照。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Phase 1 の残りタスク（フィード画面、投稿詳細、聖典テキスト表示、フォロー、ファミリー、プロフィール、通知、PWA 設定）を実装しリリース可能状態にする
