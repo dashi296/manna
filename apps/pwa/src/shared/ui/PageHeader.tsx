@@ -1,6 +1,14 @@
+import type { CSSProperties } from 'react'
 import { Link } from '@tanstack/react-router'
 import { ChevronLeft } from 'lucide-react'
 import { cn } from '@/shared/lib/utils'
+
+export const stickyHeaderClassName = 'sticky top-0 z-10 flex items-center gap-2'
+export const stickyHeaderStyle: CSSProperties = {
+  background: 'var(--header-bg)',
+  borderBottom: '1px solid var(--line)',
+  backdropFilter: 'blur(8px)',
+}
 
 type Props = {
   title: string
@@ -13,12 +21,8 @@ type Props = {
 export function PageHeader({ title, backTo, backLabel, action, className }: Props) {
   return (
     <header
-      className={cn('sticky top-0 z-10 px-4 py-3 flex items-center gap-2', className)}
-      style={{
-        background: 'var(--header-bg)',
-        borderBottom: '1px solid var(--line)',
-        backdropFilter: 'blur(8px)',
-      }}
+      className={cn(stickyHeaderClassName, 'px-4 py-3', className)}
+      style={stickyHeaderStyle}
     >
       {backTo && (
         <Link
