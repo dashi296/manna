@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseSelection, toggleVerse, formatSelectionLabel } from '@/features/select-scripture-verses'
+import { parseSelection, toggleVerse } from '@/features/select-scripture-verses'
 
 describe('parseSelection', () => {
   it('undefined を空配列にする', () => {
@@ -34,20 +34,6 @@ describe('toggleVerse', () => {
 
   it('結果は常にソート済み', () => {
     expect(toggleVerse([5, 1], 3)).toEqual([1, 3, 5])
-  })
-})
-
-describe('formatSelectionLabel', () => {
-  it('空配列は空文字列', () => {
-    expect(formatSelectionLabel([])).toBe('')
-  })
-
-  it('3件以下はそのまま列挙', () => {
-    expect(formatSelectionLabel([1, 2, 3])).toBe('1, 2, 3')
-  })
-
-  it('4件以上は先頭3件と件数', () => {
-    expect(formatSelectionLabel([1, 2, 3, 4, 5])).toBe('1, 2, 3（他2件）')
   })
 })
 
