@@ -21,13 +21,19 @@ describe('useIsMobile', () => {
     vi.restoreAllMocks()
   })
 
-  it('innerWidth < 768 のとき true を返す', () => {
+  it('innerWidth < 1024 のとき true を返す', () => {
     setupMatchMedia(375)
     const { result } = renderHook(() => useIsMobile())
     expect(result.current).toBe(true)
   })
 
-  it('innerWidth >= 768 のとき false を返す', () => {
+  it('タブレット帯（800px）も mobile 扱いになる（サイドバーの lg 境界と一致）', () => {
+    setupMatchMedia(800)
+    const { result } = renderHook(() => useIsMobile())
+    expect(result.current).toBe(true)
+  })
+
+  it('innerWidth >= 1024 のとき false を返す', () => {
     setupMatchMedia(1024)
     const { result } = renderHook(() => useIsMobile())
     expect(result.current).toBe(false)

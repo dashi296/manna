@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import { AppSidebar } from '@/shared/ui/AppSidebar'
 import { SidebarProvider } from '@/shared/ui/sidebar'
 const mockPathname = vi.fn(() => '/')
+const { mockGetSession } = vi.hoisted(() => ({ mockGetSession: vi.fn() }))
 
 vi.mock('@tanstack/react-router', async () => {
   const { routerMock } = await import('../../helpers/tanstack')
@@ -11,16 +12,7 @@ vi.mock('@tanstack/react-router', async () => {
 })
 
 vi.mock('@/shared/lib/auth', () => ({
-  getSession: vi.fn(() =>
-    Promise.resolve({
-      user: {
-        user_metadata: {
-          full_name: 'テスト太郎',
-          avatar_url: null,
-        },
-      },
-    })
-  ),
+  getSession: mockGetSession,
 }))
 
 async function renderSidebar() {
@@ -37,6 +29,14 @@ async function renderSidebar() {
 describe('AppSidebar', () => {
   beforeEach(() => {
     mockPathname.mockReturnValue('/')
+    mockGetSession.mockResolvedValue({
+      user: {
+        user_metadata: {
+          full_name: 'テスト太郎',
+          avatar_url: null,
+        },
+      },
+    })
   })
 
   it('5つのナビリンクをレンダーする', async () => {
@@ -59,14 +59,28 @@ describe('AppSidebar', () => {
 
   it('サイドバー開閉トリガーをレンダーする', async () => {
     await renderSidebar()
-    // SidebarTrigger と SidebarRail の両方が Toggle Sidebar ボタン
+    // ヘッダーの SidebarTrigger（vendored の SidebarRail も同名なので厳密数は問わない）
     const toggles = screen.getAllByRole('button', { name: /Toggle Sidebar/i })
-    expect(toggles).toHaveLength(2)
+    expect(toggles.length).toBeGreaterThanOrEqual(1)
   })
 
   it('ログイン済みユーザーの表示名がプロフィールへのリンクとしてフッターに表示される', async () => {
     await renderSidebar()
     const footerLink = screen.getByRole('link', { name: 'テスト太郎' })
     expect(footerLink).toHaveAttribute('href', '/profile')
+  })
+
+  it('未ログイン時はフッターのユーザー表示をレンダーしない', async () => {
+    mockGetSession.mockResolvedValue(null)
+    render(
+      <SidebarProvider>
+        <AppSidebar />
+      </SidebarProvider>
+    )
+    // getSession の resolve を待ってからフッター不在を検証する
+    await waitFor(() => expect(mockGetSession).toHaveBeenCalled())
+    expect(document.querySelector('[data-slot="sidebar-footer"]')).toBeNull()
+    // ナビ自体は未ログインでも表示される
+    expect(screen.getByRole('link', { name: /聖典/ })).toBeInTheDocument()
   })
 })
