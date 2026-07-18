@@ -19,7 +19,7 @@ export function VisibilitySelector({ value, onChange }: Props) {
     <ToggleGroup
       value={[value]}
       onValueChange={([v]) => { if (v) onChange(v as Visibility) }}
-      className="flex-wrap gap-2"
+      className="flex-wrap"
     >
       {VISIBILITY_OPTIONS.map(({ value: v, label, Icon }) => (
         <ToggleGroupItem

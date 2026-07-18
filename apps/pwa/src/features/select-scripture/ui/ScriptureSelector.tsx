@@ -16,12 +16,35 @@ type Props = {
   onChange: (ref: ScriptureRefPartial) => void
 }
 
-function renderItems(items: { value: string; label: string }[]) {
-  return items.map(({ value, label }) => (
-    <SelectItem key={value} value={value}>
-      {label}
-    </SelectItem>
-  ))
+type RefSelectProps = {
+  items: { value: string; label: string }[]
+  value: string | null
+  placeholder: string
+  disabled?: boolean
+  onSelect: (v: string) => void
+}
+
+// Base UI Select は items を渡すと trigger に生値ではなくラベルを表示する
+function RefSelect({ items, value, placeholder, disabled, onSelect }: RefSelectProps) {
+  return (
+    <Select
+      items={items}
+      value={value}
+      onValueChange={(v: string | null) => { if (v) onSelect(v) }}
+      disabled={disabled}
+    >
+      <SelectTrigger>
+        <SelectValue placeholder={placeholder} />
+      </SelectTrigger>
+      <SelectContent>
+        {items.map(({ value: v, label }) => (
+          <SelectItem key={v} value={v}>
+            {label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  )
 }
 
 export function ScriptureSelector({ value, onChange }: Props) {
@@ -30,7 +53,6 @@ export function ScriptureSelector({ value, onChange }: Props) {
   const selectedBook =
     value.collection && value.book ? getBook(value.collection, value.book) : undefined
 
-  // Base UI Select は items を渡すと trigger に生値ではなくラベルを表示する
   const collectionItems = collections.map((c) => ({ value: c.id, label: c.name }))
   const bookItems = (selectedCollection?.books ?? []).map((b) => ({ value: b.id, label: b.name }))
   const chapterItems = selectedBook
@@ -48,44 +70,32 @@ export function ScriptureSelector({ value, onChange }: Props) {
 
   return (
     <div className="space-y-3">
-      <Select
+      <RefSelect
         items={collectionItems}
         value={value.collection ?? null}
-        onValueChange={(v: string | null) => { if (v) onChange({ collection: v }) }}
-      >
-        <SelectTrigger>
-          <SelectValue placeholder="聖典集を選択" />
-        </SelectTrigger>
-        <SelectContent>{renderItems(collectionItems)}</SelectContent>
-      </Select>
+        placeholder="聖典集を選択"
+        onSelect={(v) => onChange({ collection: v })}
+      />
 
-      <Select
+      <RefSelect
         items={bookItems}
         value={value.book ?? null}
-        onValueChange={(v: string | null) => {
-          if (v) onChange({ ...value, book: v, chapter: undefined, verses: undefined })
-        }}
+        placeholder="書籍を選択"
         disabled={!selectedCollection}
-      >
-        <SelectTrigger>
-          <SelectValue placeholder="書籍を選択" />
-        </SelectTrigger>
-        <SelectContent>{renderItems(bookItems)}</SelectContent>
-      </Select>
+        onSelect={(v) =>
+          onChange({ ...value, book: v, chapter: undefined, verses: undefined })
+        }
+      />
 
-      <Select
+      <RefSelect
         items={chapterItems}
         value={value.chapter?.toString() ?? null}
-        onValueChange={(v: string | null) => {
-          if (v) onChange({ ...value, chapter: parseInt(v, 10), verses: undefined })
-        }}
+        placeholder="章を選択"
         disabled={!selectedBook}
-      >
-        <SelectTrigger>
-          <SelectValue placeholder="章を選択" />
-        </SelectTrigger>
-        <SelectContent>{renderItems(chapterItems)}</SelectContent>
-      </Select>
+        onSelect={(v) =>
+          onChange({ ...value, chapter: parseInt(v, 10), verses: undefined })
+        }
+      />
 
       <Input
         placeholder="節 (例: 7, 9)"
