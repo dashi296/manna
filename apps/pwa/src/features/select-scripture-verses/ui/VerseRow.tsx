@@ -3,6 +3,18 @@ import { Link } from '@tanstack/react-router'
 import { Check, ChevronRight } from 'lucide-react'
 import { SanitizedVerseHtml } from '@/shared/ui'
 
+const ROW_TRANSITION = 'background-color 200ms, border-color 200ms'
+const ROW_SELECTED_STYLE: CSSProperties = {
+  background: 'var(--chip-bg)',
+  borderLeft: '3px solid var(--lagoon)',
+  transition: ROW_TRANSITION,
+}
+const ROW_UNSELECTED_STYLE: CSSProperties = {
+  background: 'transparent',
+  borderLeft: '3px solid transparent',
+  transition: ROW_TRANSITION,
+}
+
 type Props = {
   collection: string
   book: string
@@ -26,11 +38,7 @@ export function VerseRow({
   selected,
   onSelect,
 }: Props) {
-  const containerStyle: CSSProperties = {
-    background: selected ? 'var(--chip-bg)' : 'transparent',
-    borderLeft: `3px solid ${selected ? 'var(--lagoon)' : 'transparent'}`,
-    transition: 'background-color 200ms, border-color 200ms',
-  }
+  const containerStyle = selected ? ROW_SELECTED_STYLE : ROW_UNSELECTED_STYLE
 
   const inner = (
     <div className="flex items-start gap-2 px-4 py-3">

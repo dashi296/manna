@@ -65,7 +65,7 @@ export function ComposeMenu({ onSelectChapter, onSelectVerses }: Props) {
             className="rounded-t-2xl gap-0 pb-6 max-h-[50dvh]"
             showCloseButton={false}
           >
-            <SheetHeader className="border-b" style={{ borderColor: 'var(--line)' }}>
+            <SheetHeader bordered>
               <SheetTitle>投稿する</SheetTitle>
             </SheetHeader>
             {menuItems}

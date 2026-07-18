@@ -51,7 +51,7 @@ export function PostComposerSheet({ open, onOpenChange, initialScripture }: Prop
             : 'h-dvh w-[min(520px,40vw)] max-w-none flex flex-col gap-0 rounded-none'
         }
       >
-        <SheetHeader className="border-b" style={{ borderColor: 'var(--line)' }}>
+        <SheetHeader bordered>
           <SheetTitle>{title}</SheetTitle>
         </SheetHeader>
         <div className="flex-1 overflow-y-auto p-4">

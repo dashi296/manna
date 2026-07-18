@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { createFileRoute, notFound, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { getBook, buildScriptureUrl, getScriptureLabel } from '@/entities/scripture'
@@ -273,31 +273,21 @@ function ChapterView({ book, chapter, collection, posts, countByVerse, verseText
     () => parseSelection(search.select, maxVerse),
     [search.select, maxVerse],
   )
-  const selectedSet = useMemo(() => new Set(selection), [selection])
   const mode: SelectionMode = canCompose && search.mode === 'select' ? 'select' : 'read'
 
-  const goToChapter = (search: (prev: ChapterSearch) => ChapterSearch, replace = true) => {
+  const patchSearch = (patch: Partial<ChapterSearch>, replace = true) => {
     navigate({
       to: '/scriptures/$collection/$book/$chapter',
       params: { collection, book: book.id, chapter: String(chapter) },
-      search,
+      search: (prev) => ({ ...prev, ...patch }),
       replace,
     })
   }
 
   const setSelection = (next: number[]) =>
-    goToChapter((prev) => ({ ...prev, select: next.length ? next : undefined }))
-  const enterSelectMode = () =>
-    goToChapter((prev) => ({ ...prev, mode: 'select' }), false)
-  const exitSelectMode = () =>
-    goToChapter((prev) => ({ ...prev, mode: undefined, select: undefined }))
-
-  const handleToggleVerse = useCallback(
-    (v: number) => setSelection(toggleVerse(selection, v)),
-    // navigate は TanStack Router のフックが返す安定参照
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [selection],
-  )
+    patchSearch({ select: next.length ? next : undefined })
+  const enterSelectMode = () => patchSearch({ mode: 'select' }, false)
+  const exitSelectMode = () => patchSearch({ mode: undefined, select: undefined })
 
   const openComposerForChapter = () => {
     setComposerVerses(undefined)
@@ -369,7 +359,7 @@ function ChapterView({ book, chapter, collection, posts, countByVerse, verseText
           {verseNumbers.map((verse) => {
             const count = countByVerse[verse] ?? 0
             const vt = verseTextMap.get(verse)
-            const isSelected = mode === 'select' && selectedSet.has(verse)
+            const isSelected = mode === 'select' && selection.includes(verse)
             return (
               <li
                 key={verse}
@@ -385,7 +375,7 @@ function ChapterView({ book, chapter, collection, posts, countByVerse, verseText
                   count={count}
                   mode={mode}
                   selected={isSelected}
-                  onSelect={handleToggleVerse}
+                  onSelect={(v) => setSelection(toggleVerse(selection, v))}
                 />
               </li>
             )

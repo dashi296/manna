@@ -77,11 +77,17 @@ function SheetContent({
   )
 }
 
-function SheetHeader({ className, ...props }: React.ComponentProps<"div">) {
+function SheetHeader({
+  className,
+  bordered,
+  style,
+  ...props
+}: React.ComponentProps<"div"> & { bordered?: boolean }) {
   return (
     <div
       data-slot="sheet-header"
-      className={cn("flex flex-col gap-0.5 p-4", className)}
+      className={cn("flex flex-col gap-0.5 p-4", bordered && "border-b", className)}
+      style={bordered ? { borderColor: "var(--line)", ...style } : style}
       {...props}
     />
   )
