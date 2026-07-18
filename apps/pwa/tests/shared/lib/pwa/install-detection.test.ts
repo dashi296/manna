@@ -7,6 +7,14 @@ import {
   PWA_INSTALL_DISMISSED_KEY,
   PWA_INSTALL_DISMISS_WINDOW_MS,
 } from '@/shared/lib/pwa/install-detection'
+import {
+  ANDROID_UA,
+  DESKTOP_SAFARI_UA,
+  IOS_CHROME_UA,
+  IOS_SAFARI_UA,
+  IPAD_SAFARI_UA,
+  stubUa,
+} from '../../../helpers/ua'
 
 describe('install-detection', () => {
   beforeEach(() => {
@@ -43,42 +51,28 @@ describe('install-detection', () => {
   })
 
   describe('isIosSafari', () => {
-    const setUa = (ua: string) => {
-      vi.stubGlobal('navigator', { ...window.navigator, userAgent: ua })
-    }
-
     it('iPhone Safari の UA で true', () => {
-      setUa(
-        'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
-      )
+      stubUa(IOS_SAFARI_UA)
       expect(isIosSafari()).toBe(true)
     })
 
     it('iPad Safari の UA で true', () => {
-      setUa(
-        'Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
-      )
+      stubUa(IPAD_SAFARI_UA)
       expect(isIosSafari()).toBe(true)
     })
 
     it('iOS Chrome (CriOS) では false', () => {
-      setUa(
-        'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/120.0.0 Mobile/15E148 Safari/604.1',
-      )
+      stubUa(IOS_CHROME_UA)
       expect(isIosSafari()).toBe(false)
     })
 
     it('Android Chrome では false', () => {
-      setUa(
-        'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
-      )
+      stubUa(ANDROID_UA)
       expect(isIosSafari()).toBe(false)
     })
 
     it('デスクトップ Safari では false', () => {
-      setUa(
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15',
-      )
+      stubUa(DESKTOP_SAFARI_UA)
       expect(isIosSafari()).toBe(false)
     })
   })

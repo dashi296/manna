@@ -1,6 +1,9 @@
 export const PWA_INSTALL_DISMISSED_KEY = 'manna:pwa-install-dismissed-at'
 export const PWA_INSTALL_DISMISS_WINDOW_MS = 7 * 24 * 60 * 60 * 1000
 
+const IOS_DEVICE_RE = /iPhone|iPad|iPod/
+const NON_SAFARI_IOS_RE = /CriOS|FxiOS|EdgiOS/
+
 export function isStandalone(): boolean {
   if (typeof window === 'undefined') return false
   if (window.matchMedia?.('(display-mode: standalone)').matches) return true
@@ -11,12 +14,7 @@ export function isStandalone(): boolean {
 export function isIosSafari(): boolean {
   if (typeof window === 'undefined') return false
   const ua = window.navigator.userAgent
-  const isIos = /iPhone|iPad|iPod/.test(ua)
-  if (!isIos) return false
-  const isChromeIos = /CriOS/.test(ua)
-  const isFirefoxIos = /FxiOS/.test(ua)
-  const isEdgeIos = /EdgiOS/.test(ua)
-  return !isChromeIos && !isFirefoxIos && !isEdgeIos
+  return IOS_DEVICE_RE.test(ua) && !NON_SAFARI_IOS_RE.test(ua)
 }
 
 export function isRecentlyDismissed(now: number = Date.now()): boolean {

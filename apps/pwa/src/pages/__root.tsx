@@ -1,6 +1,8 @@
+import { useEffect } from 'react'
 import { HeadContent, Scripts, Outlet, createRootRoute, redirect, useRouterState } from '@tanstack/react-router'
 import { getSession, getServerSession } from '@/shared/lib/auth'
 import { getCookieHeader } from '@/shared/lib/cookies'
+import { registerServiceWorker } from '@/shared/lib/pwa'
 import { AppSidebar } from '@/shared/ui/AppSidebar'
 import { BottomNav } from '@/shared/ui/BottomNav'
 import { DevTools } from '@/shared/ui/DevTools'
@@ -71,6 +73,10 @@ function RootLayout() {
   const { sidebarDefaultOpen } = Route.useLoaderData()
   const isAuthPage =
     location.pathname === '/login' || location.pathname.startsWith('/auth/')
+
+  useEffect(() => {
+    registerServiceWorker()
+  }, [])
 
   if (isAuthPage) {
     return <Outlet />

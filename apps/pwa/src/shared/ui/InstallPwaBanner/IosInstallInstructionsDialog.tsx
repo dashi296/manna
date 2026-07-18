@@ -22,26 +22,17 @@ export function IosInstallInstructionsDialog({ open, onOpenChange }: Props) {
             Safari から数タップで追加できます
           </SheetDescription>
         </SheetHeader>
-        <ol className="space-y-3 px-4 pb-4 text-sm">
-          <li className="flex items-start gap-2">
-            <span className="mt-0.5 font-semibold">1.</span>
-            <span className="flex-1">
-              画面下部の共有ボタン
-              <ShareIcon
-                aria-hidden
-                className="mx-1 inline-block h-4 w-4 align-text-bottom"
-              />
-              をタップ
-            </span>
+        <ol className="list-decimal list-outside space-y-3 pb-4 pl-10 pr-4 text-sm marker:font-semibold">
+          <li>
+            画面下部の共有ボタン
+            <ShareIcon
+              aria-hidden
+              className="mx-1 inline-block h-4 w-4 align-text-bottom"
+            />
+            をタップ
           </li>
-          <li className="flex items-start gap-2">
-            <span className="mt-0.5 font-semibold">2.</span>
-            <span className="flex-1">「ホーム画面に追加」を選択</span>
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="mt-0.5 font-semibold">3.</span>
-            <span className="flex-1">右上の「追加」をタップ</span>
-          </li>
+          <li>「ホーム画面に追加」を選択</li>
+          <li>右上の「追加」をタップ</li>
         </ol>
       </SheetContent>
     </Sheet>

@@ -6,7 +6,6 @@ import {
   isRecentlyDismissed,
   isStandalone,
   markDismissed,
-  registerServiceWorker,
 } from '@/shared/lib/pwa'
 import { IosInstallInstructionsDialog } from './IosInstallInstructionsDialog'
 
@@ -23,7 +22,6 @@ export function InstallPwaBanner() {
 
   useEffect(() => {
     if (isStandalone()) return
-    registerServiceWorker()
     if (isRecentlyDismissed()) return
 
     const handleBeforeInstall = (event: Event) => {
@@ -70,7 +68,7 @@ export function InstallPwaBanner() {
   return (
     <>
       <div
-        role="dialog"
+        role="region"
         aria-label="アプリのインストール案内"
         className="fixed inset-x-0 bottom-16 z-40 lg:hidden"
       >
