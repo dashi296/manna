@@ -16,10 +16,6 @@
   "dependencies": {
     "@base-ui/react": "^1.6.0",
     "@manna/database": "workspace:*",
-    "@radix-ui/react-dialog": "^1.1.15",
-    "@radix-ui/react-select": "^2.2.6",
-    "@radix-ui/react-toggle": "^1.1.10",
-    "@radix-ui/react-toggle-group": "^1.1.11",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.106.0",
     "@tailwindcss/vite": "^4.1.18",
