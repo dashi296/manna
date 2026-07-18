@@ -9,15 +9,23 @@ type Props = {
   open: boolean
   onOpenChange: (open: boolean) => void
   initialScripture?: ScriptureRefPartial
+  /**
+   * シートの close 動作 (history.back による composer 用エントリ pop) が
+   * 完了した後に呼ばれる。onOpenChange とは別に必要。呼び出し側は
+   * これを待って select モード解除などの後処理を行う。
+   */
+  onClosed?: () => void
 }
 
 type ComposerHistoryState = { mannaComposer: true }
 const HISTORY_STATE_MARKER: ComposerHistoryState = { mannaComposer: true }
 
-export function PostComposerSheet({ open, onOpenChange, initialScripture }: Props) {
+export function PostComposerSheet({ open, onOpenChange, initialScripture, onClosed }: Props) {
   const isMobile = useIsMobile()
   const onOpenChangeRef = useRef(onOpenChange)
+  const onClosedRef = useRef(onClosed)
   onOpenChangeRef.current = onOpenChange
+  onClosedRef.current = onClosed
 
   useEffect(() => {
     if (!open) return
@@ -26,8 +34,18 @@ export function PostComposerSheet({ open, onOpenChange, initialScripture }: Prop
     window.addEventListener('popstate', handler)
     return () => {
       window.removeEventListener('popstate', handler)
-      if ((window.history.state as ComposerHistoryState | null)?.mannaComposer) {
+      const hasMarker = (window.history.state as ComposerHistoryState | null)?.mannaComposer
+      if (hasMarker) {
+        // プログラム経由の close: composer エントリを pop してから onClosed。
+        window.addEventListener(
+          'popstate',
+          () => onClosedRef.current?.(),
+          { once: true },
+        )
         window.history.back()
+      } else {
+        // ブラウザバック経由の close: 既に pop 済みなので即 onClosed。
+        onClosedRef.current?.()
       }
     }
   }, [open])

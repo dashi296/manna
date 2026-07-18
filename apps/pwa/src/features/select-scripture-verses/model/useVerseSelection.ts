@@ -1,7 +1,8 @@
-export function parseSelection(input: unknown, maxVerse: number): number[] {
-  const raw = input === undefined ? [] : Array.isArray(input) ? input : [input]
+export function parseSelection(input: unknown, maxVerse: number = Infinity): number[] {
+  const raw: unknown[] = input === undefined ? [] : Array.isArray(input) ? input : [input]
   const nums = raw
-    .map((v) => (typeof v === 'number' ? v : parseInt(String(v), 10)))
+    .flatMap((v) => String(v).split(','))
+    .map((s) => parseInt(s.trim(), 10))
     .filter((n) => Number.isInteger(n) && n >= 1 && n <= maxVerse)
   return Array.from(new Set(nums)).sort((a, b) => a - b)
 }
