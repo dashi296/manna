@@ -1,9 +1,10 @@
 import { HeadContent, Scripts, Outlet, createRootRoute, redirect, useRouterState } from '@tanstack/react-router'
 import { getSession, getServerSession } from '@/shared/lib/auth'
+import { getCookieHeader } from '@/shared/lib/cookies'
 import { AppSidebar } from '@/shared/ui/AppSidebar'
 import { BottomNav } from '@/shared/ui/BottomNav'
 import { DevTools } from '@/shared/ui/DevTools'
-import { SidebarInset, SidebarProvider } from '@/shared/ui/sidebar'
+import { SIDEBAR_COOKIE_NAME, SidebarInset, SidebarProvider } from '@/shared/ui/sidebar'
 import { TooltipProvider } from '@/shared/ui/tooltip'
 import appCss from '@/styles.css?url'
 
@@ -11,16 +12,9 @@ const isDev = import.meta.env.DEV
 
 const AUTH_REQUIRED_PREFIXES = ['/posts/new', '/profile', '/notifications']
 
-// shadcn Sidebar が書き込む開閉状態 cookie を SSR/CSR 両対応で読む
 async function getSidebarDefaultOpen(): Promise<boolean> {
-  let cookie: string
-  if (typeof document !== 'undefined') {
-    cookie = document.cookie
-  } else {
-    const { getStartContext } = await import('@tanstack/start-storage-context')
-    cookie = getStartContext()?.request?.headers.get('cookie') ?? ''
-  }
-  return !cookie.split('; ').includes('sidebar_state=false')
+  const cookie = await getCookieHeader()
+  return !cookie.split('; ').includes(`${SIDEBAR_COOKIE_NAME}=false`)
 }
 
 export const Route = createRootRoute({
@@ -53,6 +47,8 @@ export const Route = createRootRoute({
     }
   },
   loader: async () => ({ sidebarDefaultOpen: await getSidebarDefaultOpen() }),
+  // defaultOpen の種にしかならないため、ナビゲーションごとの再実行は不要
+  shouldReload: false,
   shellComponent: RootDocument,
   component: RootLayout,
 })

@@ -2,6 +2,7 @@ import { Link, useRouterState } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { NAV_ITEMS, isNavItemActive } from '@/shared/config/navigation'
 import { getSession } from '@/shared/lib/auth'
+import { UserAvatar } from '@/shared/ui/UserAvatar'
 import {
   Sidebar,
   SidebarContent,
@@ -32,6 +33,8 @@ export function AppSidebar() {
       }
     })
   }, [])
+
+  const displayName = userInfo?.displayName ?? 'ユーザー'
 
   return (
     <Sidebar collapsible="icon">
@@ -74,26 +77,11 @@ export function AppSidebar() {
             <SidebarMenuItem>
               <SidebarMenuButton
                 size="lg"
-                tooltip={userInfo.displayName ?? 'ユーザー'}
+                tooltip={displayName}
                 render={<Link to="/profile" />}
               >
-                {userInfo.avatarUrl ? (
-                  <img
-                    src={userInfo.avatarUrl}
-                    alt={userInfo.displayName ?? 'ユーザー'}
-                    className="size-8 rounded-full object-cover shrink-0"
-                  />
-                ) : (
-                  <span
-                    className="size-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0 bg-lagoon text-white"
-                    aria-hidden="true"
-                  >
-                    {(userInfo.displayName ?? 'U').charAt(0).toUpperCase()}
-                  </span>
-                )}
-                <span className="text-xs font-medium truncate">
-                  {userInfo.displayName ?? 'ユーザー'}
-                </span>
+                <UserAvatar name={displayName} url={userInfo.avatarUrl} size="xs" />
+                <span className="text-xs font-medium truncate">{displayName}</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>

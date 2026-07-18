@@ -8,9 +8,7 @@ export function BottomNav() {
   return (
     <nav className="lg:hidden fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md border-t border-line bg-[var(--header-bg)] backdrop-blur-sm">
       <div className="flex">
-        {NAV_ITEMS.map((item) => {
-          const { to, Icon } = item
-          const label = 'shortLabel' in item ? item.shortLabel : item.label
+        {NAV_ITEMS.map(({ to, label, shortLabel, Icon }) => {
           const active = isNavItemActive(to, location.pathname)
           return (
             <Link
@@ -22,7 +20,7 @@ export function BottomNav() {
               )}
             >
               <Icon size={22} strokeWidth={active ? 2.2 : 1.8} aria-hidden="true" />
-              <span className="text-[10px] font-medium">{label}</span>
+              <span className="text-[10px] font-medium">{shortLabel ?? label}</span>
             </Link>
           )
         })}

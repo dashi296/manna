@@ -63,12 +63,12 @@ describe('AppSidebar', () => {
     await renderSidebar()
     // SidebarTrigger と SidebarRail の両方が Toggle Sidebar ボタン
     const toggles = screen.getAllByRole('button', { name: /Toggle Sidebar/i })
-    expect(toggles.length).toBeGreaterThanOrEqual(1)
+    expect(toggles).toHaveLength(2)
   })
 
-  it('ログイン済みユーザーの表示名をフッターに表示する', async () => {
+  it('ログイン済みユーザーの表示名がプロフィールへのリンクとしてフッターに表示される', async () => {
     await renderSidebar()
-    const profileLinks = screen.getAllByRole('link', { name: /テスト太郎|プロフィール/ })
-    expect(profileLinks.length).toBeGreaterThanOrEqual(2)
+    const footerLink = screen.getByRole('link', { name: 'テスト太郎' })
+    expect(footerLink).toHaveAttribute('href', '/profile')
   })
 })

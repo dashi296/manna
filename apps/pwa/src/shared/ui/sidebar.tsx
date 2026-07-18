@@ -1,5 +1,9 @@
 "use client"
 
+// shadcn/ui Sidebar（Base UI 版）の vendored コード。upstream との意図的な差分:
+// - 表示ブレークポイントを md→lg に変更（BottomNav の境界に合わせる。lg:block / lg:flex の2箇所）
+// - SIDEBAR_COOKIE_NAME を export（__root.tsx が SSR で defaultOpen を復元するため）
+
 import * as React from "react"
 import { mergeProps } from "@base-ui/react/merge-props"
 import { useRender } from "@base-ui/react/use-render"
@@ -696,6 +700,7 @@ function SidebarMenuSubButton({
 }
 
 export {
+  SIDEBAR_COOKIE_NAME,
   Sidebar,
   SidebarContent,
   SidebarFooter,
