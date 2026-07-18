@@ -16,6 +16,14 @@ type Props = {
   onChange: (ref: ScriptureRefPartial) => void
 }
 
+function renderItems(items: { value: string; label: string }[]) {
+  return items.map(({ value, label }) => (
+    <SelectItem key={value} value={value}>
+      {label}
+    </SelectItem>
+  ))
+}
+
 export function ScriptureSelector({ value, onChange }: Props) {
   const collections = getAllCollections()
   const selectedCollection = value.collection ? getCollection(value.collection) : undefined
@@ -45,16 +53,10 @@ export function ScriptureSelector({ value, onChange }: Props) {
         value={value.collection ?? null}
         onValueChange={(v: string | null) => { if (v) onChange({ collection: v }) }}
       >
-        <SelectTrigger className="w-full">
+        <SelectTrigger>
           <SelectValue placeholder="聖典集を選択" />
         </SelectTrigger>
-        <SelectContent>
-          {collectionItems.map((item) => (
-            <SelectItem key={item.value} value={item.value}>
-              {item.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
+        <SelectContent>{renderItems(collectionItems)}</SelectContent>
       </Select>
 
       <Select
@@ -65,16 +67,10 @@ export function ScriptureSelector({ value, onChange }: Props) {
         }}
         disabled={!selectedCollection}
       >
-        <SelectTrigger className="w-full">
+        <SelectTrigger>
           <SelectValue placeholder="書籍を選択" />
         </SelectTrigger>
-        <SelectContent>
-          {bookItems.map((item) => (
-            <SelectItem key={item.value} value={item.value}>
-              {item.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
+        <SelectContent>{renderItems(bookItems)}</SelectContent>
       </Select>
 
       <Select
@@ -85,16 +81,10 @@ export function ScriptureSelector({ value, onChange }: Props) {
         }}
         disabled={!selectedBook}
       >
-        <SelectTrigger className="w-full">
+        <SelectTrigger>
           <SelectValue placeholder="章を選択" />
         </SelectTrigger>
-        <SelectContent>
-          {chapterItems.map((item) => (
-            <SelectItem key={item.value} value={item.value}>
-              {item.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
+        <SelectContent>{renderItems(chapterItems)}</SelectContent>
       </Select>
 
       <Input
