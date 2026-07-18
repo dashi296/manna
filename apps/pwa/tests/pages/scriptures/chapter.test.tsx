@@ -140,6 +140,24 @@ describe('ChapterPage', () => {
     expect(lastCall.replace).toBe(false)
   })
 
+  it('validateSearch はカンマ区切りの select/verses を配列に復元する', async () => {
+    const mod = await import('@/pages/scriptures/$collection/$book/$chapter')
+    const Route = mod.Route as unknown as {
+      validateSearch: (s: Record<string, unknown>) => { verses?: number[]; select?: number[]; mode?: string }
+    }
+    const validate = Route.validateSearch
+
+    expect(validate({ select: '1,3' })).toMatchObject({ select: [1, 3] })
+    expect(validate({ select: ['1', '3'] })).toMatchObject({ select: [1, 3] })
+    expect(validate({ select: [1, 3] })).toMatchObject({ select: [1, 3] })
+    expect(validate({ verses: '2,5,7' })).toMatchObject({ verses: [2, 5, 7] })
+    expect(validate({ mode: 'select', select: '1,3' })).toMatchObject({
+      mode: 'select',
+      select: [1, 3],
+    })
+    expect(validate({ select: 'abc,-1,0,4' })).toMatchObject({ select: [4] })
+  })
+
   it('未ログインの節表示では投稿導線を表示しない', () => {
     loaderData = {
       ...baseChapterData,

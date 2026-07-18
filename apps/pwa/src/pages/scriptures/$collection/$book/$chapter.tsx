@@ -99,18 +99,21 @@ const fetchChapterData = createServerFn({ method: 'POST' })
 
 type ChapterSearch = { verses?: number[]; select?: number[]; mode?: SelectionMode }
 
+function parseNumericArrayParam(raw: unknown): number[] | undefined {
+  if (raw === undefined) return undefined
+  const values: unknown[] = Array.isArray(raw) ? raw : [raw]
+  return values
+    .flatMap<number>((v) => {
+      if (typeof v === 'number') return [v]
+      return String(v).split(',').map((s) => parseInt(s.trim(), 10))
+    })
+    .filter((n) => Number.isInteger(n) && n > 0)
+}
+
 export const Route = createFileRoute('/scriptures/$collection/$book/$chapter')({
   validateSearch: (search: Record<string, unknown>): ChapterSearch => ({
-    verses: search.verses !== undefined
-      ? (Array.isArray(search.verses) ? search.verses : [search.verses])
-          .map(Number)
-          .filter((n) => Number.isInteger(n) && n > 0)
-      : undefined,
-    select: search.select !== undefined
-      ? (Array.isArray(search.select) ? search.select : [search.select])
-          .map((v) => Number(v))
-          .filter((n) => Number.isInteger(n) && n > 0)
-      : undefined,
+    verses: parseNumericArrayParam(search.verses),
+    select: parseNumericArrayParam(search.select),
     mode: search.mode === 'select' ? 'select' : undefined,
   }),
   loaderDeps: ({ search }) => ({ verses: search.verses }),
@@ -300,10 +303,17 @@ function ChapterView({ book, chapter, collection, posts, countByVerse, verseText
 
   const onSheetOpenChange = (open: boolean) => {
     setSheetOpen(open)
-    if (!open) {
-      router.invalidate()
-      if (mode === 'select') exitSelectMode()
+    if (open) return
+    router.invalidate()
+    if (mode !== 'select') return
+    // PostComposerSheet の cleanup が history.back() で composer 用エントリを pop する。
+    // その popstate 完了を待ってから ?mode/?select を replace で片付ける。
+    // 順序を逆にすると、composer entry の state marker を先に消してしまい pop できない。
+    const onPopped = () => {
+      window.removeEventListener('popstate', onPopped)
+      exitSelectMode()
     }
+    window.addEventListener('popstate', onPopped)
   }
 
   const chapterHeader = (
