@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { MarkdownRenderer, TabBar } from '@/shared/ui'
 import { Button } from '@/shared/ui/button'
@@ -7,7 +7,8 @@ import type { Visibility } from '@/entities/post'
 import { VisibilitySelector } from '@/features/choose-visibility'
 import { ScriptureSelector, type ScriptureRefPartial } from '@/features/select-scripture'
 
-const DRAFT_KEY = 'manna:post-draft'
+const LEGACY_DRAFT_KEY = 'manna:post-draft'
+const DRAFT_KEY_PREFIX = 'manna:post-draft:'
 
 const TABS = [
   { id: 'edit' as const, label: '編集' },
@@ -24,9 +25,15 @@ type Draft = {
   scripture: ScriptureRefPartial
 }
 
-function loadDraft(): Draft {
+function scriptureDraftKey(scripture: ScriptureRefPartial): string {
+  if (!scripture.collection) return `${DRAFT_KEY_PREFIX}none`
+  const verses = scripture.verses?.slice().sort((a, b) => a - b).join(',') ?? ''
+  return `${DRAFT_KEY_PREFIX}${scripture.collection}:${scripture.book ?? ''}:${scripture.chapter ?? ''}:${verses}`
+}
+
+function loadDraft(key: string): Draft {
   try {
-    const raw = localStorage.getItem(DRAFT_KEY)
+    const raw = localStorage.getItem(key)
     if (raw) return JSON.parse(raw)
   } catch {}
   return { content: '', visibility: 'public', scripture: {} }
@@ -34,19 +41,28 @@ function loadDraft(): Draft {
 
 type Props = {
   initialScripture?: ScriptureRefPartial
+  mode?: 'page' | 'sheet'
+  onSuccess?: () => void
 }
 
-export function PostEditor({ initialScripture }: Props) {
+export function PostEditor({ initialScripture, mode = 'page', onSuccess }: Props) {
   const navigate = useNavigate()
   const [tab, setTab] = useState<'edit' | 'preview'>('edit')
   const [content, setContent] = useState('')
   const [visibility, setVisibility] = useState<Visibility>('public')
   const [scripture, setScripture] = useState<ScriptureRefPartial>({})
   const [submitting, setSubmitting] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const draftLoaded = useRef(false)
 
+  const draftKey = useMemo(
+    () => (mode === 'page' ? LEGACY_DRAFT_KEY : scriptureDraftKey(scripture)),
+    [mode, scripture],
+  )
+
   useEffect(() => {
-    const draft = loadDraft()
+    const key = mode === 'page' ? LEGACY_DRAFT_KEY : scriptureDraftKey(initialScripture ?? {})
+    const draft = loadDraft(key)
     setContent(draft.content)
     setVisibility(draft.visibility)
     setScripture(initialScripture?.collection ? initialScripture : draft.scripture)
@@ -56,17 +72,22 @@ export function PostEditor({ initialScripture }: Props) {
   useEffect(() => {
     if (!draftLoaded.current) return
     const timer = setTimeout(() => {
-      localStorage.setItem(DRAFT_KEY, JSON.stringify({ content, visibility, scripture }))
+      localStorage.setItem(draftKey, JSON.stringify({ content, visibility, scripture }))
     }, 500)
     return () => clearTimeout(timer)
-  }, [content, visibility, scripture])
+  }, [content, visibility, scripture, draftKey])
 
   const handleSubmit = async () => {
     if (!content.trim() || submitting) return
     setSubmitting(true)
+    setErrorMessage(null)
 
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { setSubmitting(false); return }
+    if (!user) {
+      setSubmitting(false)
+      setErrorMessage('投稿するにはログインが必要です。')
+      return
+    }
 
     const { error } = await supabase.from('posts').insert({
       user_id: user.id,
@@ -80,16 +101,29 @@ export function PostEditor({ initialScripture }: Props) {
 
     if (error) {
       setSubmitting(false)
+      setErrorMessage('投稿に失敗しました。もう一度お試しください。')
       return
     }
 
-    localStorage.removeItem(DRAFT_KEY)
-    navigate({ to: '/' })
+    localStorage.removeItem(draftKey)
+    if (onSuccess) {
+      onSuccess()
+    } else {
+      navigate({ to: '/' })
+    }
   }
 
+  const rootClass = mode === 'sheet' ? 'flex flex-col gap-4' : 'flex flex-col gap-4 p-4'
+
   return (
-    <div className="flex flex-col gap-4 p-4">
+    <div className={rootClass}>
       <TabBar tabs={TABS} active={tab} onChange={setTab} />
+
+      {errorMessage && (
+        <p className="text-sm text-red-600" role="alert">
+          {errorMessage}
+        </p>
+      )}
 
       {tab === 'edit' ? (
         <textarea
