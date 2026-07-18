@@ -4,6 +4,7 @@ import { getCookieHeader } from '@/shared/lib/cookies'
 import { AppSidebar } from '@/shared/ui/AppSidebar'
 import { BottomNav } from '@/shared/ui/BottomNav'
 import { DevTools } from '@/shared/ui/DevTools'
+import { InstallPwaBanner } from '@/shared/ui/InstallPwaBanner'
 import { sidebarStateFromCookieHeader, SidebarInset, SidebarProvider } from '@/shared/ui/sidebar'
 import { TooltipProvider } from '@/shared/ui/tooltip'
 import appCss from '@/styles.css?url'
@@ -85,6 +86,7 @@ function RootLayout() {
               <Outlet />
             </div>
           </main>
+          <InstallPwaBanner />
           <BottomNav />
         </SidebarInset>
       </SidebarProvider>
