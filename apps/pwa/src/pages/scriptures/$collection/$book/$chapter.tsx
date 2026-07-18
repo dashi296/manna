@@ -282,7 +282,7 @@ function ChapterView({ book, chapter, collection, posts, countByVerse, verseText
   )
   const mode: SelectionMode = canCompose && search.mode === 'select' ? 'select' : 'read'
 
-  const updateSearch = (next: Partial<ChapterSearch>) => {
+  const updateSearch = (next: Partial<ChapterSearch>, { replace = true }: { replace?: boolean } = {}) => {
     navigate({
       to: '/scriptures/$collection/$book/$chapter',
       params: { collection, book: book.id, chapter: String(chapter) },
@@ -291,12 +291,12 @@ function ChapterView({ book, chapter, collection, posts, countByVerse, verseText
         select: 'select' in next ? (next.select?.length ? next.select : undefined) : prev.select,
         mode: 'mode' in next ? next.mode : prev.mode,
       }),
-      replace: true,
+      replace,
     })
   }
 
   const setSelection = (next: number[]) => updateSearch({ select: next })
-  const enterSelectMode = () => updateSearch({ mode: 'select' })
+  const enterSelectMode = () => updateSearch({ mode: 'select' }, { replace: false })
   const exitSelectMode = () => updateSearch({ mode: undefined, select: [] })
 
   const openComposerForChapter = () => {

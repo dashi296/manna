@@ -1,4 +1,4 @@
-import type { CSSProperties, MouseEvent } from 'react'
+import type { CSSProperties } from 'react'
 import { Link } from '@tanstack/react-router'
 import { Check, ChevronRight } from 'lucide-react'
 import { SanitizedVerseHtml } from '@/shared/ui'
@@ -36,9 +36,7 @@ export function VerseRow({
     <div className="flex items-start gap-2 px-4 py-3">
       {mode === 'select' && (
         <div
-          role="checkbox"
-          aria-checked={selected}
-          aria-label={`${verse}節を選択`}
+          aria-hidden="true"
           className="shrink-0 w-5 h-5 rounded-full flex items-center justify-center transition-colors"
           style={{
             border: `1.5px solid ${selected ? 'var(--lagoon)' : 'var(--line)'}`,
@@ -94,13 +92,15 @@ export function VerseRow({
   )
 
   if (mode === 'select') {
-    const handleClick = (e: MouseEvent) => {
-      e.preventDefault()
+    const handleClick = () => {
       onSelect(verse)
     }
     return (
       <button
         type="button"
+        role="checkbox"
+        aria-checked={selected}
+        aria-label={`${verse}節を選択`}
         onClick={handleClick}
         className="w-full text-left"
         style={containerStyle}

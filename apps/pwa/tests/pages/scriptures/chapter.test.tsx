@@ -124,6 +124,22 @@ describe('ChapterPage', () => {
     expect(result.select).toBeUndefined()
   })
 
+  it('ComposeMenu から選択モードに入ると mode=select を push (replace: false) で反映する', async () => {
+    search = {}
+    const user = userEvent.setup()
+    render(<ChapterPage />)
+
+    await user.click(screen.getByRole('button', { name: /投稿/ }))
+    await user.click(await screen.findByRole('menuitem', { name: /節を選んで投稿/ }))
+
+    expect(navigateSpy).toHaveBeenCalled()
+    const lastCall = navigateSpy.mock.calls.at(-1)?.[0]
+    const result = lastCall.search({})
+
+    expect(result.mode).toBe('select')
+    expect(lastCall.replace).toBe(false)
+  })
+
   it('未ログインの節表示では投稿導線を表示しない', () => {
     loaderData = {
       ...baseChapterData,
