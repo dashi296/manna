@@ -22,6 +22,16 @@ export function ScriptureSelector({ value, onChange }: Props) {
   const selectedBook =
     value.collection && value.book ? getBook(value.collection, value.book) : undefined
 
+  // Base UI Select は items を渡すと trigger に生値ではなくラベルを表示する
+  const collectionItems = collections.map((c) => ({ value: c.id, label: c.name }))
+  const bookItems = (selectedCollection?.books ?? []).map((b) => ({ value: b.id, label: b.name }))
+  const chapterItems = selectedBook
+    ? Array.from({ length: selectedBook.chapters }, (_, i) => ({
+        value: (i + 1).toString(),
+        label: `第${i + 1}章`,
+      }))
+    : []
+
   const versesText = value.verses?.join(', ') ?? ''
   const [versesInput, setVersesInput] = useState(versesText)
   useEffect(() => {
@@ -31,57 +41,59 @@ export function ScriptureSelector({ value, onChange }: Props) {
   return (
     <div className="space-y-3">
       <Select
-        value={value.collection ?? ''}
-        onValueChange={(v) => onChange({ collection: v })}
+        items={collectionItems}
+        value={value.collection ?? null}
+        onValueChange={(v: string | null) => { if (v) onChange({ collection: v }) }}
       >
-        <SelectTrigger>
+        <SelectTrigger className="w-full">
           <SelectValue placeholder="聖典集を選択" />
         </SelectTrigger>
         <SelectContent>
-          {collections.map((c) => (
-            <SelectItem key={c.id} value={c.id}>
-              {c.name}
+          {collectionItems.map((item) => (
+            <SelectItem key={item.value} value={item.value}>
+              {item.label}
             </SelectItem>
           ))}
         </SelectContent>
       </Select>
 
       <Select
-        value={value.book ?? ''}
-        onValueChange={(v) =>
-          onChange({ ...value, book: v, chapter: undefined, verses: undefined })
-        }
+        items={bookItems}
+        value={value.book ?? null}
+        onValueChange={(v: string | null) => {
+          if (v) onChange({ ...value, book: v, chapter: undefined, verses: undefined })
+        }}
         disabled={!selectedCollection}
       >
-        <SelectTrigger>
+        <SelectTrigger className="w-full">
           <SelectValue placeholder="書籍を選択" />
         </SelectTrigger>
         <SelectContent>
-          {selectedCollection?.books.map((b) => (
-            <SelectItem key={b.id} value={b.id}>
-              {b.name}
+          {bookItems.map((item) => (
+            <SelectItem key={item.value} value={item.value}>
+              {item.label}
             </SelectItem>
           ))}
         </SelectContent>
       </Select>
 
       <Select
-        value={value.chapter?.toString() ?? ''}
-        onValueChange={(v) =>
-          onChange({ ...value, chapter: parseInt(v, 10), verses: undefined })
-        }
+        items={chapterItems}
+        value={value.chapter?.toString() ?? null}
+        onValueChange={(v: string | null) => {
+          if (v) onChange({ ...value, chapter: parseInt(v, 10), verses: undefined })
+        }}
         disabled={!selectedBook}
       >
-        <SelectTrigger>
+        <SelectTrigger className="w-full">
           <SelectValue placeholder="章を選択" />
         </SelectTrigger>
         <SelectContent>
-          {selectedBook &&
-            Array.from({ length: selectedBook.chapters }, (_, i) => (
-              <SelectItem key={i + 1} value={(i + 1).toString()}>
-                第{i + 1}章
-              </SelectItem>
-            ))}
+          {chapterItems.map((item) => (
+            <SelectItem key={item.value} value={item.value}>
+              {item.label}
+            </SelectItem>
+          ))}
         </SelectContent>
       </Select>
 
