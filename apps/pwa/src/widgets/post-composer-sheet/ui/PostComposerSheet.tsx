@@ -3,6 +3,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/shared/ui/sheet'
 import { PostEditor } from '@/widgets/post-editor'
 import { type ScriptureRefPartial } from '@/features/select-scripture'
 import { getScriptureLabel } from '@/entities/scripture'
+import { useIsMobile } from '@/shared/hooks/use-mobile'
 
 type Props = {
   open: boolean
@@ -13,6 +14,7 @@ type Props = {
 const HISTORY_STATE_MARKER = { mannaComposer: true }
 
 export function PostComposerSheet({ open, onOpenChange, initialScripture }: Props) {
+  const isMobile = useIsMobile()
   const onOpenChangeRef = useRef(onOpenChange)
   onOpenChangeRef.current = onOpenChange
 
@@ -41,8 +43,12 @@ export function PostComposerSheet({ open, onOpenChange, initialScripture }: Prop
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
-        side="bottom"
-        className="max-h-[92dvh] h-[70dvh] flex flex-col gap-0 rounded-t-2xl"
+        side={isMobile ? 'bottom' : 'right'}
+        className={
+          isMobile
+            ? 'max-h-[92dvh] h-[70dvh] flex flex-col gap-0 rounded-t-2xl'
+            : 'h-dvh w-[min(520px,40vw)] max-w-none flex flex-col gap-0 rounded-none'
+        }
       >
         <SheetHeader className="border-b" style={{ borderColor: 'var(--line)' }}>
           <SheetTitle>{title}</SheetTitle>

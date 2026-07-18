@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import { PostComposerSheet } from '@/widgets/post-composer-sheet'
 
 const mockInsert = vi.fn().mockResolvedValue({ error: null })
@@ -19,6 +19,7 @@ describe('PostComposerSheet', () => {
   beforeEach(() => {
     localStorage.clear()
     mockInsert.mockClear()
+    window.innerWidth = 1024
   })
 
   it('open=false ではシート内容が描画されない', () => {
@@ -43,5 +44,23 @@ describe('PostComposerSheet', () => {
   it('initialScripture 未指定なら「新しい投稿」タイトル', () => {
     render(<PostComposerSheet open onOpenChange={() => {}} />)
     expect(screen.getByText('新しい投稿')).toBeInTheDocument()
+  })
+
+  it('デスクトップ幅では右サイドパネルとして表示する', async () => {
+    window.innerWidth = 1200
+
+    render(<PostComposerSheet open onOpenChange={() => {}} />)
+
+    await waitFor(() => expect(screen.getByRole('dialog')).toHaveAttribute('data-side', 'right'))
+    expect(screen.getByRole('dialog')).toHaveClass('w-[min(520px,40vw)]')
+  })
+
+  it('モバイル幅ではボトムシートとして表示する', async () => {
+    window.innerWidth = 390
+
+    render(<PostComposerSheet open onOpenChange={() => {}} />)
+
+    await waitFor(() => expect(screen.getByRole('dialog')).toHaveAttribute('data-side', 'bottom'))
+    expect(screen.getByRole('dialog')).toHaveClass('h-[70dvh]')
   })
 })

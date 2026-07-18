@@ -14,6 +14,13 @@ type Book = NonNullable<ReturnType<typeof getBook>>
 type SupabaseServer = Awaited<ReturnType<typeof createSupabaseServer>>
 type ChapterRef = { collection: string; book: string; chapter: number }
 
+async function queryCurrentUserId(supabase: SupabaseServer) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  return user?.id ?? null
+}
+
 async function queryVerseTexts(supabase: SupabaseServer, { collection, book, chapter }: ChapterRef, verses?: number[]) {
   let query = supabase
     .from('scripture_verses')
@@ -34,7 +41,7 @@ const fetchVerseData = createServerFn({ method: 'POST' })
   .handler(async (ctx) => {
     const { collection, book, chapter, verses } = ctx.data
     const serverSupabase = await createSupabaseServer()
-    const [{ data: posts }, verseTexts] = await Promise.all([
+    const [{ data: posts }, verseTexts, userId] = await Promise.all([
       serverSupabase
         .from('posts')
         .select(POST_SELECT)
@@ -44,8 +51,9 @@ const fetchVerseData = createServerFn({ method: 'POST' })
         .overlaps('scripture_verses', verses)
         .order('created_at', { ascending: false }),
       queryVerseTexts(serverSupabase, ctx.data, verses),
+      queryCurrentUserId(serverSupabase),
     ])
-    return { posts: (posts ?? []) as PostWithUser[], verseTexts }
+    return { posts: (posts ?? []) as PostWithUser[], verseTexts, userId }
   })
 
 const fetchChapterData = createServerFn({ method: 'POST' })
@@ -53,7 +61,7 @@ const fetchChapterData = createServerFn({ method: 'POST' })
   .handler(async (ctx) => {
     const { collection, book, chapter } = ctx.data
     const serverSupabase = await createSupabaseServer()
-    const [{ data: posts }, { data: versePosts }, verseTexts] = await Promise.all([
+    const [{ data: posts }, { data: versePosts }, verseTexts, userId] = await Promise.all([
       serverSupabase
         .from('posts')
         .select(POST_SELECT)
@@ -70,6 +78,7 @@ const fetchChapterData = createServerFn({ method: 'POST' })
         .eq('scripture_chapter', chapter)
         .not('scripture_verses', 'is', null),
       queryVerseTexts(serverSupabase, ctx.data),
+      queryCurrentUserId(serverSupabase),
     ])
 
     const countByVerse: Record<number, number> = {}
@@ -78,7 +87,7 @@ const fetchChapterData = createServerFn({ method: 'POST' })
         countByVerse[v] = (countByVerse[v] ?? 0) + 1
       })
     })
-    return { posts: (posts ?? []) as PostWithUser[], countByVerse, verseTexts }
+    return { posts: (posts ?? []) as PostWithUser[], countByVerse, verseTexts, userId }
   })
 
 type ChapterSearch = { verses?: number[]; select?: number[] }
@@ -109,20 +118,20 @@ export const Route = createFileRoute('/scriptures/$collection/$book/$chapter')({
     if (deps.verses?.length) {
       const verseCount = book.verses[chapterNum - 1]
       if (deps.verses.some((v) => v < 1 || v > verseCount)) throw notFound()
-      const { posts, verseTexts } = await fetchVerseData({ data: { ...base, verses: deps.verses } })
+      const { posts, verseTexts, userId } = await fetchVerseData({ data: { ...base, verses: deps.verses } })
       return {
         book, chapter: chapterNum, collection: params.collection,
         mode: 'verse' as const, verses: deps.verses,
-        posts, countByVerse: {} as Record<number, number>, verseTexts,
+        posts, countByVerse: {} as Record<number, number>, verseTexts, userId,
       }
     }
 
-    const { posts, countByVerse, verseTexts } = await fetchChapterData({ data: base })
+    const { posts, countByVerse, verseTexts, userId } = await fetchChapterData({ data: base })
 
     return {
       book, chapter: chapterNum, collection: params.collection,
       mode: 'chapter' as const, verses: [] as number[],
-      posts, countByVerse, verseTexts,
+      posts, countByVerse, verseTexts, userId,
     }
   },
   component: ChapterPage,
@@ -151,6 +160,7 @@ function ChapterPage() {
       verses={data.verses}
       posts={data.posts}
       verseTexts={data.verseTexts}
+      canCompose={Boolean(data.userId)}
     />
   }
   return <ChapterView
@@ -160,6 +170,7 @@ function ChapterPage() {
     posts={data.posts}
     countByVerse={data.countByVerse}
     verseTexts={data.verseTexts}
+    canCompose={Boolean(data.userId)}
   />
 }
 
@@ -170,9 +181,10 @@ type VerseViewProps = {
   verses: number[]
   posts: PostWithUser[]
   verseTexts: VerseText[]
+  canCompose: boolean
 }
 
-function VerseView({ book, chapter, collection, verses, posts, verseTexts }: VerseViewProps) {
+function VerseView({ book, chapter, collection, verses, posts, verseTexts, canCompose }: VerseViewProps) {
   const router = useRouter()
   const [sheetOpen, setSheetOpen] = useState(false)
   const scriptureLabel = getScriptureLabel({ collection, book: book.id, chapter, verses })
@@ -189,7 +201,7 @@ function VerseView({ book, chapter, collection, verses, posts, verseTexts }: Ver
         title={`📖 ${scriptureLabel}`}
         backTo="/scriptures/$collection/$book/$chapter"
         backLabel={`第${chapter}章`}
-        action={<ComposeButton onClick={() => setSheetOpen(true)} label="投稿する" />}
+        action={canCompose ? <ComposeButton onClick={() => setSheetOpen(true)} label="投稿する" /> : undefined}
       />
       <div className="px-4 py-2 border-b" style={{ borderColor: 'var(--line)' }}>
         <a
@@ -235,11 +247,13 @@ type ChapterViewProps = {
   posts: PostWithUser[]
   countByVerse: Record<number, number>
   verseTexts: VerseText[]
+  canCompose: boolean
 }
 
-function ChapterView({ book, chapter, collection, posts, countByVerse, verseTexts }: ChapterViewProps) {
+function ChapterView({ book, chapter, collection, posts, countByVerse, verseTexts, canCompose }: ChapterViewProps) {
   const router = useRouter()
   const [sheetOpen, setSheetOpen] = useState(false)
+  const [composerVerses, setComposerVerses] = useState<number[] | undefined>()
   const search = Route.useSearch()
   const navigate = Route.useNavigate()
   const officialUrl = buildScriptureUrl({ collection, book: book.id, chapter })
@@ -289,7 +303,15 @@ function ChapterView({ book, chapter, collection, posts, countByVerse, verseText
             >
               本文
             </a>
-            <ComposeButton onClick={() => setSheetOpen(true)} label="章に投稿" />
+            {canCompose && (
+              <ComposeButton
+                onClick={() => {
+                  setComposerVerses(undefined)
+                  setSheetOpen(true)
+                }}
+                label="章に投稿"
+              />
+            )}
           </div>
         }
       />
@@ -305,13 +327,15 @@ function ChapterView({ book, chapter, collection, posts, countByVerse, verseText
       )}
       <div className="p-4 pb-24">
         <p className="text-xs mb-4" style={{ color: 'var(--sea-ink-soft)' }}>
-          節をタップして詳細を見る・チェックで複数選択して投稿できます
+          {canCompose
+            ? '節をタップして詳細を見る・チェックで複数選択して投稿できます'
+            : '節をタップして詳細を見ることができます'}
         </p>
         <ul className="overflow-hidden rounded-xl" style={{ border: '1px solid var(--line)' }}>
           {verseNumbers.map((verse) => {
             const count = countByVerse[verse] ?? 0
             const vt = verseTextMap.get(verse)
-            const isSelected = selection.includes(verse)
+            const isSelected = canCompose && selection.includes(verse)
             return (
               <li
                 key={verse}
@@ -322,11 +346,13 @@ function ChapterView({ book, chapter, collection, posts, countByVerse, verseText
                 }}
               >
                 <div className="flex items-start gap-2 px-4 py-3">
-                  <VerseCheckbox
-                    verse={verse}
-                    checked={isSelected}
-                    onToggle={(v) => setSelection(toggleVerse(selection, v))}
-                  />
+                  {canCompose && (
+                    <VerseCheckbox
+                      verse={verse}
+                      checked={isSelected}
+                      onToggle={(v) => setSelection(toggleVerse(selection, v))}
+                    />
+                  )}
                   <Link
                     to="/scriptures/$collection/$book/$chapter"
                     params={{ collection, book: book.id, chapter: String(chapter) }}
@@ -365,11 +391,16 @@ function ChapterView({ book, chapter, collection, posts, countByVerse, verseText
           })}
         </ul>
       </div>
-      <SelectionBar
-        selection={selection}
-        onClear={() => setSelection([])}
-        onOpenComposer={() => setSheetOpen(true)}
-      />
+      {canCompose && (
+        <SelectionBar
+          selection={selection}
+          onClear={() => setSelection([])}
+          onOpenComposer={() => {
+            setComposerVerses(selection)
+            setSheetOpen(true)
+          }}
+        />
+      )}
       <PostComposerSheet
         open={sheetOpen}
         onOpenChange={onSheetOpenChange}
@@ -377,7 +408,7 @@ function ChapterView({ book, chapter, collection, posts, countByVerse, verseText
           collection,
           book: book.id,
           chapter,
-          verses: selection.length ? selection : undefined,
+          verses: composerVerses,
         }}
       />
     </div>
