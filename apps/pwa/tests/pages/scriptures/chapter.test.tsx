@@ -43,13 +43,14 @@ const baseChapterData: TestLoaderData = {
 
 let loaderData: TestLoaderData
 let search: { select?: number[]; mode?: 'select' } = { select: [1, 2] }
+const navigateSpy = vi.fn()
 
 vi.mock('@tanstack/react-router', async () => {
   const { routerMock } = await import('../../helpers/tanstack')
   return {
     ...routerMock(() => loaderData),
     useRouter: () => ({ invalidate: vi.fn() }),
-    useNavigate: () => vi.fn(),
+    useNavigate: () => navigateSpy,
   }
 })
 
@@ -71,7 +72,7 @@ beforeAll(async () => {
     useNavigate: () => ReturnType<typeof vi.fn>
   }
   Route.useSearch = () => search
-  Route.useNavigate = () => vi.fn()
+  Route.useNavigate = () => navigateSpy
   ChapterPage = routeComponent(mod)
 })
 
@@ -79,6 +80,7 @@ describe('ChapterPage', () => {
   beforeEach(() => {
     loaderData = baseChapterData
     search = { select: [1, 2] }
+    navigateSpy.mockClear()
     localStorage.clear()
   })
 
@@ -103,6 +105,23 @@ describe('ChapterPage', () => {
     expect(screen.queryByRole('checkbox')).toBeNull()
     expect(screen.queryByTestId('selection-bar')).toBeNull()
     expect(screen.queryByRole('button', { name: 'キャンセル' })).toBeNull()
+  })
+
+  it('選択モードでキャンセルすると mode と select が URL から確実にクリアされる', async () => {
+    search = { mode: 'select', select: [1, 2] }
+    const user = userEvent.setup()
+    render(<ChapterPage />)
+
+    expect(screen.getByText('2節選択中')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /キャンセル/ }))
+
+    expect(navigateSpy).toHaveBeenCalled()
+    const lastCall = navigateSpy.mock.calls.at(-1)?.[0]
+    const result = lastCall.search({ mode: 'select', select: [1, 2] })
+
+    expect(result.mode).toBeUndefined()
+    expect(result.select).toBeUndefined()
   })
 
   it('未ログインの節表示では投稿導線を表示しない', () => {

@@ -288,8 +288,8 @@ function ChapterView({ book, chapter, collection, posts, countByVerse, verseText
       params: { collection, book: book.id, chapter: String(chapter) },
       search: (prev) => ({
         verses: prev.verses,
-        select: next.select !== undefined ? (next.select.length ? next.select : undefined) : prev.select,
-        mode: next.mode !== undefined ? next.mode : prev.mode,
+        select: 'select' in next ? (next.select?.length ? next.select : undefined) : prev.select,
+        mode: 'mode' in next ? next.mode : prev.mode,
       }),
       replace: true,
     })
