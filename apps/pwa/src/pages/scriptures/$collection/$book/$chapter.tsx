@@ -481,10 +481,7 @@ function ChapterView({
 
   const verseList = (
     <div className="p-4 pb-24">
-      <ul
-        className="overflow-hidden rounded-xl"
-        style={{ border: '1px solid var(--line)' }}
-      >
+      <ul className="flex flex-col gap-2">
         {verseNumbers.map((verse) => {
           const vt = verseTextMap.get(verse)
           const isSelected = mode === 'select' && selection.includes(verse)
@@ -496,10 +493,12 @@ function ChapterView({
           return (
             <li
               key={verse}
-              className="border-b last:border-b-0 lg:flex lg:items-start"
-              style={{ borderColor: 'var(--line)' }}
+              className="lg:flex lg:items-start lg:gap-3"
             >
-              <div className="lg:flex-1 lg:min-w-0">
+              <div
+                className="lg:flex-1 lg:min-w-0 rounded-xl overflow-hidden"
+                style={{ border: '1px solid var(--line)' }}
+              >
                 <VerseRow
                   collection={collection}
                   book={book.id}
@@ -514,7 +513,7 @@ function ChapterView({
                 />
               </div>
               {bubblePosts.length > 0 && (
-                <div className="hidden lg:flex lg:flex-col lg:gap-2 lg:w-72 lg:shrink-0 lg:p-3">
+                <div className="hidden lg:flex lg:flex-col lg:gap-2 lg:w-72 lg:shrink-0">
                   {bubblePosts.map((p) => (
                     <CommenterBubble key={p.id} post={p} />
                   ))}
