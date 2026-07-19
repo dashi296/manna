@@ -72,4 +72,23 @@ describe('VerseCommentSheet', () => {
     )
     expect(screen.queryByText('節7 への A の投稿')).toBeNull()
   })
+
+  it('内側の投稿リスト container に max-h と overflow-y-auto を持つ', async () => {
+    const { container } = renderInRouter(
+      <VerseCommentSheet
+        open={true}
+        verse={7}
+        selectedUserName="中村さん"
+        posts={posts}
+        onOpenChange={vi.fn()}
+      />,
+    )
+    await waitFor(() => {
+      const scroller = container.ownerDocument.body.querySelector(
+        '[data-slot="sheet-content"] .max-h-\\[70vh\\]',
+      )
+      expect(scroller).not.toBeNull()
+      expect(scroller?.className).toContain('overflow-y-auto')
+    })
+  })
 })

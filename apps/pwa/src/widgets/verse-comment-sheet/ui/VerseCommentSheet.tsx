@@ -24,7 +24,7 @@ export function VerseCommentSheet({
             📖 節{verse} — {selectedUserName}
           </SheetTitle>
         </SheetHeader>
-        <div className="flex flex-col gap-2 px-4 pb-4">
+        <div className="flex flex-col gap-2 px-4 pb-4 max-h-[70vh] overflow-y-auto">
           {posts.map((p) => (
             <CompactPostCard key={p.id} post={p} />
           ))}
