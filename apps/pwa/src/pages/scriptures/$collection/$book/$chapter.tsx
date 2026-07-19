@@ -336,7 +336,6 @@ function ChapterView({
   const [openVerseSheet, setOpenVerseSheet] = useState<number | null>(null)
   const search = Route.useSearch()
   const navigate = Route.useNavigate()
-  const officialUrl = buildScriptureUrl({ collection, book: book.id, chapter })
   const maxVerse = book.verses[chapter - 1]
 
   const storedUserId = useSelectedUserStore((s) => s.selectedUserId)
@@ -431,15 +430,6 @@ function ChapterView({
 
   const headerAction = (
     <div className="flex items-center gap-3">
-      <a
-        href={officialUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="text-xs underline"
-        style={{ color: 'var(--lagoon-deep)' }}
-      >
-        本文
-      </a>
       {showToggle && <ViewModeToggle value={view} onChange={setView} />}
       {canCompose && (
         <ComposeMenu
