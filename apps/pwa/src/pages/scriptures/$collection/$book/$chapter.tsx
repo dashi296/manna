@@ -19,6 +19,7 @@ import {
 import { Users } from 'lucide-react'
 import {
   parseViewMode,
+  serializeViewMode,
   type VerseViewMode,
   ViewModeToggle,
   WhoFilterSheet,
@@ -80,11 +81,9 @@ const fetchChapterData = createServerFn({ method: 'POST' })
   .handler(async (ctx) => {
     const { collection, book, chapter, view } = ctx.data
     const serverSupabase = await createSupabaseServer()
-    const userId = await queryCurrentUserId(serverSupabase)
+    const viewWantsWho = view === 'who'
 
-    const wantWho = view === 'who' && userId !== null
-
-    const [{ data: posts }, versePostsRes, verseTexts, circle] = await Promise.all([
+    const [{ data: posts }, versePostsRes, verseTexts, userId] = await Promise.all([
       serverSupabase
         .from('posts')
         .select(POST_SELECT)
@@ -93,7 +92,7 @@ const fetchChapterData = createServerFn({ method: 'POST' })
         .eq('scripture_chapter', chapter)
         .is('scripture_verses', null)
         .order('created_at', { ascending: false }),
-      wantWho
+      viewWantsWho
         ? Promise.resolve({ data: [] as VersePostRow[] })
         : serverSupabase
             .from('posts')
@@ -103,8 +102,11 @@ const fetchChapterData = createServerFn({ method: 'POST' })
             .eq('scripture_chapter', chapter)
             .not('scripture_verses', 'is', null),
       queryVerseTexts(serverSupabase, ctx.data),
-      wantWho && userId ? getCircleUserIds(serverSupabase, userId) : Promise.resolve(null),
+      queryCurrentUserId(serverSupabase),
     ])
+
+    const wantWho = viewWantsWho && userId !== null
+    const circle = wantWho ? await getCircleUserIds(serverSupabase, userId) : null
 
     const countByVerse: Record<number, number> = {}
     if (!wantWho) {
@@ -378,8 +380,8 @@ function ChapterView({
     patchSearch({ select: next.length ? next : undefined })
   const enterSelectMode = () => patchSearch({ mode: 'select' }, false)
   const exitSelectMode = () => patchSearch({ mode: undefined, select: undefined })
-  const setView = (next: 'count' | 'who') =>
-    patchSearch({ view: next === 'who' ? 'who' : undefined })
+  const setView = (next: VerseViewMode) =>
+    patchSearch({ view: serializeViewMode(next) })
 
   const openComposerForChapter = () => {
     setComposerVerses(undefined)
@@ -399,15 +401,16 @@ function ChapterView({
     if (mode === 'select') exitSelectMode()
   }
 
+  const { excluded } = whoFilter
   const filteredAvatarsByVerse = useMemo(() => {
     if (view !== 'who') return {}
     const result: Record<number, AvatarStackItem[]> = {}
     for (const [verse, items] of Object.entries(avatarsByVerse)) {
-      const filtered = items.filter((a) => whoFilter.isIncluded(a.userId))
+      const filtered = items.filter((a) => !excluded.has(a.userId))
       if (filtered.length > 0) result[Number(verse)] = filtered
     }
     return result
-  }, [view, avatarsByVerse, whoFilter])
+  }, [view, avatarsByVerse, excluded])
 
   const headerAction = (
     <div className="flex items-center gap-3">
