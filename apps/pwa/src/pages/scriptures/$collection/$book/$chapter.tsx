@@ -144,7 +144,9 @@ const fetchChapterData = createServerFn({ method: 'POST' })
           createdAt: p.created_at ?? '',
         })
       }
-      circlePosts.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+      circlePosts.sort((a, b) =>
+        a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0,
+      )
 
       const seenPerVerse = new Map<number, Set<string>>()
       for (const { item, verses } of circlePosts) {
