@@ -8,8 +8,7 @@ import {
   Outlet,
   RouterProvider,
 } from '@tanstack/react-router'
-import { CompactPostCard } from '@/shared/ui/CompactPostCard'
-import type { PostWithUser } from '@/entities/post'
+import { CompactPostCard, type PostWithUser } from '@/entities/post'
 
 const post: PostWithUser = {
   id: 'post-1',

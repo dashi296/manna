@@ -1,5 +1,4 @@
-import type { PostWithUser } from '@/entities/post'
-import { CompactPostCard } from '@/shared/ui'
+import { CompactPostCard, type PostWithUser } from '@/entities/post'
 
 type Props = {
   posts: PostWithUser[]

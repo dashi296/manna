@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import type { PostWithUser } from '@/entities/post'
+import type { PostWithUser } from '../model'
 import { resolveUserIdentity } from '@/shared/lib/constants'
 import { formatDate } from '@/shared/lib/date'
 import { getScriptureLabel } from '@/shared/lib/scriptureUtils'
@@ -27,7 +27,7 @@ export function CompactPostCard({ post }: Props) {
       params={{ id: post.id }}
       className="block px-3 py-2 rounded-lg no-underline"
       style={{ background: 'var(--surface)', border: '1px solid var(--line)' }}
-      aria-label={post.content}
+      aria-label={`${displayName}: ${post.content}`}
     >
       <div className="flex items-center gap-2 mb-1">
         <UserAvatar name={displayName} url={avatarUrl} size="xs" />
