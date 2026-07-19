@@ -1,7 +1,8 @@
-import type { CSSProperties } from 'react'
+import type { CSSProperties, MouseEvent } from 'react'
 import { Link } from '@tanstack/react-router'
 import { Check, ChevronRight } from 'lucide-react'
-import { SanitizedVerseHtml } from '@/shared/ui'
+import { SanitizedVerseHtml, UserAvatar } from '@/shared/ui'
+import type { AvatarStackItem } from '@/shared/ui'
 
 const ROW_TRANSITION = 'background-color 200ms, border-color 200ms'
 const ROW_SELECTED_STYLE: CSSProperties = {
@@ -25,6 +26,8 @@ type Props = {
   mode: 'read' | 'select'
   selected: boolean
   onSelect: (verse: number) => void
+  commenterMarker?: AvatarStackItem
+  onMarkerClick?: (verse: number) => void
 }
 
 export function VerseRow({
@@ -37,8 +40,42 @@ export function VerseRow({
   mode,
   selected,
   onSelect,
+  commenterMarker,
+  onMarkerClick,
 }: Props) {
   const containerStyle = selected ? ROW_SELECTED_STYLE : ROW_UNSELECTED_STYLE
+
+  const handleMarkerClick = (e: MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    onMarkerClick?.(verse)
+  }
+
+  const rightBadge = commenterMarker ? (
+    <button
+      type="button"
+      aria-label={`${commenterMarker.name} の ${verse}節 コメントを見る`}
+      onClick={handleMarkerClick}
+      className="shrink-0 rounded-full"
+    >
+      <UserAvatar
+        name={commenterMarker.name}
+        url={commenterMarker.avatarUrl}
+        size="xs"
+      />
+    </button>
+  ) : count > 0 ? (
+    <span
+      className="text-xs px-2 py-0.5 rounded-full font-medium shrink-0"
+      style={{
+        background: 'var(--chip-bg)',
+        border: '1px solid var(--chip-line)',
+        color: 'var(--palm)',
+      }}
+    >
+      {count}件
+    </span>
+  ) : null
 
   const inner = (
     <div className="flex items-start gap-2 px-4 py-3">
@@ -75,18 +112,7 @@ export function VerseRow({
             />
           )}
         </div>
-        {count > 0 && (
-          <span
-            className="text-xs px-2 py-0.5 rounded-full font-medium shrink-0"
-            style={{
-              background: 'var(--chip-bg)',
-              border: '1px solid var(--chip-line)',
-              color: 'var(--palm)',
-            }}
-          >
-            {count}件
-          </span>
-        )}
+        {rightBadge}
         {mode === 'read' && (
           <ChevronRight
             size={16}
