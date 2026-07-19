@@ -74,14 +74,11 @@ const fetchVerseData = createServerFn({ method: 'POST' })
     return { posts: (posts ?? []) as PostWithUser[], verseTexts, userId }
   })
 
-type VersePostRow = { scripture_verses: number[] | null }
-
 const fetchChapterData = createServerFn({ method: 'POST' })
   .inputValidator((data: ChapterRef & { view: VerseViewMode }) => data)
   .handler(async (ctx) => {
     const { collection, book, chapter, view } = ctx.data
     const serverSupabase = await createSupabaseServer()
-    const viewWantsWho = view === 'who'
 
     const [{ data: posts }, versePostsRes, verseTexts, userId] = await Promise.all([
       serverSupabase
@@ -92,30 +89,26 @@ const fetchChapterData = createServerFn({ method: 'POST' })
         .eq('scripture_chapter', chapter)
         .is('scripture_verses', null)
         .order('created_at', { ascending: false }),
-      viewWantsWho
-        ? Promise.resolve({ data: [] as VersePostRow[] })
-        : serverSupabase
-            .from('posts')
-            .select('scripture_verses')
-            .eq('scripture_collection', collection)
-            .eq('scripture_book', book)
-            .eq('scripture_chapter', chapter)
-            .not('scripture_verses', 'is', null),
+      serverSupabase
+        .from('posts')
+        .select('scripture_verses')
+        .eq('scripture_collection', collection)
+        .eq('scripture_book', book)
+        .eq('scripture_chapter', chapter)
+        .not('scripture_verses', 'is', null),
       queryVerseTexts(serverSupabase, ctx.data),
       queryCurrentUserId(serverSupabase),
     ])
 
-    const wantWho = viewWantsWho && userId !== null
+    const wantWho = view === 'who' && userId !== null
     const circle = wantWho ? await getCircleUserIds(serverSupabase, userId) : null
 
     const countByVerse: Record<number, number> = {}
-    if (!wantWho) {
-      ;(versePostsRes.data ?? []).forEach((p) => {
-        ;(p.scripture_verses as number[] | null)?.forEach((v) => {
-          countByVerse[v] = (countByVerse[v] ?? 0) + 1
-        })
+    ;(versePostsRes.data ?? []).forEach((p) => {
+      ;(p.scripture_verses as number[] | null)?.forEach((v) => {
+        countByVerse[v] = (countByVerse[v] ?? 0) + 1
       })
-    }
+    })
 
     let avatarsByVerse: Record<number, AvatarStackItem[]> = {}
     let circleUsers: AvatarStackItem[] = []
