@@ -484,11 +484,11 @@ function ChapterView({
       <ul
         className={
           showBubbles
-            ? 'flex flex-col gap-2 lg:grid lg:grid-cols-[minmax(0,1fr)_18rem] lg:gap-x-3 lg:gap-y-2'
-            : 'flex flex-col gap-2'
+            ? 'lg:grid lg:grid-cols-[minmax(0,1fr)_18rem] lg:gap-x-3'
+            : ''
         }
       >
-        {verseNumbers.map((verse) => {
+        {verseNumbers.map((verse, i) => {
           const vt = verseTextMap.get(verse)
           const isSelected = mode === 'select' && selection.includes(verse)
           const marker =
@@ -496,18 +496,12 @@ function ChapterView({
               ? selectedUser
               : undefined
           const bubblePosts = showBubbles ? postsByVerse.get(verse) ?? [] : []
+          const isLast = i === verseNumbers.length - 1
           return (
-            <li
-              key={verse}
-              className={
-                showBubbles
-                  ? 'lg:contents'
-                  : ''
-              }
-            >
+            <li key={verse} className={showBubbles ? 'lg:contents' : ''}>
               <div
-                className="rounded-xl overflow-hidden"
-                style={{ border: '1px solid var(--line)' }}
+                className={isLast ? '' : 'border-b'}
+                style={{ borderColor: 'var(--line)' }}
               >
                 <VerseRow
                   collection={collection}
@@ -523,7 +517,7 @@ function ChapterView({
                 />
               </div>
               {showBubbles && (
-                <div className="hidden lg:flex lg:flex-col lg:gap-2">
+                <div className="hidden lg:flex lg:flex-col lg:gap-2 lg:py-2">
                   {bubblePosts.map((p) => (
                     <CommenterBubble key={p.id} post={p} />
                   ))}
