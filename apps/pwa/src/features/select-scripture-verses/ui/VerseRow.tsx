@@ -114,7 +114,7 @@ export function VerseRow({
           aria-label={`${commenterMarker.name} の ${verse}節 コメントを見る`}
           onClick={() => onMarkerClick?.(verse)}
           className="absolute z-10 rounded-full"
-          style={{ top: 12, right: 32 }}
+          style={{ top: 12, right: 12 }}
         >
           <UserAvatar
             name={commenterMarker.name}
