@@ -507,7 +507,7 @@ function ChapterView({
   )
 
   const verseList = (
-    <div className="p-4 pb-24 flex-1 min-w-0">
+    <div className="p-4 pb-24">
       <ul
         className="overflow-hidden rounded-xl"
         style={{ border: '1px solid var(--line)' }}
@@ -579,10 +579,15 @@ function ChapterView({
           ))}
         </div>
       )}
-      <div className="flex">
-        {verseList}
-        {rail}
-      </div>
+      {verseList}
+      {rail && (
+        <div
+          className="hidden lg:block fixed top-0 right-0 h-screen w-80 border-l overflow-y-auto pt-16 pb-6"
+          style={{ borderColor: 'var(--line)', background: 'var(--surface)' }}
+        >
+          {rail}
+        </div>
+      )}
       {canCompose && (
         <PostComposerSheet
           open={sheetOpen}
