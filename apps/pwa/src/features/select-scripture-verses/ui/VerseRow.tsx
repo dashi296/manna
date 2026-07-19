@@ -1,4 +1,4 @@
-import type { CSSProperties, MouseEvent } from 'react'
+import type { CSSProperties } from 'react'
 import { Link } from '@tanstack/react-router'
 import { Check, ChevronRight } from 'lucide-react'
 import { SanitizedVerseHtml, UserAvatar } from '@/shared/ui'
@@ -45,37 +45,19 @@ export function VerseRow({
 }: Props) {
   const containerStyle = selected ? ROW_SELECTED_STYLE : ROW_UNSELECTED_STYLE
 
-  const handleMarkerClick = (e: MouseEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    onMarkerClick?.(verse)
-  }
-
-  const rightBadge = commenterMarker ? (
-    <button
-      type="button"
-      aria-label={`${commenterMarker.name} の ${verse}節 コメントを見る`}
-      onClick={handleMarkerClick}
-      className="shrink-0 rounded-full"
-    >
-      <UserAvatar
-        name={commenterMarker.name}
-        url={commenterMarker.avatarUrl}
-        size="xs"
-      />
-    </button>
-  ) : count > 0 ? (
-    <span
-      className="text-xs px-2 py-0.5 rounded-full font-medium shrink-0"
-      style={{
-        background: 'var(--chip-bg)',
-        border: '1px solid var(--chip-line)',
-        color: 'var(--palm)',
-      }}
-    >
-      {count}件
-    </span>
-  ) : null
+  const rightBadge =
+    count > 0 && !commenterMarker ? (
+      <span
+        className="text-xs px-2 py-0.5 rounded-full font-medium shrink-0"
+        style={{
+          background: 'var(--chip-bg)',
+          border: '1px solid var(--chip-line)',
+          color: 'var(--palm)',
+        }}
+      >
+        {count}件
+      </span>
+    ) : null
 
   const inner = (
     <div className="flex items-start gap-2 px-4 py-3">
@@ -142,14 +124,30 @@ export function VerseRow({
   }
 
   return (
-    <Link
-      to="/scriptures/$collection/$book/$chapter"
-      params={{ collection, book, chapter: String(chapter) }}
-      search={{ verses: [verse] }}
-      className="block"
-      style={containerStyle}
-    >
-      {inner}
-    </Link>
+    <div className="relative" style={containerStyle}>
+      <Link
+        to="/scriptures/$collection/$book/$chapter"
+        params={{ collection, book, chapter: String(chapter) }}
+        search={{ verses: [verse] }}
+        className="block"
+      >
+        {inner}
+      </Link>
+      {commenterMarker && (
+        <button
+          type="button"
+          aria-label={`${commenterMarker.name} の ${verse}節 コメントを見る`}
+          onClick={() => onMarkerClick?.(verse)}
+          className="absolute z-10 rounded-full"
+          style={{ top: 12, right: 32 }}
+        >
+          <UserAvatar
+            name={commenterMarker.name}
+            url={commenterMarker.avatarUrl}
+            size="xs"
+          />
+        </button>
+      )}
+    </div>
   )
 }
