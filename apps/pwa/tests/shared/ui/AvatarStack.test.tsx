@@ -1,0 +1,34 @@
+import { describe, it, expect } from 'vitest'
+import { render, screen } from '@testing-library/react'
+import { AvatarStack, type AvatarStackItem } from '@/shared/ui/AvatarStack'
+
+const items: AvatarStackItem[] = [
+  { userId: 'u1', name: '中村さん', avatarUrl: null },
+  { userId: 'u2', name: '田中さん', avatarUrl: 'https://example.com/a.png' },
+  { userId: 'u3', name: '佐藤さん', avatarUrl: null },
+  { userId: 'u4', name: '鈴木さん', avatarUrl: null },
+  { userId: 'u5', name: '山田さん', avatarUrl: null },
+]
+
+describe('AvatarStack', () => {
+  it('items が空なら何もレンダリングしない', () => {
+    const { container } = render(<AvatarStack items={[]} />)
+    expect(container.firstChild).toBeNull()
+  })
+
+  it('items.length <= max は全員分描画、+N バッジは出さない', () => {
+    render(<AvatarStack items={items.slice(0, 3)} max={3} />)
+    expect(screen.getByRole('img', { name: '田中さん' })).toBeInTheDocument()
+    expect(screen.queryByText(/^\+/)).toBeNull()
+  })
+
+  it('items.length > max は max 個 + +N バッジを描画', () => {
+    render(<AvatarStack items={items} max={3} />)
+    expect(screen.getByText('+2')).toBeInTheDocument()
+  })
+
+  it('ariaLabel を role=group の aria-label として反映', () => {
+    render(<AvatarStack items={items.slice(0, 2)} ariaLabel="2件の投稿" />)
+    expect(screen.getByRole('group', { name: '2件の投稿' })).toBeInTheDocument()
+  })
+})
