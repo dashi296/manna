@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react'
 import { Link } from '@tanstack/react-router'
-import { Check, ChevronRight } from 'lucide-react'
+import { Check } from 'lucide-react'
 import { SanitizedVerseHtml, UserAvatar } from '@/shared/ui'
 import type { AvatarStackItem } from '@/shared/ui'
 
@@ -95,14 +95,6 @@ export function VerseRow({
           )}
         </div>
         {rightBadge}
-        {mode === 'read' && (
-          <ChevronRight
-            size={16}
-            className="shrink-0 mt-0.5"
-            style={{ color: 'var(--sea-ink-soft)' }}
-            aria-hidden="true"
-          />
-        )}
       </div>
     </div>
   )
