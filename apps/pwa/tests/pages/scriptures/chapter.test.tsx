@@ -19,6 +19,9 @@ type TestLoaderData = {
   countByVerse: Record<number, number>
   verseTexts: { verse: number; text_html: string }[]
   userId: string | null
+  view: 'count' | 'who'
+  avatarsByVerse: Record<number, { userId: string; name: string; avatarUrl: string | null }[]>
+  circleUsers: { userId: string; name: string; avatarUrl: string | null }[]
 }
 
 const baseChapterData: TestLoaderData = {
@@ -39,6 +42,9 @@ const baseChapterData: TestLoaderData = {
     { verse: 2, text_html: '二節の本文' },
   ],
   userId: 'user-1',
+  view: 'count' as const,
+  avatarsByVerse: {},
+  circleUsers: [],
 }
 
 let loaderData: TestLoaderData
@@ -156,6 +162,9 @@ describe('ChapterPage', () => {
       select: [1, 3],
     })
     expect(validate({ select: 'abc,-1,0,4' })).toMatchObject({ select: [4] })
+    expect(validate({ view: 'who' })).toMatchObject({ view: 'who' })
+    expect(validate({ view: 'foo' })).toMatchObject({ view: undefined })
+    expect(validate({})).toMatchObject({ view: undefined })
   })
 
   it('未ログインの節表示では投稿導線を表示しない', () => {
