@@ -19,7 +19,13 @@ import {
   parseViewMode,
   parseSelectedUser,
   type VerseViewMode,
+  ViewModeToggle,
+  ChapterCommentersRow,
+  serializeViewMode,
 } from '@/features/select-verse-view'
+import { ChapterCommentRail } from '@/widgets/chapter-comment-rail'
+import { VerseCommentSheet } from '@/widgets/verse-comment-sheet'
+import { useIsMobile } from '@/shared/hooks/use-mobile'
 import { getCircleUserIds } from '@/entities/user'
 import type { AvatarStackItem } from '@/shared/ui'
 
@@ -368,10 +374,15 @@ type ChapterViewProps = {
   versesWithSelectedUser: number[]
 }
 
-function ChapterView({ book, chapter, collection, posts, countByVerse, verseTexts, canCompose }: ChapterViewProps) {
+function ChapterView({
+  book, chapter, collection, posts, countByVerse, verseTexts, canCompose,
+  view, chapterCommenters, selectedUser, selectedUserPosts, versesWithSelectedUser,
+}: ChapterViewProps) {
   const router = useRouter()
+  const isMobile = useIsMobile()
   const [sheetOpen, setSheetOpen] = useState(false)
   const [composerVerses, setComposerVerses] = useState<number[] | undefined>()
+  const [openVerseSheet, setOpenVerseSheet] = useState<number | null>(null)
   const search = Route.useSearch()
   const navigate = Route.useNavigate()
   const officialUrl = buildScriptureUrl({ collection, book: book.id, chapter })
@@ -401,6 +412,28 @@ function ChapterView({ book, chapter, collection, posts, countByVerse, verseText
     patchSearch({ select: next.length ? next : undefined })
   const enterSelectMode = () => patchSearch({ mode: 'select' }, false)
   const exitSelectMode = () => patchSearch({ mode: undefined, select: undefined })
+  const setView = (next: VerseViewMode) =>
+    patchSearch({ view: serializeViewMode(next), user: undefined })
+  const selectUser = (userId: string) =>
+    patchSearch({ user: userId })
+  const clearUser = () => patchSearch({ user: undefined })
+
+  const versesWithMarker = useMemo(
+    () => new Set(versesWithSelectedUser),
+    [versesWithSelectedUser],
+  )
+
+  const postsByVerse = useMemo(() => {
+    const map = new Map<number, PostWithUser[]>()
+    for (const p of selectedUserPosts) {
+      ;((p.scripture_verses as number[] | null) ?? []).forEach((v) => {
+        const arr = map.get(v) ?? []
+        arr.push(p)
+        map.set(v, arr)
+      })
+    }
+    return map
+  }, [selectedUserPosts])
 
   const openComposerForChapter = () => {
     setComposerVerses(undefined)
@@ -410,41 +443,59 @@ function ChapterView({ book, chapter, collection, posts, countByVerse, verseText
     setComposerVerses(selection)
     setSheetOpen(true)
   }
-
   const onSheetOpenChange = (open: boolean) => {
     setSheetOpen(open)
     if (!open) router.invalidate()
   }
-
   const onComposerClosed = () => {
     if (mode === 'select') exitSelectMode()
   }
 
+  const showToggle = canCompose && mode !== 'select'
+  const showCommenters = showToggle && view === 'who'
+  const showRail = !isMobile && selectedUser !== null && selectedUserPosts.length > 0
+  const showMarkers = isMobile && selectedUser !== null
+
+  const headerAction = (
+    <div className="flex items-center gap-3">
+      <a
+        href={officialUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-xs underline"
+        style={{ color: 'var(--lagoon-deep)' }}
+      >
+        本文
+      </a>
+      {showToggle && <ViewModeToggle value={view} onChange={setView} />}
+      {canCompose && (
+        <ComposeMenu
+          onSelectChapter={openComposerForChapter}
+          onSelectVerses={enterSelectMode}
+        />
+      )}
+    </div>
+  )
+
   const chapterHeader = (
-    <PageHeader
-      title={`${book.name} 第${chapter}章`}
-      backTo="/scriptures/$collection/$book"
-      backLabel={book.name}
-      action={
-        <div className="flex items-center gap-3">
-          <a
-            href={officialUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs underline"
-            style={{ color: 'var(--lagoon-deep)' }}
-          >
-            本文
-          </a>
-          {canCompose && (
-            <ComposeMenu
-              onSelectChapter={openComposerForChapter}
-              onSelectVerses={enterSelectMode}
-            />
-          )}
+    <>
+      <PageHeader
+        title={`${book.name} 第${chapter}章`}
+        backTo="/scriptures/$collection/$book"
+        backLabel={book.name}
+        action={headerAction}
+      />
+      {showCommenters && (
+        <div className="px-4 py-2 border-b" style={{ borderColor: 'var(--line)' }}>
+          <ChapterCommentersRow
+            commenters={chapterCommenters}
+            selectedUserId={selectedUser?.userId ?? null}
+            onSelect={selectUser}
+            onClear={clearUser}
+          />
         </div>
-      }
-    />
+      )}
+    </>
   )
 
   const selectionHeader = (
@@ -454,6 +505,66 @@ function ChapterView({ book, chapter, collection, posts, countByVerse, verseText
       onSubmit={openComposerForSelection}
     />
   )
+
+  const verseList = (
+    <div className="p-4 pb-24 flex-1 min-w-0">
+      <ul
+        className="overflow-hidden rounded-xl"
+        style={{ border: '1px solid var(--line)' }}
+      >
+        {verseNumbers.map((verse) => {
+          const count = countByVerse[verse] ?? 0
+          const vt = verseTextMap.get(verse)
+          const isSelected = mode === 'select' && selection.includes(verse)
+          const marker =
+            showMarkers && versesWithMarker.has(verse) && selectedUser
+              ? selectedUser
+              : undefined
+          return (
+            <li
+              key={verse}
+              className="border-b last:border-b-0"
+              style={{ borderColor: 'var(--line)' }}
+            >
+              <VerseRow
+                collection={collection}
+                book={book.id}
+                chapter={chapter}
+                verse={verse}
+                textHtml={vt?.text_html}
+                count={count}
+                mode={mode}
+                selected={isSelected}
+                onSelect={(v) => setSelection(toggleVerse(selection, v))}
+                commenterMarker={marker}
+                onMarkerClick={(v) => setOpenVerseSheet(v)}
+              />
+            </li>
+          )
+        })}
+      </ul>
+    </div>
+  )
+
+  const rail = showRail && selectedUser ? (
+    <ChapterCommentRail
+      posts={selectedUserPosts}
+      selectedUserName={selectedUser.name}
+    />
+  ) : null
+
+  const activeVerseSheet =
+    openVerseSheet !== null && selectedUser ? (
+      <VerseCommentSheet
+        open={openVerseSheet !== null}
+        verse={openVerseSheet}
+        selectedUserName={selectedUser.name}
+        posts={postsByVerse.get(openVerseSheet) ?? []}
+        onOpenChange={(open) => {
+          if (!open) setOpenVerseSheet(null)
+        }}
+      />
+    ) : null
 
   return (
     <div>
@@ -468,33 +579,9 @@ function ChapterView({ book, chapter, collection, posts, countByVerse, verseText
           ))}
         </div>
       )}
-      <div className="p-4 pb-24">
-        <ul className="overflow-hidden rounded-xl" style={{ border: '1px solid var(--line)' }}>
-          {verseNumbers.map((verse) => {
-            const count = countByVerse[verse] ?? 0
-            const vt = verseTextMap.get(verse)
-            const isSelected = mode === 'select' && selection.includes(verse)
-            return (
-              <li
-                key={verse}
-                className="border-b last:border-b-0"
-                style={{ borderColor: 'var(--line)' }}
-              >
-                <VerseRow
-                  collection={collection}
-                  book={book.id}
-                  chapter={chapter}
-                  verse={verse}
-                  textHtml={vt?.text_html}
-                  count={count}
-                  mode={mode}
-                  selected={isSelected}
-                  onSelect={(v) => setSelection(toggleVerse(selection, v))}
-                />
-              </li>
-            )
-          })}
-        </ul>
+      <div className="flex">
+        {verseList}
+        {rail}
       </div>
       {canCompose && (
         <PostComposerSheet
@@ -509,6 +596,7 @@ function ChapterView({ book, chapter, collection, posts, countByVerse, verseText
           }}
         />
       )}
+      {activeVerseSheet}
     </div>
   )
 }
