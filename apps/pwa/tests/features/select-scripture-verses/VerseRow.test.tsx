@@ -88,3 +88,55 @@ describe('VerseRow', () => {
     })
   })
 })
+
+describe("VerseRow view='who'", () => {
+  const avatars = [
+    { userId: 'u1', name: '中村さん', avatarUrl: null },
+    { userId: 'u2', name: '田中さん', avatarUrl: null },
+  ]
+
+  it("view='who' かつ avatars ありでアバターグループを描画し、件数バッジは出さない", async () => {
+    renderInRouter(
+      <VerseRow
+        {...baseProps}
+        count={2}
+        mode="read"
+        selected={false}
+        onSelect={vi.fn()}
+        view="who"
+        avatars={avatars}
+      />,
+    )
+    await waitFor(() => {
+      expect(screen.getByRole('group')).toBeInTheDocument()
+      expect(screen.queryByText('2件')).toBeNull()
+    })
+  })
+
+  it("view='who' かつ avatars 空はアバターも件数バッジも描画しない", async () => {
+    renderInRouter(
+      <VerseRow
+        {...baseProps}
+        count={3}
+        mode="read"
+        selected={false}
+        onSelect={vi.fn()}
+        view="who"
+        avatars={[]}
+      />,
+    )
+    await waitFor(() => {
+      expect(screen.queryByRole('group')).toBeNull()
+      expect(screen.queryByText('3件')).toBeNull()
+    })
+  })
+
+  it("view 未指定は既存の 'count' 挙動（件数バッジ）", async () => {
+    renderInRouter(
+      <VerseRow {...baseProps} count={4} mode="read" selected={false} onSelect={vi.fn()} />,
+    )
+    await waitFor(() => {
+      expect(screen.getByText('4件')).toBeInTheDocument()
+    })
+  })
+})

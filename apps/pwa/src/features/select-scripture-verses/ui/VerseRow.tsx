@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react'
 import { Link } from '@tanstack/react-router'
 import { Check, ChevronRight } from 'lucide-react'
 import { SanitizedVerseHtml } from '@/shared/ui'
+import { AvatarStack, type AvatarStackItem } from '@/shared/ui/AvatarStack'
 
 const ROW_TRANSITION = 'background-color 200ms, border-color 200ms'
 const ROW_SELECTED_STYLE: CSSProperties = {
@@ -25,6 +26,8 @@ type Props = {
   mode: 'read' | 'select'
   selected: boolean
   onSelect: (verse: number) => void
+  view?: 'count' | 'who'
+  avatars?: AvatarStackItem[]
 }
 
 export function VerseRow({
@@ -37,8 +40,31 @@ export function VerseRow({
   mode,
   selected,
   onSelect,
+  view = 'count',
+  avatars,
 }: Props) {
   const containerStyle = selected ? ROW_SELECTED_STYLE : ROW_UNSELECTED_STYLE
+
+  const rightBadge =
+    view === 'who' ? (
+      avatars && avatars.length > 0 ? (
+        <AvatarStack
+          items={avatars}
+          ariaLabel={`${avatars.length}件の投稿 ${avatars.map((a) => a.name).join('・')}`}
+        />
+      ) : null
+    ) : count > 0 ? (
+      <span
+        className="text-xs px-2 py-0.5 rounded-full font-medium shrink-0"
+        style={{
+          background: 'var(--chip-bg)',
+          border: '1px solid var(--chip-line)',
+          color: 'var(--palm)',
+        }}
+      >
+        {count}件
+      </span>
+    ) : null
 
   const inner = (
     <div className="flex items-start gap-2 px-4 py-3">
@@ -75,18 +101,7 @@ export function VerseRow({
             />
           )}
         </div>
-        {count > 0 && (
-          <span
-            className="text-xs px-2 py-0.5 rounded-full font-medium shrink-0"
-            style={{
-              background: 'var(--chip-bg)',
-              border: '1px solid var(--chip-line)',
-              color: 'var(--palm)',
-            }}
-          >
-            {count}件
-          </span>
-        )}
+        {rightBadge}
         {mode === 'read' && (
           <ChevronRight
             size={16}
