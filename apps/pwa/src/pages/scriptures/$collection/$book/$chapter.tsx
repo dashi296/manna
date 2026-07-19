@@ -80,7 +80,7 @@ const fetchChapterData = createServerFn({ method: 'POST' })
     const { collection, book, chapter, view } = ctx.data
     const serverSupabase = await createSupabaseServer()
 
-    const [{ data: posts }, versePostsRes, verseTexts, userId] = await Promise.all([
+    const [{ data: posts }, versePostsRes, verseTexts, authAndCircle] = await Promise.all([
       serverSupabase
         .from('posts')
         .select(POST_SELECT)
@@ -91,20 +91,28 @@ const fetchChapterData = createServerFn({ method: 'POST' })
         .order('created_at', { ascending: false }),
       serverSupabase
         .from('posts')
-        .select('scripture_verses')
+        .select('user_id, scripture_verses, created_at')
         .eq('scripture_collection', collection)
         .eq('scripture_book', book)
         .eq('scripture_chapter', chapter)
-        .not('scripture_verses', 'is', null),
+        .not('scripture_verses', 'is', null)
+        .order('created_at', { ascending: false }),
       queryVerseTexts(serverSupabase, ctx.data),
-      queryCurrentUserId(serverSupabase),
+      queryCurrentUserId(serverSupabase).then(async (userId) => ({
+        userId,
+        circle:
+          view === 'who' && userId !== null
+            ? await getCircleUserIds(serverSupabase, userId)
+            : null,
+      })),
     ])
 
+    const { userId, circle } = authAndCircle
     const wantWho = view === 'who' && userId !== null
-    const circle = wantWho ? await getCircleUserIds(serverSupabase, userId) : null
+    const versePosts = versePostsRes.data ?? []
 
     const countByVerse: Record<number, number> = {}
-    ;(versePostsRes.data ?? []).forEach((p) => {
+    versePosts.forEach((p) => {
       ;(p.scripture_verses as number[] | null)?.forEach((v) => {
         countByVerse[v] = (countByVerse[v] ?? 0) + 1
       })
@@ -125,26 +133,16 @@ const fetchChapterData = createServerFn({ method: 'POST' })
       )
       circleUsers = [...userLookup.values()]
 
-      const { data: whoPosts } = await serverSupabase
-        .from('posts')
-        .select('user_id, scripture_verses, created_at')
-        .eq('scripture_collection', collection)
-        .eq('scripture_book', book)
-        .eq('scripture_chapter', chapter)
-        .not('scripture_verses', 'is', null)
-        .in('user_id', circle.ids)
-        .order('created_at', { ascending: false })
-
       const seenPerVerse = new Map<number, Set<string>>()
-      ;(whoPosts ?? []).forEach((p) => {
+      versePosts.forEach((p) => {
+        const item = userLookup.get(p.user_id as string)
+        if (!item) return
         const verses = (p.scripture_verses as number[] | null) ?? []
         for (const v of verses) {
           const seen = seenPerVerse.get(v) ?? new Set<string>()
-          if (seen.has(p.user_id)) continue
-          seen.add(p.user_id)
+          if (seen.has(item.userId)) continue
+          seen.add(item.userId)
           seenPerVerse.set(v, seen)
-          const item = userLookup.get(p.user_id)
-          if (!item) continue
           const arr = avatarsByVerse[v] ?? []
           arr.push(item)
           avatarsByVerse[v] = arr
