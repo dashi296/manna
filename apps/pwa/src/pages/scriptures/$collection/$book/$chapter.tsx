@@ -323,16 +323,11 @@ function ChapterView({
   const maxVerse = book.verses[chapter - 1]
 
   const storedUserId = useSelectedUserStore((s) => s.selectedUserId)
-  const selectUserInStore = useSelectedUserStore((s) => s.select)
-  const clearUserInStore = useSelectedUserStore((s) => s.clear)
-  const commentersById = useMemo(
-    () => new Map(chapterCommenters.map((c) => [c.userId, c])),
-    [chapterCommenters],
-  )
+  const selectUser = useSelectedUserStore((s) => s.select)
+  const clearUser = useSelectedUserStore((s) => s.clear)
   const selectedUser =
-    storedUserId && commentersById.has(storedUserId)
-      ? commentersById.get(storedUserId)!
-      : null
+    (storedUserId && chapterCommenters.find((c) => c.userId === storedUserId)) ||
+    null
   const selectedUserPosts = useMemo(
     () =>
       selectedUser
@@ -340,12 +335,18 @@ function ChapterView({
         : [],
     [circlePosts, selectedUser],
   )
-  const versesWithMarker = useMemo(() => {
-    const set = new Set<number>()
+  const { versesWithMarker, postsByVerse } = useMemo(() => {
+    const verses = new Set<number>()
+    const byVerse = new Map<number, PostWithUser[]>()
     for (const p of selectedUserPosts) {
-      p.scripture_verses?.forEach((v) => set.add(v))
+      p.scripture_verses?.forEach((v) => {
+        verses.add(v)
+        const arr = byVerse.get(v) ?? []
+        arr.push(p)
+        byVerse.set(v, arr)
+      })
     }
-    return set
+    return { versesWithMarker: verses, postsByVerse: byVerse }
   }, [selectedUserPosts])
 
   const verseTextMap = useMemo(
@@ -372,20 +373,6 @@ function ChapterView({
     patchSearch({ select: next.length ? next : undefined })
   const enterSelectMode = () => patchSearch({ mode: 'select' }, false)
   const exitSelectMode = () => patchSearch({ mode: undefined, select: undefined })
-  const selectUser = (userId: string) => selectUserInStore(userId)
-  const clearUser = () => clearUserInStore()
-
-  const postsByVerse = useMemo(() => {
-    const map = new Map<number, PostWithUser[]>()
-    for (const p of selectedUserPosts) {
-      p.scripture_verses?.forEach((v) => {
-        const arr = map.get(v) ?? []
-        arr.push(p)
-        map.set(v, arr)
-      })
-    }
-    return map
-  }, [selectedUserPosts])
 
   const openComposerForChapter = () => {
     setComposerVerses(undefined)
@@ -404,19 +391,16 @@ function ChapterView({
   }
 
   const showCommenters = canCompose && mode !== 'select'
-  const showBubbles = mode !== 'select' && !isMobile && selectedUser !== null
-  const showMarkers = mode !== 'select' && isMobile && selectedUser !== null
+  const hasSelectedUser = mode !== 'select' && selectedUser !== null
+  const showBubbles = hasSelectedUser && !isMobile
+  const showMarkers = hasSelectedUser && isMobile
 
-  const headerAction = (
-    <div className="flex items-center gap-3">
-      {canCompose && (
-        <ComposeMenu
-          onSelectChapter={openComposerForChapter}
-          onSelectVerses={enterSelectMode}
-        />
-      )}
-    </div>
-  )
+  const headerAction = canCompose ? (
+    <ComposeMenu
+      onSelectChapter={openComposerForChapter}
+      onSelectVerses={enterSelectMode}
+    />
+  ) : undefined
 
   const chapterHeader = (
     <>
@@ -501,7 +485,7 @@ function ChapterView({
   const activeVerseSheet =
     mode !== 'select' && openVerseSheet !== null && selectedUser ? (
       <VerseCommentSheet
-        open={openVerseSheet !== null}
+        open
         verse={openVerseSheet}
         selectedUserName={selectedUser.name}
         posts={postsByVerse.get(openVerseSheet) ?? []}

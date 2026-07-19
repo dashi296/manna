@@ -9,22 +9,22 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './pages/__root'
-import { Route as NotificationsRouteImport } from './pages/notifications'
-import { Route as LoginRouteImport } from './pages/login'
 import { Route as IndexRouteImport } from './pages/index'
-import { Route as ScripturesIndexRouteImport } from './pages/scriptures/index'
+import { Route as LoginRouteImport } from './pages/login'
+import { Route as NotificationsRouteImport } from './pages/notifications'
+import { Route as PostsIdRouteImport } from './pages/posts/$id'
+import { Route as PostsNewRouteImport } from './pages/posts/new'
 import { Route as ProfileIndexRouteImport } from './pages/profile/index'
 import { Route as ProfileUserIdRouteImport } from './pages/profile/$userId'
-import { Route as PostsNewRouteImport } from './pages/posts/new'
-import { Route as PostsIdRouteImport } from './pages/posts/$id'
-import { Route as ScripturesCollectionIndexRouteImport } from './pages/scriptures/$collection/index'
+import { Route as ScripturesIndexRouteImport } from './pages/scriptures/index'
 import { Route as ApiAuthCallbackRouteImport } from './pages/api/auth/callback'
+import { Route as ScripturesCollectionIndexRouteImport } from './pages/scriptures/$collection/index'
 import { Route as ScripturesCollectionBookIndexRouteImport } from './pages/scriptures/$collection/$book/index'
 import { Route as ScripturesCollectionBookChapterRouteImport } from './pages/scriptures/$collection/$book/$chapter'
 
-const NotificationsRoute = NotificationsRouteImport.update({
-  id: '/notifications',
-  path: '/notifications',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -32,14 +32,19 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const NotificationsRoute = NotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ScripturesIndexRoute = ScripturesIndexRouteImport.update({
-  id: '/scriptures/',
-  path: '/scriptures/',
+const PostsIdRoute = PostsIdRouteImport.update({
+  id: '/posts/$id',
+  path: '/posts/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PostsNewRoute = PostsNewRouteImport.update({
+  id: '/posts/new',
+  path: '/posts/new',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProfileIndexRoute = ProfileIndexRouteImport.update({
@@ -52,14 +57,14 @@ const ProfileUserIdRoute = ProfileUserIdRouteImport.update({
   path: '/profile/$userId',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PostsNewRoute = PostsNewRouteImport.update({
-  id: '/posts/new',
-  path: '/posts/new',
+const ScripturesIndexRoute = ScripturesIndexRouteImport.update({
+  id: '/scriptures/',
+  path: '/scriptures/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PostsIdRoute = PostsIdRouteImport.update({
-  id: '/posts/$id',
-  path: '/posts/$id',
+const ApiAuthCallbackRoute = ApiAuthCallbackRouteImport.update({
+  id: '/api/auth/callback',
+  path: '/api/auth/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ScripturesCollectionIndexRoute =
@@ -68,11 +73,6 @@ const ScripturesCollectionIndexRoute =
     path: '/scriptures/$collection/',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiAuthCallbackRoute = ApiAuthCallbackRouteImport.update({
-  id: '/api/auth/callback',
-  path: '/api/auth/callback',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ScripturesCollectionBookIndexRoute =
   ScripturesCollectionBookIndexRouteImport.update({
     id: '/scriptures/$collection/$book/',
@@ -191,11 +191,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/notifications': {
-      id: '/notifications'
-      path: '/notifications'
-      fullPath: '/notifications'
-      preLoaderRoute: typeof NotificationsRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -205,18 +205,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/notifications': {
+      id: '/notifications'
+      path: '/notifications'
+      fullPath: '/notifications'
+      preLoaderRoute: typeof NotificationsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/scriptures/': {
-      id: '/scriptures/'
-      path: '/scriptures'
-      fullPath: '/scriptures/'
-      preLoaderRoute: typeof ScripturesIndexRouteImport
+    '/posts/$id': {
+      id: '/posts/$id'
+      path: '/posts/$id'
+      fullPath: '/posts/$id'
+      preLoaderRoute: typeof PostsIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/posts/new': {
+      id: '/posts/new'
+      path: '/posts/new'
+      fullPath: '/posts/new'
+      preLoaderRoute: typeof PostsNewRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/profile/': {
@@ -233,25 +240,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProfileUserIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/posts/new': {
-      id: '/posts/new'
-      path: '/posts/new'
-      fullPath: '/posts/new'
-      preLoaderRoute: typeof PostsNewRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/posts/$id': {
-      id: '/posts/$id'
-      path: '/posts/$id'
-      fullPath: '/posts/$id'
-      preLoaderRoute: typeof PostsIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/scriptures/$collection/': {
-      id: '/scriptures/$collection/'
-      path: '/scriptures/$collection'
-      fullPath: '/scriptures/$collection/'
-      preLoaderRoute: typeof ScripturesCollectionIndexRouteImport
+    '/scriptures/': {
+      id: '/scriptures/'
+      path: '/scriptures'
+      fullPath: '/scriptures/'
+      preLoaderRoute: typeof ScripturesIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/auth/callback': {
@@ -259,6 +252,13 @@ declare module '@tanstack/react-router' {
       path: '/api/auth/callback'
       fullPath: '/api/auth/callback'
       preLoaderRoute: typeof ApiAuthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/scriptures/$collection/': {
+      id: '/scriptures/$collection/'
+      path: '/scriptures/$collection'
+      fullPath: '/scriptures/$collection/'
+      preLoaderRoute: typeof ScripturesCollectionIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/scriptures/$collection/$book/': {

@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import type { PostWithUser } from '../model'
+import { toScriptureRef, type PostWithUser } from '../model'
 import { resolveUserIdentity } from '@/shared/lib/constants'
 import { formatDate } from '@/shared/lib/date'
 import { getScriptureLabel } from '@/shared/lib/scriptureUtils'
@@ -11,15 +11,8 @@ type Props = {
 
 export function CompactPostCard({ post }: Props) {
   const { displayName, avatarUrl } = resolveUserIdentity(post.users)
-  const scriptureLabel =
-    post.scripture_collection && post.scripture_book && post.scripture_chapter
-      ? getScriptureLabel({
-          collection: post.scripture_collection,
-          book: post.scripture_book,
-          chapter: post.scripture_chapter,
-          verses: post.scripture_verses ?? undefined,
-        })
-      : null
+  const scriptureRef = toScriptureRef(post)
+  const scriptureLabel = scriptureRef ? getScriptureLabel(scriptureRef) : null
 
   return (
     <Link
