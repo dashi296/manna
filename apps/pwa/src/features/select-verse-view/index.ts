@@ -3,6 +3,9 @@ export {
   serializeViewMode,
   type VerseViewMode,
 } from './model/viewMode'
-export { parseSelectedUser } from './model/parseSelectedUser'
+export {
+  useSelectedUserStore,
+  SELECTED_USER_STORAGE_KEY,
+} from './model/selectedUserStore'
 export { ViewModeToggle } from './ui/ViewModeToggle'
 export { ChapterCommentersRow } from './ui/ChapterCommentersRow'

@@ -17,11 +17,11 @@ import {
 } from '@/features/select-scripture-verses'
 import {
   parseViewMode,
-  parseSelectedUser,
   type VerseViewMode,
   ViewModeToggle,
   ChapterCommentersRow,
   serializeViewMode,
+  useSelectedUserStore,
 } from '@/features/select-verse-view'
 import { VerseCommentSheet } from '@/widgets/verse-comment-sheet'
 import { useIsMobile } from '@/shared/hooks/use-mobile'
@@ -85,11 +85,9 @@ const fetchVerseData = createServerFn({ method: 'POST' })
   })
 
 const fetchChapterData = createServerFn({ method: 'POST' })
-  .inputValidator(
-    (data: ChapterRef & { view: VerseViewMode; user: string | undefined }) => data,
-  )
+  .inputValidator((data: ChapterRef & { view: VerseViewMode }) => data)
   .handler(async (ctx) => {
-    const { collection, book, chapter, view, user } = ctx.data
+    const { collection, book, chapter, view } = ctx.data
     const serverSupabase = await createSupabaseServer()
 
     const [
@@ -108,28 +106,27 @@ const fetchChapterData = createServerFn({ method: 'POST' })
         .order('created_at', { ascending: false }),
       serverSupabase
         .from('posts')
-        .select('user_id, scripture_verses, created_at')
+        .select(POST_SELECT)
         .eq('scripture_collection', collection)
         .eq('scripture_book', book)
         .eq('scripture_chapter', chapter)
-        .not('scripture_verses', 'is', null),
+        .not('scripture_verses', 'is', null)
+        .order('created_at', { ascending: false }),
       queryVerseTexts(serverSupabase, ctx.data),
       queryUserAndCircle(serverSupabase, view),
     ])
 
-    const versePosts = versePostsData ?? []
+    const versePosts = (versePostsData ?? []) as PostWithUser[]
 
     const countByVerse: Record<number, number> = {}
     versePosts.forEach((p) => {
-      ;(p.scripture_verses as number[] | null)?.forEach((v) => {
+      p.scripture_verses?.forEach((v) => {
         countByVerse[v] = (countByVerse[v] ?? 0) + 1
       })
     })
 
     let chapterCommenters: AvatarStackItem[] = []
-    let selectedUser: AvatarStackItem | null = null
-    let selectedUserPosts: PostWithUser[] = []
-    let versesWithSelectedUser: number[] = []
+    let circlePosts: PostWithUser[] = []
 
     if (circle) {
       const userLookup = new Map(
@@ -143,41 +140,17 @@ const fetchChapterData = createServerFn({ method: 'POST' })
         ]),
       )
 
+      circlePosts = versePosts.filter((p) => userLookup.has(p.user_id))
+
       const latestByUser = new Map<string, string>()
-      for (const p of versePosts) {
-        const uid = p.user_id as string
-        if (!userLookup.has(uid)) continue
-        const prev = latestByUser.get(uid) ?? ''
+      for (const p of circlePosts) {
+        const prev = latestByUser.get(p.user_id) ?? ''
         const cur = p.created_at ?? ''
-        if (cur > prev) latestByUser.set(uid, cur)
+        if (cur > prev) latestByUser.set(p.user_id, cur)
       }
       chapterCommenters = [...latestByUser.entries()]
         .sort((a, b) => (a[1] < b[1] ? 1 : a[1] > b[1] ? -1 : 0))
         .map(([uid]) => userLookup.get(uid)!)
-
-      const validUser = user && latestByUser.has(user) ? user : null
-      if (validUser) {
-        selectedUser = userLookup.get(validUser)!
-        const versesSet = new Set<number>()
-        for (const p of versePosts) {
-          if ((p.user_id as string) !== validUser) continue
-          ;((p.scripture_verses as number[] | null) ?? []).forEach((v) =>
-            versesSet.add(v),
-          )
-        }
-        versesWithSelectedUser = [...versesSet].sort((a, b) => a - b)
-
-        const { data: userPosts } = await serverSupabase
-          .from('posts')
-          .select(POST_SELECT)
-          .eq('scripture_collection', collection)
-          .eq('scripture_book', book)
-          .eq('scripture_chapter', chapter)
-          .eq('user_id', validUser)
-          .not('scripture_verses', 'is', null)
-          .order('created_at', { ascending: false })
-        selectedUserPosts = (userPosts ?? []) as PostWithUser[]
-      }
     }
 
     return {
@@ -187,9 +160,7 @@ const fetchChapterData = createServerFn({ method: 'POST' })
       userId,
       view: circle ? ('who' as const) : ('count' as const),
       chapterCommenters,
-      selectedUser,
-      selectedUserPosts,
-      versesWithSelectedUser,
+      circlePosts,
     }
   })
 
@@ -198,7 +169,6 @@ type ChapterSearch = {
   select?: number[]
   mode?: SelectionMode
   view?: 'who'
-  user?: string
 }
 
 export const Route = createFileRoute('/scriptures/$collection/$book/$chapter')({
@@ -207,12 +177,10 @@ export const Route = createFileRoute('/scriptures/$collection/$book/$chapter')({
     select: search.select !== undefined ? parseSelection(search.select) : undefined,
     mode: search.mode === 'select' ? 'select' : undefined,
     view: search.view === 'who' ? 'who' : undefined,
-    user: parseSelectedUser(search.user),
   }),
   loaderDeps: ({ search }) => ({
     verses: search.verses,
     view: search.view,
-    user: search.user,
   }),
   loader: async ({ params, deps }) => {
     const book = getBook(params.collection, params.book)
@@ -233,15 +201,13 @@ export const Route = createFileRoute('/scriptures/$collection/$book/$chapter')({
         posts, countByVerse: {} as Record<number, number>, verseTexts, userId,
         view: 'count' as const,
         chapterCommenters: [] as AvatarStackItem[],
-        selectedUser: null as AvatarStackItem | null,
-        selectedUserPosts: [] as PostWithUser[],
-        versesWithSelectedUser: [] as number[],
+        circlePosts: [] as PostWithUser[],
       }
     }
 
     const view = parseViewMode(deps.view)
     const data = await fetchChapterData({
-      data: { ...base, view, user: deps.user },
+      data: { ...base, view },
     })
 
     return {
@@ -284,9 +250,7 @@ function ChapterPage() {
     canCompose={Boolean(data.userId)}
     view={data.view}
     chapterCommenters={data.chapterCommenters}
-    selectedUser={data.selectedUser}
-    selectedUserPosts={data.selectedUserPosts}
-    versesWithSelectedUser={data.versesWithSelectedUser}
+    circlePosts={data.circlePosts}
   />
 }
 
@@ -368,14 +332,12 @@ type ChapterViewProps = {
   canCompose: boolean
   view: VerseViewMode
   chapterCommenters: AvatarStackItem[]
-  selectedUser: AvatarStackItem | null
-  selectedUserPosts: PostWithUser[]
-  versesWithSelectedUser: number[]
+  circlePosts: PostWithUser[]
 }
 
 function ChapterView({
   book, chapter, collection, posts, countByVerse, verseTexts, canCompose,
-  view, chapterCommenters, selectedUser, selectedUserPosts, versesWithSelectedUser,
+  view, chapterCommenters, circlePosts,
 }: ChapterViewProps) {
   const router = useRouter()
   const isMobile = useIsMobile()
@@ -386,6 +348,32 @@ function ChapterView({
   const navigate = Route.useNavigate()
   const officialUrl = buildScriptureUrl({ collection, book: book.id, chapter })
   const maxVerse = book.verses[chapter - 1]
+
+  const storedUserId = useSelectedUserStore((s) => s.selectedUserId)
+  const selectUserInStore = useSelectedUserStore((s) => s.select)
+  const clearUserInStore = useSelectedUserStore((s) => s.clear)
+  const commentersById = useMemo(
+    () => new Map(chapterCommenters.map((c) => [c.userId, c])),
+    [chapterCommenters],
+  )
+  const selectedUser =
+    storedUserId && commentersById.has(storedUserId)
+      ? commentersById.get(storedUserId)!
+      : null
+  const selectedUserPosts = useMemo(
+    () =>
+      selectedUser
+        ? circlePosts.filter((p) => p.user_id === selectedUser.userId)
+        : [],
+    [circlePosts, selectedUser],
+  )
+  const versesWithMarker = useMemo(() => {
+    const set = new Set<number>()
+    for (const p of selectedUserPosts) {
+      p.scripture_verses?.forEach((v) => set.add(v))
+    }
+    return set
+  }, [selectedUserPosts])
 
   const verseTextMap = useMemo(
     () => new Map(verseTexts.map((vt) => [vt.verse, vt])),
@@ -411,21 +399,17 @@ function ChapterView({
     patchSearch({ select: next.length ? next : undefined })
   const enterSelectMode = () => patchSearch({ mode: 'select' }, false)
   const exitSelectMode = () => patchSearch({ mode: undefined, select: undefined })
-  const setView = (next: VerseViewMode) =>
-    patchSearch({ view: serializeViewMode(next), user: undefined })
-  const selectUser = (userId: string) =>
-    patchSearch({ user: userId })
-  const clearUser = () => patchSearch({ user: undefined })
-
-  const versesWithMarker = useMemo(
-    () => new Set(versesWithSelectedUser),
-    [versesWithSelectedUser],
-  )
+  const setView = (next: VerseViewMode) => {
+    patchSearch({ view: serializeViewMode(next) })
+    if (next === 'count') clearUserInStore()
+  }
+  const selectUser = (userId: string) => selectUserInStore(userId)
+  const clearUser = () => clearUserInStore()
 
   const postsByVerse = useMemo(() => {
     const map = new Map<number, PostWithUser[]>()
     for (const p of selectedUserPosts) {
-      ;((p.scripture_verses as number[] | null) ?? []).forEach((v) => {
+      p.scripture_verses?.forEach((v) => {
         const arr = map.get(v) ?? []
         arr.push(p)
         map.set(v, arr)
