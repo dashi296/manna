@@ -15,6 +15,13 @@ export const ANDROID_UA =
 export const DESKTOP_SAFARI_UA =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15'
 
-export function stubUa(ua: string): void {
-  vi.stubGlobal('navigator', { ...window.navigator, userAgent: ua })
+export function stubUa(
+  ua: string,
+  opts: { maxTouchPoints?: number } = {},
+): void {
+  vi.stubGlobal('navigator', {
+    ...window.navigator,
+    userAgent: ua,
+    maxTouchPoints: opts.maxTouchPoints ?? 0,
+  })
 }

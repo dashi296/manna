@@ -75,6 +75,20 @@ describe('install-detection', () => {
       stubUa(DESKTOP_SAFARI_UA)
       expect(isIosSafari()).toBe(false)
     })
+
+    it('iPadOS 13+ Safari (desktop mode) は maxTouchPoints で拾って true', () => {
+      // iPadOS の desktop mode は Macintosh UA を返すため、UA だけでは判別できない
+      stubUa(DESKTOP_SAFARI_UA, { maxTouchPoints: 5 })
+      expect(isIosSafari()).toBe(true)
+    })
+
+    it('タッチスクリーン付きの Mac Chrome では false（Macintosh UA + touch でも Chrome を除外）', () => {
+      stubUa(
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        { maxTouchPoints: 5 },
+      )
+      expect(isIosSafari()).toBe(false)
+    })
   })
 
   describe('isRecentlyDismissed', () => {
