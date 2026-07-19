@@ -118,13 +118,6 @@ const fetchChapterData = createServerFn({ method: 'POST' })
 
     const versePosts = (versePostsData ?? []) as PostWithUser[]
 
-    const countByVerse: Record<number, number> = {}
-    versePosts.forEach((p) => {
-      p.scripture_verses?.forEach((v) => {
-        countByVerse[v] = (countByVerse[v] ?? 0) + 1
-      })
-    })
-
     let chapterCommenters: AvatarStackItem[] = []
     let circlePosts: PostWithUser[] = []
 
@@ -155,7 +148,6 @@ const fetchChapterData = createServerFn({ method: 'POST' })
 
     return {
       posts: (posts ?? []) as PostWithUser[],
-      countByVerse,
       verseTexts,
       userId,
       view: circle ? ('who' as const) : ('count' as const),
@@ -198,7 +190,7 @@ export const Route = createFileRoute('/scriptures/$collection/$book/$chapter')({
       return {
         book, chapter: chapterNum, collection: params.collection,
         mode: 'verse' as const, verses: deps.verses,
-        posts, countByVerse: {} as Record<number, number>, verseTexts, userId,
+        posts, verseTexts, userId,
         view: 'count' as const,
         chapterCommenters: [] as AvatarStackItem[],
         circlePosts: [] as PostWithUser[],
@@ -245,7 +237,6 @@ function ChapterPage() {
     chapter={data.chapter}
     collection={data.collection}
     posts={data.posts}
-    countByVerse={data.countByVerse}
     verseTexts={data.verseTexts}
     canCompose={Boolean(data.userId)}
     view={data.view}
@@ -327,7 +318,6 @@ type ChapterViewProps = {
   chapter: number
   collection: string
   posts: PostWithUser[]
-  countByVerse: Record<number, number>
   verseTexts: VerseText[]
   canCompose: boolean
   view: VerseViewMode
@@ -336,7 +326,7 @@ type ChapterViewProps = {
 }
 
 function ChapterView({
-  book, chapter, collection, posts, countByVerse, verseTexts, canCompose,
+  book, chapter, collection, posts, verseTexts, canCompose,
   view, chapterCommenters, circlePosts,
 }: ChapterViewProps) {
   const router = useRouter()
@@ -496,7 +486,6 @@ function ChapterView({
         style={{ border: '1px solid var(--line)' }}
       >
         {verseNumbers.map((verse) => {
-          const count = countByVerse[verse] ?? 0
           const vt = verseTextMap.get(verse)
           const isSelected = mode === 'select' && selection.includes(verse)
           const marker =
@@ -517,7 +506,6 @@ function ChapterView({
                   chapter={chapter}
                   verse={verse}
                   textHtml={vt?.text_html}
-                  count={count}
                   mode={mode}
                   selected={isSelected}
                   onSelect={(v) => setSelection(toggleVerse(selection, v))}

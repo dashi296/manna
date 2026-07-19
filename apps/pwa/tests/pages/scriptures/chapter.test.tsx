@@ -16,7 +16,6 @@ type TestLoaderData = {
   mode: 'chapter' | 'verse'
   verses: number[]
   posts: PostWithUser[]
-  countByVerse: Record<number, number>
   verseTexts: { verse: number; text_html: string }[]
   userId: string | null
   view: 'count' | 'who'
@@ -36,7 +35,6 @@ const baseChapterData: TestLoaderData = {
   mode: 'chapter' as const,
   verses: [],
   posts: [],
-  countByVerse: {},
   verseTexts: [
     { verse: 1, text_html: '一節の本文' },
     { verse: 2, text_html: '二節の本文' },

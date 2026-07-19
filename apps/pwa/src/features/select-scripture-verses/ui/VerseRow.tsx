@@ -22,7 +22,6 @@ type Props = {
   chapter: number
   verse: number
   textHtml?: string
-  count: number
   mode: 'read' | 'select'
   selected: boolean
   onSelect: (verse: number) => void
@@ -36,7 +35,6 @@ export function VerseRow({
   chapter,
   verse,
   textHtml,
-  count,
   mode,
   selected,
   onSelect,
@@ -44,20 +42,6 @@ export function VerseRow({
   onMarkerClick,
 }: Props) {
   const containerStyle = selected ? ROW_SELECTED_STYLE : ROW_UNSELECTED_STYLE
-
-  const rightBadge =
-    count > 0 && !commenterMarker ? (
-      <span
-        className="text-xs px-2 py-0.5 rounded-full font-medium shrink-0"
-        style={{
-          background: 'var(--chip-bg)',
-          border: '1px solid var(--chip-line)',
-          color: 'var(--palm)',
-        }}
-      >
-        {count}件
-      </span>
-    ) : null
 
   const inner = (
     <div className="flex items-start gap-2 px-4 py-3">
@@ -94,7 +78,6 @@ export function VerseRow({
             />
           )}
         </div>
-        {rightBadge}
       </div>
     </div>
   )

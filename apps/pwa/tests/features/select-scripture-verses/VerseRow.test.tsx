@@ -39,7 +39,6 @@ const baseProps = {
   chapter: 3,
   verse: 19,
   textHtml: '主のみもとに帰る道はただ一つ',
-  count: 0,
 }
 
 describe('VerseRow', () => {
@@ -79,14 +78,6 @@ describe('VerseRow', () => {
     })
   })
 
-  it('count > 0 で件数バッジを表示する', async () => {
-    renderInRouter(
-      <VerseRow {...baseProps} count={3} mode="read" selected={false} onSelect={vi.fn()} />,
-    )
-    await waitFor(() => {
-      expect(screen.getByText('3件')).toBeInTheDocument()
-    })
-  })
 })
 
 describe('VerseRow commenterMarker', () => {
