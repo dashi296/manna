@@ -19,6 +19,11 @@ type TestLoaderData = {
   countByVerse: Record<number, number>
   verseTexts: { verse: number; text_html: string }[]
   userId: string | null
+  view: 'count' | 'who'
+  chapterCommenters: { userId: string; name: string; avatarUrl: string | null }[]
+  selectedUser: { userId: string; name: string; avatarUrl: string | null } | null
+  selectedUserPosts: PostWithUser[]
+  versesWithSelectedUser: number[]
 }
 
 const baseChapterData: TestLoaderData = {
@@ -39,6 +44,11 @@ const baseChapterData: TestLoaderData = {
     { verse: 2, text_html: '二節の本文' },
   ],
   userId: 'user-1',
+  view: 'count' as const,
+  chapterCommenters: [],
+  selectedUser: null,
+  selectedUserPosts: [],
+  versesWithSelectedUser: [],
 }
 
 let loaderData: TestLoaderData
@@ -156,6 +166,12 @@ describe('ChapterPage', () => {
       select: [1, 3],
     })
     expect(validate({ select: 'abc,-1,0,4' })).toMatchObject({ select: [4] })
+    expect(validate({ view: 'who' })).toMatchObject({ view: 'who' })
+    expect(validate({ view: 'foo' })).toMatchObject({ view: undefined })
+    expect(validate({ user: '83e6c067-306b-4981-b957-98e2b4b74460' })).toMatchObject({
+      user: '83e6c067-306b-4981-b957-98e2b4b74460',
+    })
+    expect(validate({ user: 'invalid user' })).toMatchObject({ user: undefined })
   })
 
   it('未ログインの節表示では投稿導線を表示しない', () => {

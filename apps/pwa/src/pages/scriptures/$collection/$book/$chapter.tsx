@@ -15,6 +15,13 @@ import {
   toggleVerse,
   type SelectionMode,
 } from '@/features/select-scripture-verses'
+import {
+  parseViewMode,
+  parseSelectedUser,
+  type VerseViewMode,
+} from '@/features/select-verse-view'
+import { getCircleUserIds } from '@/entities/user'
+import type { AvatarStackItem } from '@/shared/ui'
 
 type VerseText = { verse: number; text_html: string }
 type Book = NonNullable<ReturnType<typeof getBook>>
@@ -26,6 +33,15 @@ async function queryCurrentUserId(supabase: SupabaseServer) {
     data: { user },
   } = await supabase.auth.getUser()
   return user?.id ?? null
+}
+
+async function queryUserAndCircle(supabase: SupabaseServer, view: VerseViewMode) {
+  const userId = await queryCurrentUserId(supabase)
+  const circle =
+    view === 'who' && userId !== null
+      ? await getCircleUserIds(supabase, userId)
+      : null
+  return { userId, circle }
 }
 
 async function queryVerseTexts(supabase: SupabaseServer, { collection, book, chapter }: ChapterRef, verses?: number[]) {
@@ -64,11 +80,19 @@ const fetchVerseData = createServerFn({ method: 'POST' })
   })
 
 const fetchChapterData = createServerFn({ method: 'POST' })
-  .inputValidator((data: ChapterRef) => data)
+  .inputValidator(
+    (data: ChapterRef & { view: VerseViewMode; user: string | undefined }) => data,
+  )
   .handler(async (ctx) => {
-    const { collection, book, chapter } = ctx.data
+    const { collection, book, chapter, view, user } = ctx.data
     const serverSupabase = await createSupabaseServer()
-    const [{ data: posts }, { data: versePosts }, verseTexts, userId] = await Promise.all([
+
+    const [
+      { data: posts },
+      { data: versePostsData },
+      verseTexts,
+      { userId, circle },
+    ] = await Promise.all([
       serverSupabase
         .from('posts')
         .select(POST_SELECT)
@@ -79,33 +103,112 @@ const fetchChapterData = createServerFn({ method: 'POST' })
         .order('created_at', { ascending: false }),
       serverSupabase
         .from('posts')
-        .select('scripture_verses')
+        .select('user_id, scripture_verses, created_at')
         .eq('scripture_collection', collection)
         .eq('scripture_book', book)
         .eq('scripture_chapter', chapter)
         .not('scripture_verses', 'is', null),
       queryVerseTexts(serverSupabase, ctx.data),
-      queryCurrentUserId(serverSupabase),
+      queryUserAndCircle(serverSupabase, view),
     ])
 
+    const versePosts = versePostsData ?? []
+
     const countByVerse: Record<number, number> = {}
-    versePosts?.forEach((p) => {
+    versePosts.forEach((p) => {
       ;(p.scripture_verses as number[] | null)?.forEach((v) => {
         countByVerse[v] = (countByVerse[v] ?? 0) + 1
       })
     })
-    return { posts: (posts ?? []) as PostWithUser[], countByVerse, verseTexts, userId }
+
+    let chapterCommenters: AvatarStackItem[] = []
+    let selectedUser: AvatarStackItem | null = null
+    let selectedUserPosts: PostWithUser[] = []
+    let versesWithSelectedUser: number[] = []
+
+    if (circle) {
+      const userLookup = new Map(
+        circle.users.map((u) => [
+          u.id,
+          {
+            userId: u.id,
+            name: u.display_name ?? '匿名ユーザー',
+            avatarUrl: u.avatar_url,
+          } as AvatarStackItem,
+        ]),
+      )
+
+      const latestByUser = new Map<string, string>()
+      for (const p of versePosts) {
+        const uid = p.user_id as string
+        if (!userLookup.has(uid)) continue
+        const prev = latestByUser.get(uid) ?? ''
+        const cur = p.created_at ?? ''
+        if (cur > prev) latestByUser.set(uid, cur)
+      }
+      chapterCommenters = [...latestByUser.entries()]
+        .sort((a, b) => (a[1] < b[1] ? 1 : a[1] > b[1] ? -1 : 0))
+        .map(([uid]) => userLookup.get(uid)!)
+
+      const validUser = user && latestByUser.has(user) ? user : null
+      if (validUser) {
+        selectedUser = userLookup.get(validUser)!
+        const versesSet = new Set<number>()
+        for (const p of versePosts) {
+          if ((p.user_id as string) !== validUser) continue
+          ;((p.scripture_verses as number[] | null) ?? []).forEach((v) =>
+            versesSet.add(v),
+          )
+        }
+        versesWithSelectedUser = [...versesSet].sort((a, b) => a - b)
+
+        const { data: userPosts } = await serverSupabase
+          .from('posts')
+          .select(POST_SELECT)
+          .eq('scripture_collection', collection)
+          .eq('scripture_book', book)
+          .eq('scripture_chapter', chapter)
+          .eq('user_id', validUser)
+          .not('scripture_verses', 'is', null)
+          .order('created_at', { ascending: false })
+        selectedUserPosts = (userPosts ?? []) as PostWithUser[]
+      }
+    }
+
+    return {
+      posts: (posts ?? []) as PostWithUser[],
+      countByVerse,
+      verseTexts,
+      userId,
+      view: circle ? ('who' as const) : ('count' as const),
+      chapterCommenters,
+      selectedUser,
+      selectedUserPosts,
+      versesWithSelectedUser,
+    }
   })
 
-type ChapterSearch = { verses?: number[]; select?: number[]; mode?: SelectionMode }
+type ChapterSearch = {
+  verses?: number[]
+  select?: number[]
+  mode?: SelectionMode
+  view?: 'who'
+  user?: string
+}
 
 export const Route = createFileRoute('/scriptures/$collection/$book/$chapter')({
   validateSearch: (search: Record<string, unknown>): ChapterSearch => ({
     verses: search.verses !== undefined ? parseSelection(search.verses) : undefined,
     select: search.select !== undefined ? parseSelection(search.select) : undefined,
     mode: search.mode === 'select' ? 'select' : undefined,
+    view: search.view === 'who' ? 'who' : undefined,
+    user: parseSelectedUser(search.user),
   }),
-  loaderDeps: ({ search }) => ({ verses: search.verses }),
+  loaderDeps: ({ search }) => ({
+    verses: search.verses,
+    view: search.view,
+    user: search.user,
+  }),
   loader: async ({ params, deps }) => {
     const book = getBook(params.collection, params.book)
     if (!book) throw notFound()
@@ -123,15 +226,23 @@ export const Route = createFileRoute('/scriptures/$collection/$book/$chapter')({
         book, chapter: chapterNum, collection: params.collection,
         mode: 'verse' as const, verses: deps.verses,
         posts, countByVerse: {} as Record<number, number>, verseTexts, userId,
+        view: 'count' as const,
+        chapterCommenters: [] as AvatarStackItem[],
+        selectedUser: null as AvatarStackItem | null,
+        selectedUserPosts: [] as PostWithUser[],
+        versesWithSelectedUser: [] as number[],
       }
     }
 
-    const { posts, countByVerse, verseTexts, userId } = await fetchChapterData({ data: base })
+    const view = parseViewMode(deps.view)
+    const data = await fetchChapterData({
+      data: { ...base, view, user: deps.user },
+    })
 
     return {
       book, chapter: chapterNum, collection: params.collection,
       mode: 'chapter' as const, verses: [] as number[],
-      posts, countByVerse, verseTexts, userId,
+      ...data,
     }
   },
   component: ChapterPage,
@@ -166,6 +277,11 @@ function ChapterPage() {
     countByVerse={data.countByVerse}
     verseTexts={data.verseTexts}
     canCompose={Boolean(data.userId)}
+    view={data.view}
+    chapterCommenters={data.chapterCommenters}
+    selectedUser={data.selectedUser}
+    selectedUserPosts={data.selectedUserPosts}
+    versesWithSelectedUser={data.versesWithSelectedUser}
   />
 }
 
@@ -245,6 +361,11 @@ type ChapterViewProps = {
   countByVerse: Record<number, number>
   verseTexts: VerseText[]
   canCompose: boolean
+  view: VerseViewMode
+  chapterCommenters: AvatarStackItem[]
+  selectedUser: AvatarStackItem | null
+  selectedUserPosts: PostWithUser[]
+  versesWithSelectedUser: number[]
 }
 
 function ChapterView({ book, chapter, collection, posts, countByVerse, verseTexts, canCompose }: ChapterViewProps) {
