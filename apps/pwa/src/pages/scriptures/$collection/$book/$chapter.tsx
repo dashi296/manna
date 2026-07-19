@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { createFileRoute, notFound, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { getBook, buildScriptureUrl, getScriptureLabel } from '@/entities/scripture'
-import { PostCard, POST_SELECT, type PostWithUser } from '@/entities/post'
+import { PostCard, POST_SELECT, CommenterBubble, type PostWithUser } from '@/entities/post'
 import { createSupabaseServer } from '@/shared/lib/auth'
 import { EmptyState, PageHeader, ScriptureText } from '@/shared/ui'
 import { Button } from '@/shared/ui/button'
@@ -23,7 +23,6 @@ import {
   ChapterCommentersRow,
   serializeViewMode,
 } from '@/features/select-verse-view'
-import { ChapterCommentRail } from '@/widgets/chapter-comment-rail'
 import { VerseCommentSheet } from '@/widgets/verse-comment-sheet'
 import { useIsMobile } from '@/shared/hooks/use-mobile'
 import { getCircleUserIds } from '@/entities/user'
@@ -453,7 +452,7 @@ function ChapterView({
 
   const showToggle = canCompose && mode !== 'select'
   const showCommenters = showToggle && view === 'who'
-  const showRail = mode !== 'select' && !isMobile && selectedUser !== null && selectedUserPosts.length > 0
+  const showBubbles = mode !== 'select' && !isMobile && selectedUser !== null
   const showMarkers = mode !== 'select' && isMobile && selectedUser !== null
 
   const headerAction = (
@@ -520,38 +519,41 @@ function ChapterView({
             showMarkers && versesWithMarker.has(verse) && selectedUser
               ? selectedUser
               : undefined
+          const bubblePosts = showBubbles ? postsByVerse.get(verse) ?? [] : []
           return (
             <li
               key={verse}
-              className="border-b last:border-b-0"
+              className="border-b last:border-b-0 lg:flex lg:items-start"
               style={{ borderColor: 'var(--line)' }}
             >
-              <VerseRow
-                collection={collection}
-                book={book.id}
-                chapter={chapter}
-                verse={verse}
-                textHtml={vt?.text_html}
-                count={count}
-                mode={mode}
-                selected={isSelected}
-                onSelect={(v) => setSelection(toggleVerse(selection, v))}
-                commenterMarker={marker}
-                onMarkerClick={(v) => setOpenVerseSheet(v)}
-              />
+              <div className="lg:flex-1 lg:min-w-0">
+                <VerseRow
+                  collection={collection}
+                  book={book.id}
+                  chapter={chapter}
+                  verse={verse}
+                  textHtml={vt?.text_html}
+                  count={count}
+                  mode={mode}
+                  selected={isSelected}
+                  onSelect={(v) => setSelection(toggleVerse(selection, v))}
+                  commenterMarker={marker}
+                  onMarkerClick={(v) => setOpenVerseSheet(v)}
+                />
+              </div>
+              {bubblePosts.length > 0 && (
+                <div className="hidden lg:flex lg:flex-col lg:gap-2 lg:w-72 lg:shrink-0 lg:p-3">
+                  {bubblePosts.map((p) => (
+                    <CommenterBubble key={p.id} post={p} />
+                  ))}
+                </div>
+              )}
             </li>
           )
         })}
       </ul>
     </div>
   )
-
-  const rail = showRail && selectedUser ? (
-    <ChapterCommentRail
-      posts={selectedUserPosts}
-      selectedUserName={selectedUser.name}
-    />
-  ) : null
 
   const activeVerseSheet =
     mode !== 'select' && openVerseSheet !== null && selectedUser ? (
@@ -580,14 +582,6 @@ function ChapterView({
         </div>
       )}
       {verseList}
-      {rail && (
-        <div
-          className="hidden lg:block fixed top-0 right-0 h-screen w-80 border-l overflow-y-auto pt-16 pb-6"
-          style={{ borderColor: 'var(--line)', background: 'var(--surface)' }}
-        >
-          {rail}
-        </div>
-      )}
       {canCompose && (
         <PostComposerSheet
           open={sheetOpen}

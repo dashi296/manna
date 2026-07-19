@@ -1,5 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { PostWithUser } from '@/entities/post'
 import { routeComponent } from '../../helpers/tanstack'
@@ -239,7 +239,7 @@ describe('ChapterPage', () => {
     expect(screen.queryByRole('radiogroup')).toBeNull()
   })
 
-  it('mode=select 中は選択ユーザーがあっても右レール見出しを描画しない', () => {
+  it('mode=select 中は選択ユーザーがあっても吹き出しを描画しない', () => {
     // simulate desktop
     Object.defineProperty(window, 'innerWidth', { writable: true, value: 1440 })
     window.dispatchEvent(new Event('resize'))
@@ -265,8 +265,40 @@ describe('ChapterPage', () => {
     }
     search = { mode: 'select', select: [1], view: 'who', user: 'u1' }
     render(<ChapterPage />)
-    expect(
-      screen.queryByRole('heading', { name: /中村さんのコメント/ }),
-    ).toBeNull()
+    expect(screen.queryByRole('group', { name: /中村さんの吹き出し/ })).toBeNull()
+  })
+
+  it('view=who で desktop 相当なら選択ユーザーの吹き出しが節横に描画される', async () => {
+    // simulate desktop
+    Object.defineProperty(window, 'innerWidth', { writable: true, value: 1440 })
+    window.dispatchEvent(new Event('resize'))
+    loaderData = {
+      ...baseChapterData,
+      view: 'who',
+      selectedUser: { userId: 'u1', name: '中村さん', avatarUrl: null },
+      selectedUserPosts: [
+        {
+          id: 'p1',
+          content: '節1 吹き出しテスト',
+          visibility: 'public' as const,
+          created_at: '2026-07-19T00:00:00.000Z',
+          scripture_collection: 'bofm',
+          scripture_book: '1-ne',
+          scripture_chapter: 1,
+          scripture_verses: [1],
+          user_id: 'u1',
+          users: { display_name: '中村さん', avatar_url: null },
+        },
+      ],
+      versesWithSelectedUser: [1],
+    }
+    search = { view: 'who', user: 'u1' }
+    render(<ChapterPage />)
+    await waitFor(() => {
+      expect(screen.getByText('節1 吹き出しテスト')).toBeInTheDocument()
+      expect(
+        screen.getByRole('group', { name: /中村さんの吹き出し/ }),
+      ).toBeInTheDocument()
+    })
   })
 })
