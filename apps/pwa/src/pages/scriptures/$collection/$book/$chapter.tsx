@@ -39,6 +39,15 @@ async function queryCurrentUserId(supabase: SupabaseServer) {
   return user?.id ?? null
 }
 
+async function queryUserAndCircle(supabase: SupabaseServer, view: VerseViewMode) {
+  const userId = await queryCurrentUserId(supabase)
+  const circle =
+    view === 'who' && userId !== null
+      ? await getCircleUserIds(supabase, userId)
+      : null
+  return { userId, circle }
+}
+
 async function queryVerseTexts(supabase: SupabaseServer, { collection, book, chapter }: ChapterRef, verses?: number[]) {
   let query = supabase
     .from('scripture_verses')
@@ -80,7 +89,7 @@ const fetchChapterData = createServerFn({ method: 'POST' })
     const { collection, book, chapter, view } = ctx.data
     const serverSupabase = await createSupabaseServer()
 
-    const [{ data: posts }, versePostsRes, verseTexts, authAndCircle] = await Promise.all([
+    const [{ data: posts }, { data: versePostsData }, verseTexts, { userId, circle }] = await Promise.all([
       serverSupabase
         .from('posts')
         .select(POST_SELECT)
@@ -95,21 +104,12 @@ const fetchChapterData = createServerFn({ method: 'POST' })
         .eq('scripture_collection', collection)
         .eq('scripture_book', book)
         .eq('scripture_chapter', chapter)
-        .not('scripture_verses', 'is', null)
-        .order('created_at', { ascending: false }),
+        .not('scripture_verses', 'is', null),
       queryVerseTexts(serverSupabase, ctx.data),
-      queryCurrentUserId(serverSupabase).then(async (userId) => ({
-        userId,
-        circle:
-          view === 'who' && userId !== null
-            ? await getCircleUserIds(serverSupabase, userId)
-            : null,
-      })),
+      queryUserAndCircle(serverSupabase, view),
     ])
 
-    const { userId, circle } = authAndCircle
-    const wantWho = view === 'who' && userId !== null
-    const versePosts = versePostsRes.data ?? []
+    const versePosts = versePostsData ?? []
 
     const countByVerse: Record<number, number> = {}
     versePosts.forEach((p) => {
@@ -120,7 +120,7 @@ const fetchChapterData = createServerFn({ method: 'POST' })
 
     let avatarsByVerse: Record<number, AvatarStackItem[]> = {}
     let circleUsers: AvatarStackItem[] = []
-    if (wantWho && circle) {
+    if (circle) {
       const userLookup = new Map(
         circle.users.map((u) => [
           u.id,
@@ -133,10 +133,13 @@ const fetchChapterData = createServerFn({ method: 'POST' })
       )
       circleUsers = [...userLookup.values()]
 
+      const circlePosts = versePosts
+        .filter((p) => userLookup.has(p.user_id as string))
+        .sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))
+
       const seenPerVerse = new Map<number, Set<string>>()
-      versePosts.forEach((p) => {
-        const item = userLookup.get(p.user_id as string)
-        if (!item) return
+      circlePosts.forEach((p) => {
+        const item = userLookup.get(p.user_id as string)!
         const verses = (p.scripture_verses as number[] | null) ?? []
         for (const v of verses) {
           const seen = seenPerVerse.get(v) ?? new Set<string>()
@@ -155,7 +158,7 @@ const fetchChapterData = createServerFn({ method: 'POST' })
       countByVerse,
       verseTexts,
       userId,
-      view: wantWho ? ('who' as const) : ('count' as const),
+      view: circle ? ('who' as const) : ('count' as const),
       avatarsByVerse,
       circleUsers,
     }
