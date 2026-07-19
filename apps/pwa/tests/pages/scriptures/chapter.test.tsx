@@ -180,4 +180,49 @@ describe('ChapterPage', () => {
     expect(screen.queryByRole('button', { name: '投稿する' })).toBeNull()
     expect(screen.queryByRole('dialog')).toBeNull()
   })
+
+  it('ログイン済みで view=count の時、件数／誰がセグメントを描画する', () => {
+    render(<ChapterPage />)
+    expect(screen.getByRole('radiogroup')).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: '件数' })).toHaveAttribute('aria-checked', 'true')
+  })
+
+  it('view=count で「誰が」を押すと navigate({ view: "who" }) を呼ぶ', async () => {
+    const user = userEvent.setup()
+    render(<ChapterPage />)
+    await user.click(screen.getByRole('radio', { name: '誰が' }))
+    expect(navigateSpy).toHaveBeenCalled()
+    const call = navigateSpy.mock.calls.at(-1)?.[0]
+    expect(call.search({})).toMatchObject({ view: 'who' })
+  })
+
+  it('view=who かつ ログイン済みならフィルタボタンを描画', () => {
+    loaderData = {
+      ...baseChapterData,
+      view: 'who',
+      circleUsers: [{ userId: 'u1', name: '中村さん', avatarUrl: null }],
+    }
+    render(<ChapterPage />)
+    expect(screen.getByRole('button', { name: 'ユーザーで絞り込み' })).toBeInTheDocument()
+  })
+
+  it('未ログインならセグメントとフィルタボタンを出さない', () => {
+    loaderData = { ...baseChapterData, userId: null }
+    render(<ChapterPage />)
+    expect(screen.queryByRole('radiogroup')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'ユーザーで絞り込み' })).toBeNull()
+  })
+
+  it('view=who で avatarsByVerse を VerseRow に渡す（アバターの alt が現れる）', () => {
+    loaderData = {
+      ...baseChapterData,
+      view: 'who',
+      circleUsers: [{ userId: 'u1', name: '中村さん', avatarUrl: null }],
+      avatarsByVerse: {
+        1: [{ userId: 'u1', name: '中村さん', avatarUrl: null }],
+      },
+    }
+    render(<ChapterPage />)
+    expect(screen.getByRole('img', { name: '中村さん' })).toBeInTheDocument()
+  })
 })

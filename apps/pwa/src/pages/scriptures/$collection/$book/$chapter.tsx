@@ -16,9 +16,13 @@ import {
   toggleVerse,
   type SelectionMode,
 } from '@/features/select-scripture-verses'
+import { Users } from 'lucide-react'
 import {
   parseViewMode,
   type VerseViewMode,
+  ViewModeToggle,
+  WhoFilterSheet,
+  useWhoFilter,
 } from '@/features/select-verse-view'
 import { getCircleUserIds } from '@/entities/user'
 
@@ -336,10 +340,15 @@ type ChapterViewProps = {
   circleUsers: AvatarStackItem[]
 }
 
-function ChapterView({ book, chapter, collection, posts, countByVerse, verseTexts, canCompose }: ChapterViewProps) {
+function ChapterView({
+  book, chapter, collection, posts, countByVerse, verseTexts, canCompose,
+  view, avatarsByVerse, circleUsers,
+}: ChapterViewProps) {
   const router = useRouter()
   const [sheetOpen, setSheetOpen] = useState(false)
   const [composerVerses, setComposerVerses] = useState<number[] | undefined>()
+  const [filterOpen, setFilterOpen] = useState(false)
+  const whoFilter = useWhoFilter()
   const search = Route.useSearch()
   const navigate = Route.useNavigate()
   const officialUrl = buildScriptureUrl({ collection, book: book.id, chapter })
@@ -369,6 +378,8 @@ function ChapterView({ book, chapter, collection, posts, countByVerse, verseText
     patchSearch({ select: next.length ? next : undefined })
   const enterSelectMode = () => patchSearch({ mode: 'select' }, false)
   const exitSelectMode = () => patchSearch({ mode: undefined, select: undefined })
+  const setView = (next: 'count' | 'who') =>
+    patchSearch({ view: next === 'who' ? 'who' : undefined })
 
   const openComposerForChapter = () => {
     setComposerVerses(undefined)
@@ -388,30 +399,56 @@ function ChapterView({ book, chapter, collection, posts, countByVerse, verseText
     if (mode === 'select') exitSelectMode()
   }
 
+  const filteredAvatarsByVerse = useMemo(() => {
+    if (view !== 'who') return {}
+    const result: Record<number, AvatarStackItem[]> = {}
+    for (const [verse, items] of Object.entries(avatarsByVerse)) {
+      const filtered = items.filter((a) => whoFilter.isIncluded(a.userId))
+      if (filtered.length > 0) result[Number(verse)] = filtered
+    }
+    return result
+  }, [view, avatarsByVerse, whoFilter])
+
+  const headerAction = (
+    <div className="flex items-center gap-3">
+      <a
+        href={officialUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-xs underline"
+        style={{ color: 'var(--lagoon-deep)' }}
+      >
+        本文
+      </a>
+      {canCompose && (
+        <>
+          <ViewModeToggle value={view} onChange={setView} />
+          {view === 'who' && (
+            <button
+              type="button"
+              onClick={() => setFilterOpen(true)}
+              aria-label="ユーザーで絞り込み"
+              className="p-1 rounded"
+              style={{ color: 'var(--sea-ink-soft)' }}
+            >
+              <Users size={16} aria-hidden="true" />
+            </button>
+          )}
+          <ComposeMenu
+            onSelectChapter={openComposerForChapter}
+            onSelectVerses={enterSelectMode}
+          />
+        </>
+      )}
+    </div>
+  )
+
   const chapterHeader = (
     <PageHeader
       title={`${book.name} 第${chapter}章`}
       backTo="/scriptures/$collection/$book"
       backLabel={book.name}
-      action={
-        <div className="flex items-center gap-3">
-          <a
-            href={officialUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs underline"
-            style={{ color: 'var(--lagoon-deep)' }}
-          >
-            本文
-          </a>
-          {canCompose && (
-            <ComposeMenu
-              onSelectChapter={openComposerForChapter}
-              onSelectVerses={enterSelectMode}
-            />
-          )}
-        </div>
-      }
+      action={headerAction}
     />
   )
 
@@ -442,6 +479,7 @@ function ChapterView({ book, chapter, collection, posts, countByVerse, verseText
             const count = countByVerse[verse] ?? 0
             const vt = verseTextMap.get(verse)
             const isSelected = mode === 'select' && selection.includes(verse)
+            const avatars = filteredAvatarsByVerse[verse]
             return (
               <li
                 key={verse}
@@ -458,6 +496,8 @@ function ChapterView({ book, chapter, collection, posts, countByVerse, verseText
                   mode={mode}
                   selected={isSelected}
                   onSelect={(v) => setSelection(toggleVerse(selection, v))}
+                  view={view}
+                  avatars={avatars}
                 />
               </li>
             )
@@ -465,17 +505,27 @@ function ChapterView({ book, chapter, collection, posts, countByVerse, verseText
         </ul>
       </div>
       {canCompose && (
-        <PostComposerSheet
-          open={sheetOpen}
-          onOpenChange={onSheetOpenChange}
-          onClosed={onComposerClosed}
-          initialScripture={{
-            collection,
-            book: book.id,
-            chapter,
-            verses: composerVerses,
-          }}
-        />
+        <>
+          <PostComposerSheet
+            open={sheetOpen}
+            onOpenChange={onSheetOpenChange}
+            onClosed={onComposerClosed}
+            initialScripture={{
+              collection,
+              book: book.id,
+              chapter,
+              verses: composerVerses,
+            }}
+          />
+          <WhoFilterSheet
+            open={filterOpen}
+            users={circleUsers}
+            isIncluded={whoFilter.isIncluded}
+            onToggle={whoFilter.toggle}
+            onSetAll={whoFilter.setAll}
+            onOpenChange={setFilterOpen}
+          />
+        </>
       )}
     </div>
   )
