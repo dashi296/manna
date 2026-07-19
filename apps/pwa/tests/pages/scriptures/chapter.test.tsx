@@ -18,7 +18,6 @@ type TestLoaderData = {
   posts: PostWithUser[]
   verseTexts: { verse: number; text_html: string }[]
   userId: string | null
-  view: 'count' | 'who'
   chapterCommenters: { userId: string; name: string; avatarUrl: string | null }[]
   circlePosts: PostWithUser[]
 }
@@ -40,13 +39,12 @@ const baseChapterData: TestLoaderData = {
     { verse: 2, text_html: '二節の本文' },
   ],
   userId: 'user-1',
-  view: 'count' as const,
   chapterCommenters: [],
   circlePosts: [],
 }
 
 let loaderData: TestLoaderData
-let search: { select?: number[]; mode?: 'select'; view?: 'who' } = { select: [1, 2] }
+let search: { select?: number[]; mode?: 'select' } = { select: [1, 2] }
 const navigateSpy = vi.fn()
 
 vi.mock('@tanstack/react-router', async () => {
@@ -72,7 +70,7 @@ let ChapterPage: React.ComponentType
 beforeAll(async () => {
   const mod = await import('@/pages/scriptures/$collection/$book/$chapter')
   const Route = mod.Route as unknown as {
-    useSearch: () => { select?: number[]; mode?: 'select'; view?: 'who' }
+    useSearch: () => { select?: number[]; mode?: 'select' }
     useNavigate: () => ReturnType<typeof vi.fn>
   }
   Route.useSearch = () => search
@@ -162,8 +160,6 @@ describe('ChapterPage', () => {
       select: [1, 3],
     })
     expect(validate({ select: 'abc,-1,0,4' })).toMatchObject({ select: [4] })
-    expect(validate({ view: 'who' })).toMatchObject({ view: 'who' })
-    expect(validate({ view: 'foo' })).toMatchObject({ view: undefined })
   })
 
   it('未ログインの節表示では投稿導線を表示しない', () => {
@@ -180,25 +176,9 @@ describe('ChapterPage', () => {
     expect(screen.queryByRole('dialog')).toBeNull()
   })
 
-  it('ログイン済み view=count なら件数／誰がセグメントを描画', () => {
-    render(<ChapterPage />)
-    expect(screen.getByRole('radiogroup')).toBeInTheDocument()
-    expect(screen.getByRole('radio', { name: '件数' })).toHaveAttribute('aria-checked', 'true')
-  })
-
-  it("view=count で「誰が」を押すと navigate({ view: 'who' })", async () => {
-    const user = userEvent.setup()
-    render(<ChapterPage />)
-    await user.click(screen.getByRole('radio', { name: '誰が' }))
-    expect(navigateSpy).toHaveBeenCalled()
-    const call = navigateSpy.mock.calls.at(-1)?.[0]
-    expect(call.search({})).toMatchObject({ view: 'who' })
-  })
-
-  it('view=who かつ chapterCommenters ありでヘッダーにアバターボタンを描画', () => {
+  it('ログイン済みなら章コメンター行に自身の commenter がある時アバターを描画', () => {
     loaderData = {
       ...baseChapterData,
-      view: 'who',
       chapterCommenters: [
         { userId: 'u1', name: '中村さん', avatarUrl: null },
       ],
@@ -214,7 +194,6 @@ describe('ChapterPage', () => {
     useSelectedUserStore.setState({ selectedUserId: 'u1' })
     loaderData = {
       ...baseChapterData,
-      view: 'who',
       chapterCommenters: [
         { userId: 'u1', name: '中村さん', avatarUrl: null },
       ],
@@ -225,10 +204,18 @@ describe('ChapterPage', () => {
     expect(useSelectedUserStore.getState().selectedUserId).toBeNull()
   })
 
-  it('未ログインならセグメントもアバター行も出さない', () => {
-    loaderData = { ...baseChapterData, userId: null }
+  it('未ログインならアバター行を出さない', () => {
+    loaderData = {
+      ...baseChapterData,
+      userId: null,
+      chapterCommenters: [
+        { userId: 'u1', name: '中村さん', avatarUrl: null },
+      ],
+    }
     render(<ChapterPage />)
-    expect(screen.queryByRole('radiogroup')).toBeNull()
+    expect(
+      screen.queryByRole('button', { name: '中村さん を選ぶ' }),
+    ).toBeNull()
   })
 
   it('mode=select 中は選択ユーザーがあっても吹き出しを描画しない', async () => {
@@ -238,7 +225,6 @@ describe('ChapterPage', () => {
     useSelectedUserStore.setState({ selectedUserId: 'u1' })
     loaderData = {
       ...baseChapterData,
-      view: 'who',
       chapterCommenters: [{ userId: 'u1', name: '中村さん', avatarUrl: null }],
       circlePosts: [
         {
@@ -255,19 +241,18 @@ describe('ChapterPage', () => {
         },
       ],
     }
-    search = { mode: 'select', select: [1], view: 'who' }
+    search = { mode: 'select', select: [1] }
     render(<ChapterPage />)
     expect(screen.queryByRole('group', { name: /中村さんの吹き出し/ })).toBeNull()
   })
 
-  it('view=who で desktop 相当なら選択ユーザーの吹き出しが節横に描画される', async () => {
+  it('desktop 相当なら選択ユーザーの吹き出しが節横に描画される', async () => {
     Object.defineProperty(window, 'innerWidth', { writable: true, value: 1440 })
     window.dispatchEvent(new Event('resize'))
     const { useSelectedUserStore } = await import('@/features/select-verse-view')
     useSelectedUserStore.setState({ selectedUserId: 'u1' })
     loaderData = {
       ...baseChapterData,
-      view: 'who',
       chapterCommenters: [{ userId: 'u1', name: '中村さん', avatarUrl: null }],
       circlePosts: [
         {
@@ -284,7 +269,7 @@ describe('ChapterPage', () => {
         },
       ],
     }
-    search = { view: 'who' }
+    search = {}
     render(<ChapterPage />)
     await waitFor(() => {
       expect(screen.getByText('節1 吹き出しテスト')).toBeInTheDocument()

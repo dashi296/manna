@@ -16,11 +16,7 @@ import {
   type SelectionMode,
 } from '@/features/select-scripture-verses'
 import {
-  parseViewMode,
-  type VerseViewMode,
-  ViewModeToggle,
   ChapterCommentersRow,
-  serializeViewMode,
   useSelectedUserStore,
 } from '@/features/select-verse-view'
 import { VerseCommentSheet } from '@/widgets/verse-comment-sheet'
@@ -40,12 +36,10 @@ async function queryCurrentUserId(supabase: SupabaseServer) {
   return user?.id ?? null
 }
 
-async function queryUserAndCircle(supabase: SupabaseServer, view: VerseViewMode) {
+async function queryUserAndCircle(supabase: SupabaseServer) {
   const userId = await queryCurrentUserId(supabase)
   const circle =
-    view === 'who' && userId !== null
-      ? await getCircleUserIds(supabase, userId)
-      : null
+    userId !== null ? await getCircleUserIds(supabase, userId) : null
   return { userId, circle }
 }
 
@@ -85,9 +79,9 @@ const fetchVerseData = createServerFn({ method: 'POST' })
   })
 
 const fetchChapterData = createServerFn({ method: 'POST' })
-  .inputValidator((data: ChapterRef & { view: VerseViewMode }) => data)
+  .inputValidator((data: ChapterRef) => data)
   .handler(async (ctx) => {
-    const { collection, book, chapter, view } = ctx.data
+    const { collection, book, chapter } = ctx.data
     const serverSupabase = await createSupabaseServer()
 
     const [
@@ -113,7 +107,7 @@ const fetchChapterData = createServerFn({ method: 'POST' })
         .not('scripture_verses', 'is', null)
         .order('created_at', { ascending: false }),
       queryVerseTexts(serverSupabase, ctx.data),
-      queryUserAndCircle(serverSupabase, view),
+      queryUserAndCircle(serverSupabase),
     ])
 
     const versePosts = (versePostsData ?? []) as PostWithUser[]
@@ -150,7 +144,6 @@ const fetchChapterData = createServerFn({ method: 'POST' })
       posts: (posts ?? []) as PostWithUser[],
       verseTexts,
       userId,
-      view: circle ? ('who' as const) : ('count' as const),
       chapterCommenters,
       circlePosts,
     }
@@ -160,7 +153,6 @@ type ChapterSearch = {
   verses?: number[]
   select?: number[]
   mode?: SelectionMode
-  view?: 'who'
 }
 
 export const Route = createFileRoute('/scriptures/$collection/$book/$chapter')({
@@ -168,11 +160,9 @@ export const Route = createFileRoute('/scriptures/$collection/$book/$chapter')({
     verses: search.verses !== undefined ? parseSelection(search.verses) : undefined,
     select: search.select !== undefined ? parseSelection(search.select) : undefined,
     mode: search.mode === 'select' ? 'select' : undefined,
-    view: search.view === 'who' ? 'who' : undefined,
   }),
   loaderDeps: ({ search }) => ({
     verses: search.verses,
-    view: search.view,
   }),
   loader: async ({ params, deps }) => {
     const book = getBook(params.collection, params.book)
@@ -191,16 +181,12 @@ export const Route = createFileRoute('/scriptures/$collection/$book/$chapter')({
         book, chapter: chapterNum, collection: params.collection,
         mode: 'verse' as const, verses: deps.verses,
         posts, verseTexts, userId,
-        view: 'count' as const,
         chapterCommenters: [] as AvatarStackItem[],
         circlePosts: [] as PostWithUser[],
       }
     }
 
-    const view = parseViewMode(deps.view)
-    const data = await fetchChapterData({
-      data: { ...base, view },
-    })
+    const data = await fetchChapterData({ data: base })
 
     return {
       book, chapter: chapterNum, collection: params.collection,
@@ -239,7 +225,6 @@ function ChapterPage() {
     posts={data.posts}
     verseTexts={data.verseTexts}
     canCompose={Boolean(data.userId)}
-    view={data.view}
     chapterCommenters={data.chapterCommenters}
     circlePosts={data.circlePosts}
   />
@@ -320,14 +305,13 @@ type ChapterViewProps = {
   posts: PostWithUser[]
   verseTexts: VerseText[]
   canCompose: boolean
-  view: VerseViewMode
   chapterCommenters: AvatarStackItem[]
   circlePosts: PostWithUser[]
 }
 
 function ChapterView({
   book, chapter, collection, posts, verseTexts, canCompose,
-  view, chapterCommenters, circlePosts,
+  chapterCommenters, circlePosts,
 }: ChapterViewProps) {
   const router = useRouter()
   const isMobile = useIsMobile()
@@ -388,10 +372,6 @@ function ChapterView({
     patchSearch({ select: next.length ? next : undefined })
   const enterSelectMode = () => patchSearch({ mode: 'select' }, false)
   const exitSelectMode = () => patchSearch({ mode: undefined, select: undefined })
-  const setView = (next: VerseViewMode) => {
-    patchSearch({ view: serializeViewMode(next) })
-    if (next === 'count') clearUserInStore()
-  }
   const selectUser = (userId: string) => selectUserInStore(userId)
   const clearUser = () => clearUserInStore()
 
@@ -423,14 +403,12 @@ function ChapterView({
     if (mode === 'select') exitSelectMode()
   }
 
-  const showToggle = canCompose && mode !== 'select'
-  const showCommenters = showToggle && view === 'who'
+  const showCommenters = canCompose && mode !== 'select'
   const showBubbles = mode !== 'select' && !isMobile && selectedUser !== null
   const showMarkers = mode !== 'select' && isMobile && selectedUser !== null
 
   const headerAction = (
     <div className="flex items-center gap-3">
-      {showToggle && <ViewModeToggle value={view} onChange={setView} />}
       {canCompose && (
         <ComposeMenu
           onSelectChapter={openComposerForChapter}
