@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 export const WHO_FILTER_STORAGE_KEY = 'manna:verseWhoFilter:v1'
 
@@ -28,9 +28,16 @@ function writeStorage(excluded: Set<string>) {
 }
 
 export function useWhoFilter() {
-  const [excluded, setExcluded] = useState<Set<string>>(() => readStorage())
+  const [excluded, setExcluded] = useState<Set<string>>(() => new Set())
+  const hydratedRef = useRef(false)
 
   useEffect(() => {
+    if (!hydratedRef.current) {
+      hydratedRef.current = true
+      const stored = readStorage()
+      if (stored.size > 0) setExcluded(stored)
+      return
+    }
     writeStorage(excluded)
   }, [excluded])
 

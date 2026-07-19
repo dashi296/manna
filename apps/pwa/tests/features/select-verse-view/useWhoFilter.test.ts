@@ -51,6 +51,21 @@ describe('useWhoFilter', () => {
     expect(result.current.isIncluded('u1')).toBe(true)
   })
 
+  it('SSR 相当の初回同期呼び出しでは excluded が空 (hydration mismatch 回避)', () => {
+    localStorage.setItem(
+      WHO_FILTER_STORAGE_KEY,
+      JSON.stringify({ excluded: ['u9'] }),
+    )
+    let firstRenderExcluded: Set<string> | null = null
+    renderHook(() => {
+      const state = useWhoFilter()
+      if (firstRenderExcluded === null) firstRenderExcluded = state.excluded
+      return state
+    })
+    expect(firstRenderExcluded).not.toBeNull()
+    expect(firstRenderExcluded!.size).toBe(0)
+  })
+
   it('壊れた localStorage 値は無視して空 excluded で開始する', () => {
     localStorage.setItem(WHO_FILTER_STORAGE_KEY, 'not-json')
     const { result } = renderHook(() => useWhoFilter())
