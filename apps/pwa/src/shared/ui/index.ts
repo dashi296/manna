@@ -1,5 +1,5 @@
 export { AppSidebar } from './AppSidebar'
-export { type AvatarStackItem } from './AvatarStack'
+export { type AvatarStackItem } from './avatarStackItem'
 export { EmptyState } from './EmptyState'
 export { MarkdownRenderer } from './MarkdownRenderer'
 export { PageHeader, stickyHeaderClassName, stickyHeaderStyle } from './PageHeader'

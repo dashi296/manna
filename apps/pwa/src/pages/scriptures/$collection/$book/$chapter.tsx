@@ -326,8 +326,7 @@ function ChapterView({
   const selectUser = useSelectedUserStore((s) => s.select)
   const clearUser = useSelectedUserStore((s) => s.clear)
   const selectedUser =
-    (storedUserId && chapterCommenters.find((c) => c.userId === storedUserId)) ||
-    null
+    chapterCommenters.find((c) => c.userId === storedUserId) ?? null
   const selectedUserPosts = useMemo(
     () =>
       selectedUser
