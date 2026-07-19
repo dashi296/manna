@@ -52,7 +52,7 @@ const baseChapterData: TestLoaderData = {
 }
 
 let loaderData: TestLoaderData
-let search: { select?: number[]; mode?: 'select' } = { select: [1, 2] }
+let search: { select?: number[]; mode?: 'select'; view?: 'who'; user?: string } = { select: [1, 2] }
 const navigateSpy = vi.fn()
 
 vi.mock('@tanstack/react-router', async () => {
@@ -78,7 +78,7 @@ let ChapterPage: React.ComponentType
 beforeAll(async () => {
   const mod = await import('@/pages/scriptures/$collection/$book/$chapter')
   const Route = mod.Route as unknown as {
-    useSearch: () => { select?: number[]; mode?: 'select' }
+    useSearch: () => { select?: number[]; mode?: 'select'; view?: 'who'; user?: string }
     useNavigate: () => ReturnType<typeof vi.fn>
   }
   Route.useSearch = () => search
@@ -237,5 +237,36 @@ describe('ChapterPage', () => {
     loaderData = { ...baseChapterData, userId: null }
     render(<ChapterPage />)
     expect(screen.queryByRole('radiogroup')).toBeNull()
+  })
+
+  it('mode=select 中は選択ユーザーがあっても右レール見出しを描画しない', () => {
+    // simulate desktop
+    Object.defineProperty(window, 'innerWidth', { writable: true, value: 1440 })
+    window.dispatchEvent(new Event('resize'))
+    loaderData = {
+      ...baseChapterData,
+      view: 'who',
+      selectedUser: { userId: 'u1', name: '中村さん', avatarUrl: null },
+      selectedUserPosts: [
+        {
+          id: 'p1',
+          content: 'コメ',
+          visibility: 'public' as const,
+          created_at: '2026-07-19T00:00:00.000Z',
+          scripture_collection: 'bofm',
+          scripture_book: '1-ne',
+          scripture_chapter: 1,
+          scripture_verses: [1],
+          user_id: 'u1',
+          users: { display_name: '中村さん', avatar_url: null },
+        },
+      ],
+      versesWithSelectedUser: [1],
+    }
+    search = { mode: 'select', select: [1], view: 'who', user: 'u1' }
+    render(<ChapterPage />)
+    expect(
+      screen.queryByRole('heading', { name: /中村さんのコメント/ }),
+    ).toBeNull()
   })
 })

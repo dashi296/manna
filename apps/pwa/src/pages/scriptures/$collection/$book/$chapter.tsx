@@ -453,8 +453,8 @@ function ChapterView({
 
   const showToggle = canCompose && mode !== 'select'
   const showCommenters = showToggle && view === 'who'
-  const showRail = !isMobile && selectedUser !== null && selectedUserPosts.length > 0
-  const showMarkers = isMobile && selectedUser !== null
+  const showRail = mode !== 'select' && !isMobile && selectedUser !== null && selectedUserPosts.length > 0
+  const showMarkers = mode !== 'select' && isMobile && selectedUser !== null
 
   const headerAction = (
     <div className="flex items-center gap-3">
@@ -554,7 +554,7 @@ function ChapterView({
   ) : null
 
   const activeVerseSheet =
-    openVerseSheet !== null && selectedUser ? (
+    mode !== 'select' && openVerseSheet !== null && selectedUser ? (
       <VerseCommentSheet
         open={openVerseSheet !== null}
         verse={openVerseSheet}
