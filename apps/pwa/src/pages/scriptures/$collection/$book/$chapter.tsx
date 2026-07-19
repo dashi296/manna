@@ -39,15 +39,6 @@ async function queryCurrentUserId(supabase: SupabaseServer) {
   return user?.id ?? null
 }
 
-async function queryUserAndCircle(supabase: SupabaseServer, view: VerseViewMode) {
-  const userId = await queryCurrentUserId(supabase)
-  const circle =
-    view === 'who' && userId !== null
-      ? await getCircleUserIds(supabase, userId)
-      : null
-  return { userId, circle }
-}
-
 async function queryVerseTexts(supabase: SupabaseServer, { collection, book, chapter }: ChapterRef, verses?: number[]) {
   let query = supabase
     .from('scripture_verses')
@@ -82,6 +73,15 @@ const fetchVerseData = createServerFn({ method: 'POST' })
     ])
     return { posts: (posts ?? []) as PostWithUser[], verseTexts, userId }
   })
+
+async function queryUserAndCircle(supabase: SupabaseServer, view: VerseViewMode) {
+  const userId = await queryCurrentUserId(supabase)
+  const circle =
+    view === 'who' && userId !== null
+      ? await getCircleUserIds(supabase, userId)
+      : null
+  return { userId, circle }
+}
 
 const fetchChapterData = createServerFn({ method: 'POST' })
   .inputValidator((data: ChapterRef & { view: VerseViewMode }) => data)
@@ -133,14 +133,21 @@ const fetchChapterData = createServerFn({ method: 'POST' })
       )
       circleUsers = [...userLookup.values()]
 
-      const circlePosts = versePosts
-        .filter((p) => userLookup.has(p.user_id as string))
-        .sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))
+      type CirclePost = { item: AvatarStackItem; verses: number[]; createdAt: string }
+      const circlePosts: CirclePost[] = []
+      for (const p of versePosts) {
+        const item = userLookup.get(p.user_id as string)
+        if (!item) continue
+        circlePosts.push({
+          item,
+          verses: (p.scripture_verses as number[] | null) ?? [],
+          createdAt: p.created_at ?? '',
+        })
+      }
+      circlePosts.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
 
       const seenPerVerse = new Map<number, Set<string>>()
-      circlePosts.forEach((p) => {
-        const item = userLookup.get(p.user_id as string)!
-        const verses = (p.scripture_verses as number[] | null) ?? []
+      for (const { item, verses } of circlePosts) {
         for (const v of verses) {
           const seen = seenPerVerse.get(v) ?? new Set<string>()
           if (seen.has(item.userId)) continue
@@ -150,7 +157,7 @@ const fetchChapterData = createServerFn({ method: 'POST' })
           arr.push(item)
           avatarsByVerse[v] = arr
         }
-      })
+      }
     }
 
     return {
