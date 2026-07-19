@@ -1,9 +1,12 @@
+import { useEffect } from 'react'
 import { HeadContent, Scripts, Outlet, createRootRoute, redirect, useRouterState } from '@tanstack/react-router'
 import { getSession, getServerSession } from '@/shared/lib/auth'
 import { getCookieHeader } from '@/shared/lib/cookies'
+import { registerServiceWorker } from '@/shared/lib/pwa'
 import { AppSidebar } from '@/shared/ui/AppSidebar'
 import { BottomNav } from '@/shared/ui/BottomNav'
 import { DevTools } from '@/shared/ui/DevTools'
+import { InstallPwaBanner } from '@/shared/ui/InstallPwaBanner'
 import { sidebarStateFromCookieHeader, SidebarInset, SidebarProvider } from '@/shared/ui/sidebar'
 import { TooltipProvider } from '@/shared/ui/tooltip'
 import appCss from '@/styles.css?url'
@@ -71,6 +74,10 @@ function RootLayout() {
   const isAuthPage =
     location.pathname === '/login' || location.pathname.startsWith('/auth/')
 
+  useEffect(() => {
+    registerServiceWorker()
+  }, [])
+
   if (isAuthPage) {
     return <Outlet />
   }
@@ -85,6 +92,7 @@ function RootLayout() {
               <Outlet />
             </div>
           </main>
+          <InstallPwaBanner />
           <BottomNav />
         </SidebarInset>
       </SidebarProvider>
