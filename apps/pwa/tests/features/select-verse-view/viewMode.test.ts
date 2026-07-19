@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseViewMode } from '@/features/select-verse-view/model/viewMode'
+import { parseViewMode } from '@/features/select-verse-view'
 
 describe('parseViewMode', () => {
   it("'who' を渡すと 'who' を返す", () => {
