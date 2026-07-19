@@ -18,7 +18,10 @@ export function VerseCommentSheet({
 }: Props) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom">
+      <SheetContent
+        side="bottom"
+        overlayClassName="supports-backdrop-filter:backdrop-blur-none"
+      >
         <SheetHeader>
           <SheetTitle>
             📖 節{verse} — {selectedUserName}
