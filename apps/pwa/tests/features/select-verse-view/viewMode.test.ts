@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseViewMode, serializeViewMode } from '@/features/select-verse-view/model/viewMode'
+import { parseViewMode, serializeViewMode } from '@/features/select-verse-view'
 
 describe('parseViewMode', () => {
   it("'who' → 'who'", () => {
