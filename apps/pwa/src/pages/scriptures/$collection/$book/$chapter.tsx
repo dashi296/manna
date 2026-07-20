@@ -17,6 +17,7 @@ import {
 } from '@/features/select-scripture-verses'
 import {
   ChapterCommentersRow,
+  useSelectedUserId,
   useSelectedUserStore,
 } from '@/features/select-verse-view'
 import { VerseCommentSheet } from '@/widgets/verse-comment-sheet'
@@ -322,7 +323,7 @@ function ChapterView({
   const navigate = Route.useNavigate()
   const maxVerse = book.verses[chapter - 1]
 
-  const storedUserId = useSelectedUserStore((s) => s.selectedUserId)
+  const storedUserId = useSelectedUserId()
   const selectUser = useSelectedUserStore((s) => s.select)
   const clearUser = useSelectedUserStore((s) => s.clear)
   const selectedUser =
