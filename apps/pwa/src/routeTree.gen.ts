@@ -12,8 +12,8 @@ import { Route as rootRouteImport } from './pages/__root'
 import { Route as IndexRouteImport } from './pages/index'
 import { Route as LoginRouteImport } from './pages/login'
 import { Route as NotificationsRouteImport } from './pages/notifications'
+import { Route as BookmarksIndexRouteImport } from './pages/bookmarks/index'
 import { Route as PostsIdRouteImport } from './pages/posts/$id'
-import { Route as PostsNewRouteImport } from './pages/posts/new'
 import { Route as ProfileIndexRouteImport } from './pages/profile/index'
 import { Route as ProfileUserIdRouteImport } from './pages/profile/$userId'
 import { Route as ScripturesIndexRouteImport } from './pages/scriptures/index'
@@ -37,14 +37,14 @@ const NotificationsRoute = NotificationsRouteImport.update({
   path: '/notifications',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BookmarksIndexRoute = BookmarksIndexRouteImport.update({
+  id: '/bookmarks/',
+  path: '/bookmarks/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PostsIdRoute = PostsIdRouteImport.update({
   id: '/posts/$id',
   path: '/posts/$id',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PostsNewRoute = PostsNewRouteImport.update({
-  id: '/posts/new',
-  path: '/posts/new',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProfileIndexRoute = ProfileIndexRouteImport.update({
@@ -91,8 +91,8 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/notifications': typeof NotificationsRoute
   '/posts/$id': typeof PostsIdRoute
-  '/posts/new': typeof PostsNewRoute
   '/profile/$userId': typeof ProfileUserIdRoute
+  '/bookmarks/': typeof BookmarksIndexRoute
   '/profile/': typeof ProfileIndexRoute
   '/scriptures/': typeof ScripturesIndexRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
@@ -105,8 +105,8 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/notifications': typeof NotificationsRoute
   '/posts/$id': typeof PostsIdRoute
-  '/posts/new': typeof PostsNewRoute
   '/profile/$userId': typeof ProfileUserIdRoute
+  '/bookmarks': typeof BookmarksIndexRoute
   '/profile': typeof ProfileIndexRoute
   '/scriptures': typeof ScripturesIndexRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
@@ -120,8 +120,8 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/notifications': typeof NotificationsRoute
   '/posts/$id': typeof PostsIdRoute
-  '/posts/new': typeof PostsNewRoute
   '/profile/$userId': typeof ProfileUserIdRoute
+  '/bookmarks/': typeof BookmarksIndexRoute
   '/profile/': typeof ProfileIndexRoute
   '/scriptures/': typeof ScripturesIndexRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
@@ -136,8 +136,8 @@ export interface FileRouteTypes {
     | '/login'
     | '/notifications'
     | '/posts/$id'
-    | '/posts/new'
     | '/profile/$userId'
+    | '/bookmarks/'
     | '/profile/'
     | '/scriptures/'
     | '/api/auth/callback'
@@ -150,8 +150,8 @@ export interface FileRouteTypes {
     | '/login'
     | '/notifications'
     | '/posts/$id'
-    | '/posts/new'
     | '/profile/$userId'
+    | '/bookmarks'
     | '/profile'
     | '/scriptures'
     | '/api/auth/callback'
@@ -164,8 +164,8 @@ export interface FileRouteTypes {
     | '/login'
     | '/notifications'
     | '/posts/$id'
-    | '/posts/new'
     | '/profile/$userId'
+    | '/bookmarks/'
     | '/profile/'
     | '/scriptures/'
     | '/api/auth/callback'
@@ -179,8 +179,8 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   NotificationsRoute: typeof NotificationsRoute
   PostsIdRoute: typeof PostsIdRoute
-  PostsNewRoute: typeof PostsNewRoute
   ProfileUserIdRoute: typeof ProfileUserIdRoute
+  BookmarksIndexRoute: typeof BookmarksIndexRoute
   ProfileIndexRoute: typeof ProfileIndexRoute
   ScripturesIndexRoute: typeof ScripturesIndexRoute
   ApiAuthCallbackRoute: typeof ApiAuthCallbackRoute
@@ -212,18 +212,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NotificationsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/bookmarks/': {
+      id: '/bookmarks/'
+      path: '/bookmarks'
+      fullPath: '/bookmarks/'
+      preLoaderRoute: typeof BookmarksIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/posts/$id': {
       id: '/posts/$id'
       path: '/posts/$id'
       fullPath: '/posts/$id'
       preLoaderRoute: typeof PostsIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/posts/new': {
-      id: '/posts/new'
-      path: '/posts/new'
-      fullPath: '/posts/new'
-      preLoaderRoute: typeof PostsNewRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/profile/': {
@@ -283,8 +283,8 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   NotificationsRoute: NotificationsRoute,
   PostsIdRoute: PostsIdRoute,
-  PostsNewRoute: PostsNewRoute,
   ProfileUserIdRoute: ProfileUserIdRoute,
+  BookmarksIndexRoute: BookmarksIndexRoute,
   ProfileIndexRoute: ProfileIndexRoute,
   ScripturesIndexRoute: ScripturesIndexRoute,
   ApiAuthCallbackRoute: ApiAuthCallbackRoute,

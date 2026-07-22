@@ -1,6 +1,6 @@
 import type { LinkProps } from '@tanstack/react-router'
 import type { LucideIcon } from 'lucide-react'
-import { Bell, BookOpen, Home, PenLine, User } from 'lucide-react'
+import { Bell, Bookmark, BookOpen, Home, User } from 'lucide-react'
 
 type NavItem = {
   to: LinkProps['to'] & string
@@ -12,7 +12,7 @@ type NavItem = {
 export const NAV_ITEMS: readonly NavItem[] = [
   { to: '/', label: 'フィード', Icon: Home },
   { to: '/scriptures', label: '聖典', Icon: BookOpen },
-  { to: '/posts/new', label: '投稿する', shortLabel: '投稿', Icon: PenLine },
+  { to: '/bookmarks', label: '栞', Icon: Bookmark },
   { to: '/notifications', label: '通知', Icon: Bell },
   { to: '/profile', label: 'プロフィール', Icon: User },
 ]

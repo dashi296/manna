@@ -13,7 +13,7 @@ import appCss from '@/styles.css?url'
 
 const isDev = import.meta.env.DEV
 
-const AUTH_REQUIRED_PREFIXES = ['/posts/new', '/profile', '/notifications']
+const AUTH_REQUIRED_PREFIXES = ['/profile', '/notifications']
 const CHAPTER_PATH_RE = /^\/scriptures\/[^/]+\/[^/]+\/\d+$/
 
 export const Route = createRootRoute({
