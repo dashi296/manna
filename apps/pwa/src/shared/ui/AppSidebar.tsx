@@ -40,9 +40,15 @@ export function AppSidebar() {
     <Sidebar collapsible="icon">
       <SidebarHeader>
         <div className="flex items-center justify-between group-data-[collapsible=icon]:justify-center">
-          <span className="font-display text-2xl font-bold tracking-wide text-lagoon px-2 group-data-[collapsible=icon]:hidden">
-            Manna
-          </span>
+          <div className="flex items-center gap-2 px-2">
+            <picture>
+              <source srcSet="/logo-mark-dark.png" media="(prefers-color-scheme: dark)" />
+              <img src="/logo-mark-light.png" alt="" className="size-7 shrink-0" />
+            </picture>
+            <span className="font-display text-2xl font-bold tracking-wide text-lagoon group-data-[collapsible=icon]:hidden">
+              Manna
+            </span>
+          </div>
           <SidebarTrigger />
         </div>
       </SidebarHeader>
