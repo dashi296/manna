@@ -30,9 +30,8 @@ export const Route = createRootRoute({
     links: [
       { rel: 'stylesheet', href: appCss },
       { rel: 'manifest', href: '/manifest.json' },
-      { rel: 'icon', href: '/favicon.ico', sizes: 'any' },
-      { rel: 'icon', href: '/favicon-light.png', media: '(prefers-color-scheme: light)' },
-      { rel: 'icon', href: '/favicon-dark.png', media: '(prefers-color-scheme: dark)' },
+      { rel: 'icon', href: '/logo-mark.svg', type: 'image/svg+xml' },
+      { rel: 'alternate icon', href: '/favicon.ico' },
       { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' },
     ],
   }),
