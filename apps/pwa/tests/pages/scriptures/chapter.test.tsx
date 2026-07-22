@@ -86,6 +86,8 @@ describe('ChapterPage', () => {
     localStorage.clear()
     const { useSelectedUserStore } = await import('@/features/select-verse-view')
     useSelectedUserStore.setState({ selectedUserId: null })
+    const { useBookmarkStore } = await import('@/entities/bookmark')
+    useBookmarkStore.setState({ readingPosition: null, bookmarks: [] })
   })
 
   it('選択中でも「章に投稿」は節指定なしでシートを開く', async () => {
@@ -277,5 +279,40 @@ describe('ChapterPage', () => {
         screen.getByRole('group', { name: /中村さんの吹き出し/ }),
       ).toBeInTheDocument()
     })
+  })
+
+  it('章ページを開くと続きを読む位置が記録される', async () => {
+    const { useBookmarkStore } = await import('@/entities/bookmark')
+    render(<ChapterPage />)
+    expect(useBookmarkStore.getState().readingPosition).toEqual({
+      collection: 'bofm',
+      book: '1-ne',
+      chapter: 1,
+    })
+  })
+
+  it('栞ボタンをクリックすると栞が追加される', async () => {
+    const { useBookmarkStore } = await import('@/entities/bookmark')
+    const user = userEvent.setup()
+    render(<ChapterPage />)
+    await user.click(screen.getByRole('button', { name: '栞に追加' }))
+    expect(useBookmarkStore.getState().bookmarks).toHaveLength(1)
+    expect(useBookmarkStore.getState().bookmarks[0]).toMatchObject({
+      collection: 'bofm',
+      book: '1-ne',
+      chapter: 1,
+    })
+  })
+
+  it('未ログインでも栞ボタンは表示される', () => {
+    loaderData = { ...baseChapterData, userId: null }
+    render(<ChapterPage />)
+    expect(screen.getByRole('button', { name: '栞に追加' })).toBeInTheDocument()
+  })
+
+  it('節表示でも栞ボタンは表示される', () => {
+    loaderData = { ...baseChapterData, mode: 'verse', verses: [1] }
+    render(<ChapterPage />)
+    expect(screen.getByRole('button', { name: '栞に追加' })).toBeInTheDocument()
   })
 })

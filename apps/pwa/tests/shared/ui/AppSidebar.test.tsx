@@ -48,7 +48,7 @@ describe('AppSidebar', () => {
     await renderSidebar()
     expect(screen.getByRole('link', { name: /フィード/ })).toHaveAttribute('href', '/')
     expect(screen.getByRole('link', { name: /聖典/ })).toHaveAttribute('href', '/scriptures')
-    expect(screen.getByRole('link', { name: /投稿する/ })).toHaveAttribute('href', '/posts/new')
+    expect(screen.getByRole('link', { name: /栞/ })).toHaveAttribute('href', '/bookmarks')
     expect(screen.getByRole('link', { name: /通知/ })).toHaveAttribute('href', '/notifications')
     expect(screen.getByRole('link', { name: /プロフィール/ })).toHaveAttribute('href', '/profile')
   })

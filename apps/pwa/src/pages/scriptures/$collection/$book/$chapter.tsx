@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { createFileRoute, notFound, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { getBook, buildScriptureUrl, getScriptureLabel } from '@/entities/scripture'
@@ -24,6 +24,8 @@ import { VerseCommentSheet } from '@/widgets/verse-comment-sheet'
 import { useIsMobile } from '@/shared/hooks/use-mobile'
 import { getCircleUserIds } from '@/entities/user'
 import type { AvatarStackItem } from '@/shared/ui'
+import { useBookmarkStore } from '@/entities/bookmark'
+import { BookmarkButton } from '@/features/toggle-bookmark'
 
 type VerseText = { verse: number; text_html: string }
 type Book = NonNullable<ReturnType<typeof getBook>>
@@ -208,6 +210,12 @@ function ComposeButton({ onClick, label }: { onClick: () => void; label: string 
 
 function ChapterPage() {
   const data = Route.useLoaderData()
+  const setReadingPosition = useBookmarkStore((s) => s.setReadingPosition)
+
+  useEffect(() => {
+    setReadingPosition({ collection: data.collection, book: data.book.id, chapter: data.chapter })
+  }, [data.collection, data.book.id, data.chapter, setReadingPosition])
+
   if (data.mode === 'verse') {
     return <VerseView
       book={data.book}
@@ -244,8 +252,9 @@ type VerseViewProps = {
 function VerseView({ book, chapter, collection, verses, posts, verseTexts, canCompose }: VerseViewProps) {
   const router = useRouter()
   const [sheetOpen, setSheetOpen] = useState(false)
-  const scriptureLabel = getScriptureLabel({ collection, book: book.id, chapter, verses })
-  const officialUrl = buildScriptureUrl({ collection, book: book.id, chapter, verses })
+  const loc = { collection, book: book.id, chapter }
+  const scriptureLabel = getScriptureLabel({ ...loc, verses })
+  const officialUrl = buildScriptureUrl({ ...loc, verses })
 
   const onSheetOpenChange = (open: boolean) => {
     setSheetOpen(open)
@@ -258,7 +267,12 @@ function VerseView({ book, chapter, collection, verses, posts, verseTexts, canCo
         title={`📖 ${scriptureLabel}`}
         backTo="/scriptures/$collection/$book/$chapter"
         backLabel={`第${chapter}章`}
-        action={canCompose ? <ComposeButton onClick={() => setSheetOpen(true)} label="投稿する" /> : undefined}
+        action={
+          <div className="flex items-center gap-2">
+            {canCompose && <ComposeButton onClick={() => setSheetOpen(true)} label="投稿する" />}
+            <BookmarkButton loc={loc} />
+          </div>
+        }
       />
       <div className="px-4 py-2 border-b" style={{ borderColor: 'var(--line)' }}>
         <a
@@ -359,6 +373,7 @@ function ChapterView({
     [search.select, maxVerse],
   )
   const mode: SelectionMode = canCompose && search.mode === 'select' ? 'select' : 'read'
+  const loc = { collection, book: book.id, chapter }
 
   const patchSearch = (patch: Partial<ChapterSearch>, replace = true) => {
     navigate({
@@ -395,12 +410,17 @@ function ChapterView({
   const showBubbles = hasSelectedUser && !isMobile
   const showMarkers = hasSelectedUser && isMobile
 
-  const headerAction = canCompose ? (
-    <ComposeMenu
-      onSelectChapter={openComposerForChapter}
-      onSelectVerses={enterSelectMode}
-    />
-  ) : undefined
+  const headerAction = (
+    <div className="flex items-center gap-2">
+      {canCompose && (
+        <ComposeMenu
+          onSelectChapter={openComposerForChapter}
+          onSelectVerses={enterSelectMode}
+        />
+      )}
+      <BookmarkButton loc={loc} />
+    </div>
+  )
 
   const chapterHeader = (
     <>
