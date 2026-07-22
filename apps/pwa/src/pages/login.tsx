@@ -1,5 +1,6 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { signInWithGoogle, getSession, getServerSession } from '@/shared/lib/auth'
+import { LogoMark } from '@/shared/ui/LogoMark'
 
 export const Route = createFileRoute('/login')({
   beforeLoad: async () => {
@@ -17,10 +18,7 @@ function LoginPage() {
     <div className="flex min-h-screen flex-col items-center justify-center px-6 gap-10">
       {/* ロゴ + キャッチコピー */}
       <div className="text-center rise-in">
-        <picture>
-          <source srcSet="/logo-mark-dark.png" media="(prefers-color-scheme: dark)" />
-          <img src="/logo-mark-light.png" alt="" className="size-16 mx-auto mb-4" />
-        </picture>
+        <LogoMark className="size-16 mx-auto mb-4" />
         <p className="island-kicker mb-3">聖典学習を分かち合う</p>
         <h1
           className="display-title text-5xl font-bold mb-3"

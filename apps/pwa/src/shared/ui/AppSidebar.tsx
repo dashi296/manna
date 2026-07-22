@@ -2,6 +2,7 @@ import { Link, useRouterState } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { NAV_ITEMS, isNavItemActive } from '@/shared/config/navigation'
 import { getSession } from '@/shared/lib/auth'
+import { LogoMark } from '@/shared/ui/LogoMark'
 import { UserAvatar } from '@/shared/ui/UserAvatar'
 import {
   Sidebar,
@@ -41,10 +42,7 @@ export function AppSidebar() {
       <SidebarHeader>
         <div className="flex items-center justify-between group-data-[collapsible=icon]:justify-center">
           <div className="flex items-center gap-2 px-2">
-            <picture>
-              <source srcSet="/logo-mark-dark.png" media="(prefers-color-scheme: dark)" />
-              <img src="/logo-mark-light.png" alt="" className="size-7 shrink-0" />
-            </picture>
+            <LogoMark className="size-7 shrink-0" alt="Manna" />
             <span className="font-display text-2xl font-bold tracking-wide text-lagoon group-data-[collapsible=icon]:hidden">
               Manna
             </span>
