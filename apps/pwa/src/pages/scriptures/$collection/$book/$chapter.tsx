@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { createFileRoute, notFound, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { getBook, buildScriptureUrl, getScriptureLabel } from '@/entities/scripture'
@@ -24,6 +24,8 @@ import { VerseCommentSheet } from '@/widgets/verse-comment-sheet'
 import { useIsMobile } from '@/shared/hooks/use-mobile'
 import { getCircleUserIds } from '@/entities/user'
 import type { AvatarStackItem } from '@/shared/ui'
+import { useBookmarkStore, type ScriptureLocation } from '@/entities/bookmark'
+import { BookmarkButton } from '@/features/toggle-bookmark'
 
 type VerseText = { verse: number; text_html: string }
 type Book = NonNullable<ReturnType<typeof getBook>>
@@ -208,6 +210,19 @@ function ComposeButton({ onClick, label }: { onClick: () => void; label: string 
 
 function ChapterPage() {
   const data = Route.useLoaderData()
+  const setReadingPosition = useBookmarkStore((s) => s.setReadingPosition)
+  const loc: ScriptureLocation = {
+    collection: data.collection,
+    book: data.book.id,
+    chapter: data.chapter,
+  }
+
+  useEffect(() => {
+    setReadingPosition(loc)
+    // loc は毎レンダーで新規オブジェクトになるため、プリミティブな依存項目で判定する
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loc.collection, loc.book, loc.chapter, setReadingPosition])
+
   if (data.mode === 'verse') {
     return <VerseView
       book={data.book}
@@ -258,7 +273,12 @@ function VerseView({ book, chapter, collection, verses, posts, verseTexts, canCo
         title={`📖 ${scriptureLabel}`}
         backTo="/scriptures/$collection/$book/$chapter"
         backLabel={`第${chapter}章`}
-        action={canCompose ? <ComposeButton onClick={() => setSheetOpen(true)} label="投稿する" /> : undefined}
+        action={
+          <div className="flex items-center gap-2">
+            {canCompose && <ComposeButton onClick={() => setSheetOpen(true)} label="投稿する" />}
+            <BookmarkButton loc={{ collection, book: book.id, chapter }} />
+          </div>
+        }
       />
       <div className="px-4 py-2 border-b" style={{ borderColor: 'var(--line)' }}>
         <a
@@ -395,12 +415,17 @@ function ChapterView({
   const showBubbles = hasSelectedUser && !isMobile
   const showMarkers = hasSelectedUser && isMobile
 
-  const headerAction = canCompose ? (
-    <ComposeMenu
-      onSelectChapter={openComposerForChapter}
-      onSelectVerses={enterSelectMode}
-    />
-  ) : undefined
+  const headerAction = (
+    <div className="flex items-center gap-2">
+      {canCompose && (
+        <ComposeMenu
+          onSelectChapter={openComposerForChapter}
+          onSelectVerses={enterSelectMode}
+        />
+      )}
+      <BookmarkButton loc={{ collection, book: book.id, chapter }} />
+    </div>
+  )
 
   const chapterHeader = (
     <>
