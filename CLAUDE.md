@@ -98,7 +98,7 @@ requester/addressee の区別があるため、両方向を検索する必要が
 `/scriptures/*` は未ログインでも閲覧可。`/` は完全一致で認証必須:
 
 ```typescript
-const AUTH_REQUIRED_PREFIXES = ['/posts/new', '/profile', '/notifications']
+const AUTH_REQUIRED_PREFIXES = ['/profile', '/notifications']
 const needsAuth =
   location.pathname === '/' ||
   AUTH_REQUIRED_PREFIXES.some(p => location.pathname.startsWith(p))
