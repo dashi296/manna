@@ -14,6 +14,7 @@ import appCss from '@/styles.css?url'
 const isDev = import.meta.env.DEV
 
 const AUTH_REQUIRED_PREFIXES = ['/posts/new', '/profile', '/notifications']
+const CHAPTER_PATH_RE = /^\/scriptures\/[^/]+\/[^/]+\/\d+$/
 
 export const Route = createRootRoute({
   head: () => ({
@@ -73,6 +74,8 @@ function RootLayout() {
   const { sidebarDefaultOpen } = Route.useLoaderData()
   const isAuthPage =
     location.pathname === '/login' || location.pathname.startsWith('/auth/')
+  const isChapterPage = CHAPTER_PATH_RE.test(location.pathname)
+  const containerClass = isChapterPage ? 'lg:max-w-4xl mx-auto' : 'max-w-md mx-auto'
 
   useEffect(() => {
     registerServiceWorker()
@@ -88,7 +91,7 @@ function RootLayout() {
         <AppSidebar />
         <SidebarInset className="flex flex-col min-h-screen min-w-0">
           <main className="flex-1 pb-16 lg:pb-0">
-            <div className="max-w-md mx-auto">
+            <div className={containerClass}>
               <Outlet />
             </div>
           </main>

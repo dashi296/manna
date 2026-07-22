@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { createFileRoute, notFound, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { getBook, buildScriptureUrl, getScriptureLabel } from '@/entities/scripture'
-import { PostCard, POST_SELECT, type PostWithUser } from '@/entities/post'
+import { PostCard, POST_SELECT, CommenterBubble, type PostWithUser } from '@/entities/post'
 import { createSupabaseServer } from '@/shared/lib/auth'
 import { EmptyState, PageHeader, ScriptureText } from '@/shared/ui'
 import { Button } from '@/shared/ui/button'
@@ -15,6 +15,15 @@ import {
   toggleVerse,
   type SelectionMode,
 } from '@/features/select-scripture-verses'
+import {
+  ChapterCommentersRow,
+  useSelectedUserId,
+  useSelectedUserStore,
+} from '@/features/select-verse-view'
+import { VerseCommentSheet } from '@/widgets/verse-comment-sheet'
+import { useIsMobile } from '@/shared/hooks/use-mobile'
+import { getCircleUserIds } from '@/entities/user'
+import type { AvatarStackItem } from '@/shared/ui'
 
 type VerseText = { verse: number; text_html: string }
 type Book = NonNullable<ReturnType<typeof getBook>>
@@ -26,6 +35,13 @@ async function queryCurrentUserId(supabase: SupabaseServer) {
     data: { user },
   } = await supabase.auth.getUser()
   return user?.id ?? null
+}
+
+async function queryUserAndCircle(supabase: SupabaseServer) {
+  const userId = await queryCurrentUserId(supabase)
+  const circle =
+    userId !== null ? await getCircleUserIds(supabase, userId) : null
+  return { userId, circle }
 }
 
 async function queryVerseTexts(supabase: SupabaseServer, { collection, book, chapter }: ChapterRef, verses?: number[]) {
@@ -68,7 +84,13 @@ const fetchChapterData = createServerFn({ method: 'POST' })
   .handler(async (ctx) => {
     const { collection, book, chapter } = ctx.data
     const serverSupabase = await createSupabaseServer()
-    const [{ data: posts }, { data: versePosts }, verseTexts, userId] = await Promise.all([
+
+    const [
+      { data: posts },
+      { data: versePostsData },
+      verseTexts,
+      { userId, circle },
+    ] = await Promise.all([
       serverSupabase
         .from('posts')
         .select(POST_SELECT)
@@ -79,25 +101,60 @@ const fetchChapterData = createServerFn({ method: 'POST' })
         .order('created_at', { ascending: false }),
       serverSupabase
         .from('posts')
-        .select('scripture_verses')
+        .select(POST_SELECT)
         .eq('scripture_collection', collection)
         .eq('scripture_book', book)
         .eq('scripture_chapter', chapter)
-        .not('scripture_verses', 'is', null),
+        .not('scripture_verses', 'is', null)
+        .order('created_at', { ascending: false }),
       queryVerseTexts(serverSupabase, ctx.data),
-      queryCurrentUserId(serverSupabase),
+      queryUserAndCircle(serverSupabase),
     ])
 
-    const countByVerse: Record<number, number> = {}
-    versePosts?.forEach((p) => {
-      ;(p.scripture_verses as number[] | null)?.forEach((v) => {
-        countByVerse[v] = (countByVerse[v] ?? 0) + 1
-      })
-    })
-    return { posts: (posts ?? []) as PostWithUser[], countByVerse, verseTexts, userId }
+    const versePosts = (versePostsData ?? []) as PostWithUser[]
+
+    let chapterCommenters: AvatarStackItem[] = []
+    let circlePosts: PostWithUser[] = []
+
+    if (circle) {
+      const userLookup = new Map(
+        circle.users.map((u) => [
+          u.id,
+          {
+            userId: u.id,
+            name: u.display_name ?? '匿名ユーザー',
+            avatarUrl: u.avatar_url,
+          } as AvatarStackItem,
+        ]),
+      )
+
+      circlePosts = versePosts.filter((p) => userLookup.has(p.user_id))
+
+      const latestByUser = new Map<string, string>()
+      for (const p of circlePosts) {
+        const prev = latestByUser.get(p.user_id) ?? ''
+        const cur = p.created_at ?? ''
+        if (cur > prev) latestByUser.set(p.user_id, cur)
+      }
+      chapterCommenters = [...latestByUser.entries()]
+        .sort((a, b) => (a[1] < b[1] ? 1 : a[1] > b[1] ? -1 : 0))
+        .map(([uid]) => userLookup.get(uid)!)
+    }
+
+    return {
+      posts: (posts ?? []) as PostWithUser[],
+      verseTexts,
+      userId,
+      chapterCommenters,
+      circlePosts,
+    }
   })
 
-type ChapterSearch = { verses?: number[]; select?: number[]; mode?: SelectionMode }
+type ChapterSearch = {
+  verses?: number[]
+  select?: number[]
+  mode?: SelectionMode
+}
 
 export const Route = createFileRoute('/scriptures/$collection/$book/$chapter')({
   validateSearch: (search: Record<string, unknown>): ChapterSearch => ({
@@ -105,7 +162,9 @@ export const Route = createFileRoute('/scriptures/$collection/$book/$chapter')({
     select: search.select !== undefined ? parseSelection(search.select) : undefined,
     mode: search.mode === 'select' ? 'select' : undefined,
   }),
-  loaderDeps: ({ search }) => ({ verses: search.verses }),
+  loaderDeps: ({ search }) => ({
+    verses: search.verses,
+  }),
   loader: async ({ params, deps }) => {
     const book = getBook(params.collection, params.book)
     if (!book) throw notFound()
@@ -122,16 +181,18 @@ export const Route = createFileRoute('/scriptures/$collection/$book/$chapter')({
       return {
         book, chapter: chapterNum, collection: params.collection,
         mode: 'verse' as const, verses: deps.verses,
-        posts, countByVerse: {} as Record<number, number>, verseTexts, userId,
+        posts, verseTexts, userId,
+        chapterCommenters: [] as AvatarStackItem[],
+        circlePosts: [] as PostWithUser[],
       }
     }
 
-    const { posts, countByVerse, verseTexts, userId } = await fetchChapterData({ data: base })
+    const data = await fetchChapterData({ data: base })
 
     return {
       book, chapter: chapterNum, collection: params.collection,
       mode: 'chapter' as const, verses: [] as number[],
-      posts, countByVerse, verseTexts, userId,
+      ...data,
     }
   },
   component: ChapterPage,
@@ -163,9 +224,10 @@ function ChapterPage() {
     chapter={data.chapter}
     collection={data.collection}
     posts={data.posts}
-    countByVerse={data.countByVerse}
     verseTexts={data.verseTexts}
     canCompose={Boolean(data.userId)}
+    chapterCommenters={data.chapterCommenters}
+    circlePosts={data.circlePosts}
   />
 }
 
@@ -242,19 +304,50 @@ type ChapterViewProps = {
   chapter: number
   collection: string
   posts: PostWithUser[]
-  countByVerse: Record<number, number>
   verseTexts: VerseText[]
   canCompose: boolean
+  chapterCommenters: AvatarStackItem[]
+  circlePosts: PostWithUser[]
 }
 
-function ChapterView({ book, chapter, collection, posts, countByVerse, verseTexts, canCompose }: ChapterViewProps) {
+function ChapterView({
+  book, chapter, collection, posts, verseTexts, canCompose,
+  chapterCommenters, circlePosts,
+}: ChapterViewProps) {
   const router = useRouter()
+  const isMobile = useIsMobile()
   const [sheetOpen, setSheetOpen] = useState(false)
   const [composerVerses, setComposerVerses] = useState<number[] | undefined>()
+  const [openVerseSheet, setOpenVerseSheet] = useState<number | null>(null)
   const search = Route.useSearch()
   const navigate = Route.useNavigate()
-  const officialUrl = buildScriptureUrl({ collection, book: book.id, chapter })
   const maxVerse = book.verses[chapter - 1]
+
+  const storedUserId = useSelectedUserId()
+  const selectUser = useSelectedUserStore((s) => s.select)
+  const clearUser = useSelectedUserStore((s) => s.clear)
+  const selectedUser =
+    chapterCommenters.find((c) => c.userId === storedUserId) ?? null
+  const selectedUserPosts = useMemo(
+    () =>
+      selectedUser
+        ? circlePosts.filter((p) => p.user_id === selectedUser.userId)
+        : [],
+    [circlePosts, selectedUser],
+  )
+  const { versesWithMarker, postsByVerse } = useMemo(() => {
+    const verses = new Set<number>()
+    const byVerse = new Map<number, PostWithUser[]>()
+    for (const p of selectedUserPosts) {
+      p.scripture_verses?.forEach((v) => {
+        verses.add(v)
+        const arr = byVerse.get(v) ?? []
+        arr.push(p)
+        byVerse.set(v, arr)
+      })
+    }
+    return { versesWithMarker: verses, postsByVerse: byVerse }
+  }, [selectedUserPosts])
 
   const verseTextMap = useMemo(
     () => new Map(verseTexts.map((vt) => [vt.verse, vt])),
@@ -289,41 +382,45 @@ function ChapterView({ book, chapter, collection, posts, countByVerse, verseText
     setComposerVerses(selection)
     setSheetOpen(true)
   }
-
   const onSheetOpenChange = (open: boolean) => {
     setSheetOpen(open)
     if (!open) router.invalidate()
   }
-
   const onComposerClosed = () => {
     if (mode === 'select') exitSelectMode()
   }
 
-  const chapterHeader = (
-    <PageHeader
-      title={`${book.name} 第${chapter}章`}
-      backTo="/scriptures/$collection/$book"
-      backLabel={book.name}
-      action={
-        <div className="flex items-center gap-3">
-          <a
-            href={officialUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs underline"
-            style={{ color: 'var(--lagoon-deep)' }}
-          >
-            本文
-          </a>
-          {canCompose && (
-            <ComposeMenu
-              onSelectChapter={openComposerForChapter}
-              onSelectVerses={enterSelectMode}
-            />
-          )}
-        </div>
-      }
+  const showCommenters = canCompose && mode !== 'select'
+  const hasSelectedUser = mode !== 'select' && selectedUser !== null
+  const showBubbles = hasSelectedUser && !isMobile
+  const showMarkers = hasSelectedUser && isMobile
+
+  const headerAction = canCompose ? (
+    <ComposeMenu
+      onSelectChapter={openComposerForChapter}
+      onSelectVerses={enterSelectMode}
     />
+  ) : undefined
+
+  const chapterHeader = (
+    <>
+      <PageHeader
+        title={`${book.name} 第${chapter}章`}
+        backTo="/scriptures/$collection/$book"
+        backLabel={book.name}
+        action={headerAction}
+      />
+      {showCommenters && (
+        <div className="px-4 py-2 border-b" style={{ borderColor: 'var(--line)' }}>
+          <ChapterCommentersRow
+            commenters={chapterCommenters}
+            selectedUserId={selectedUser?.userId ?? null}
+            onSelect={selectUser}
+            onClear={clearUser}
+          />
+        </div>
+      )}
+    </>
   )
 
   const selectionHeader = (
@@ -333,6 +430,70 @@ function ChapterView({ book, chapter, collection, posts, countByVerse, verseText
       onSubmit={openComposerForSelection}
     />
   )
+
+  const verseList = (
+    <div className="p-4 pb-24">
+      <ul
+        className={
+          showBubbles
+            ? 'lg:grid lg:grid-cols-[minmax(0,1fr)_18rem] lg:gap-x-3'
+            : ''
+        }
+      >
+        {verseNumbers.map((verse, i) => {
+          const vt = verseTextMap.get(verse)
+          const isSelected = mode === 'select' && selection.includes(verse)
+          const marker =
+            showMarkers && versesWithMarker.has(verse) && selectedUser
+              ? selectedUser
+              : undefined
+          const bubblePosts = showBubbles ? postsByVerse.get(verse) ?? [] : []
+          const isLast = i === verseNumbers.length - 1
+          return (
+            <li key={verse} className={showBubbles ? 'lg:contents' : ''}>
+              <div
+                className={isLast ? '' : 'border-b'}
+                style={{ borderColor: 'var(--line)' }}
+              >
+                <VerseRow
+                  collection={collection}
+                  book={book.id}
+                  chapter={chapter}
+                  verse={verse}
+                  textHtml={vt?.text_html}
+                  mode={mode}
+                  selected={isSelected}
+                  onSelect={(v) => setSelection(toggleVerse(selection, v))}
+                  commenterMarker={marker}
+                  onMarkerClick={(v) => setOpenVerseSheet(v)}
+                />
+              </div>
+              {showBubbles && (
+                <div className="hidden lg:flex lg:flex-col lg:gap-2 lg:py-2">
+                  {bubblePosts.map((p) => (
+                    <CommenterBubble key={p.id} post={p} />
+                  ))}
+                </div>
+              )}
+            </li>
+          )
+        })}
+      </ul>
+    </div>
+  )
+
+  const activeVerseSheet =
+    mode !== 'select' && openVerseSheet !== null && selectedUser ? (
+      <VerseCommentSheet
+        open
+        verse={openVerseSheet}
+        selectedUserName={selectedUser.name}
+        posts={postsByVerse.get(openVerseSheet) ?? []}
+        onOpenChange={(open) => {
+          if (!open) setOpenVerseSheet(null)
+        }}
+      />
+    ) : null
 
   return (
     <div>
@@ -347,34 +508,7 @@ function ChapterView({ book, chapter, collection, posts, countByVerse, verseText
           ))}
         </div>
       )}
-      <div className="p-4 pb-24">
-        <ul className="overflow-hidden rounded-xl" style={{ border: '1px solid var(--line)' }}>
-          {verseNumbers.map((verse) => {
-            const count = countByVerse[verse] ?? 0
-            const vt = verseTextMap.get(verse)
-            const isSelected = mode === 'select' && selection.includes(verse)
-            return (
-              <li
-                key={verse}
-                className="border-b last:border-b-0"
-                style={{ borderColor: 'var(--line)' }}
-              >
-                <VerseRow
-                  collection={collection}
-                  book={book.id}
-                  chapter={chapter}
-                  verse={verse}
-                  textHtml={vt?.text_html}
-                  count={count}
-                  mode={mode}
-                  selected={isSelected}
-                  onSelect={(v) => setSelection(toggleVerse(selection, v))}
-                />
-              </li>
-            )
-          })}
-        </ul>
-      </div>
+      {verseList}
       {canCompose && (
         <PostComposerSheet
           open={sheetOpen}
@@ -388,6 +522,7 @@ function ChapterView({ book, chapter, collection, posts, countByVerse, verseText
           }}
         />
       )}
+      {activeVerseSheet}
     </div>
   )
 }

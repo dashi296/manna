@@ -1,7 +1,8 @@
 import type { CSSProperties } from 'react'
 import { Link } from '@tanstack/react-router'
-import { Check, ChevronRight } from 'lucide-react'
-import { SanitizedVerseHtml } from '@/shared/ui'
+import { Check } from 'lucide-react'
+import { SanitizedVerseHtml, UserAvatar } from '@/shared/ui'
+import type { AvatarStackItem } from '@/shared/ui'
 
 const ROW_TRANSITION = 'background-color 200ms, border-color 200ms'
 const ROW_SELECTED_STYLE: CSSProperties = {
@@ -21,10 +22,11 @@ type Props = {
   chapter: number
   verse: number
   textHtml?: string
-  count: number
   mode: 'read' | 'select'
   selected: boolean
   onSelect: (verse: number) => void
+  commenterMarker?: AvatarStackItem
+  onMarkerClick?: (verse: number) => void
 }
 
 export function VerseRow({
@@ -33,10 +35,11 @@ export function VerseRow({
   chapter,
   verse,
   textHtml,
-  count,
   mode,
   selected,
   onSelect,
+  commenterMarker,
+  onMarkerClick,
 }: Props) {
   const containerStyle = selected ? ROW_SELECTED_STYLE : ROW_UNSELECTED_STYLE
 
@@ -75,26 +78,6 @@ export function VerseRow({
             />
           )}
         </div>
-        {count > 0 && (
-          <span
-            className="text-xs px-2 py-0.5 rounded-full font-medium shrink-0"
-            style={{
-              background: 'var(--chip-bg)',
-              border: '1px solid var(--chip-line)',
-              color: 'var(--palm)',
-            }}
-          >
-            {count}件
-          </span>
-        )}
-        {mode === 'read' && (
-          <ChevronRight
-            size={16}
-            className="shrink-0 mt-0.5"
-            style={{ color: 'var(--sea-ink-soft)' }}
-            aria-hidden="true"
-          />
-        )}
       </div>
     </div>
   )
@@ -116,14 +99,30 @@ export function VerseRow({
   }
 
   return (
-    <Link
-      to="/scriptures/$collection/$book/$chapter"
-      params={{ collection, book, chapter: String(chapter) }}
-      search={{ verses: [verse] }}
-      className="block"
-      style={containerStyle}
-    >
-      {inner}
-    </Link>
+    <div className="relative" style={containerStyle}>
+      <Link
+        to="/scriptures/$collection/$book/$chapter"
+        params={{ collection, book, chapter: String(chapter) }}
+        search={{ verses: [verse] }}
+        className="block"
+      >
+        {inner}
+      </Link>
+      {commenterMarker && (
+        <button
+          type="button"
+          aria-label={`${commenterMarker.name} の ${verse}節 コメントを見る`}
+          onClick={() => onMarkerClick?.(verse)}
+          className="absolute z-10 rounded-full"
+          style={{ top: 12, right: -4 }}
+        >
+          <UserAvatar
+            name={commenterMarker.name}
+            url={commenterMarker.avatarUrl}
+            size="xs"
+          />
+        </button>
+      )}
+    </div>
   )
 }

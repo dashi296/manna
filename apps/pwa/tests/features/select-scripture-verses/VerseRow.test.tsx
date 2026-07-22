@@ -39,7 +39,6 @@ const baseProps = {
   chapter: 3,
   verse: 19,
   textHtml: '主のみもとに帰る道はただ一つ',
-  count: 0,
 }
 
 describe('VerseRow', () => {
@@ -79,12 +78,38 @@ describe('VerseRow', () => {
     })
   })
 
-  it('count > 0 で件数バッジを表示する', async () => {
+})
+
+describe('VerseRow commenterMarker', () => {
+  const marker = { userId: 'u1', name: '中村さん', avatarUrl: null }
+
+  it('commenterMarker があるとマーカーボタンを出し、押下で onMarkerClick を呼ぶ', async () => {
+    const onMarkerClick = vi.fn()
     renderInRouter(
-      <VerseRow {...baseProps} count={3} mode="read" selected={false} onSelect={vi.fn()} />,
+      <VerseRow
+        {...baseProps}
+        mode="read"
+        selected={false}
+        onSelect={vi.fn()}
+        commenterMarker={marker}
+        onMarkerClick={onMarkerClick}
+      />,
+    )
+    const btn = await screen.findByRole('button', {
+      name: '中村さん の 19節 コメントを見る',
+    })
+    await userEvent.click(btn)
+    expect(onMarkerClick).toHaveBeenCalledWith(19)
+  })
+
+  it('commenterMarker 無しならマーカーは出さない', async () => {
+    renderInRouter(
+      <VerseRow {...baseProps} mode="read" selected={false} onSelect={vi.fn()} />,
     )
     await waitFor(() => {
-      expect(screen.getByText('3件')).toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: /コメントを見る/ }),
+      ).toBeNull()
     })
   })
 })

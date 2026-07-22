@@ -1,5 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { PostWithUser } from '@/entities/post'
 import { routeComponent } from '../../helpers/tanstack'
@@ -16,9 +16,10 @@ type TestLoaderData = {
   mode: 'chapter' | 'verse'
   verses: number[]
   posts: PostWithUser[]
-  countByVerse: Record<number, number>
   verseTexts: { verse: number; text_html: string }[]
   userId: string | null
+  chapterCommenters: { userId: string; name: string; avatarUrl: string | null }[]
+  circlePosts: PostWithUser[]
 }
 
 const baseChapterData: TestLoaderData = {
@@ -33,12 +34,13 @@ const baseChapterData: TestLoaderData = {
   mode: 'chapter' as const,
   verses: [],
   posts: [],
-  countByVerse: {},
   verseTexts: [
     { verse: 1, text_html: '一節の本文' },
     { verse: 2, text_html: '二節の本文' },
   ],
   userId: 'user-1',
+  chapterCommenters: [],
+  circlePosts: [],
 }
 
 let loaderData: TestLoaderData
@@ -77,11 +79,13 @@ beforeAll(async () => {
 })
 
 describe('ChapterPage', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     loaderData = baseChapterData
     search = { select: [1, 2] }
     navigateSpy.mockClear()
     localStorage.clear()
+    const { useSelectedUserStore } = await import('@/features/select-verse-view')
+    useSelectedUserStore.setState({ selectedUserId: null })
   })
 
   it('選択中でも「章に投稿」は節指定なしでシートを開く', async () => {
@@ -170,5 +174,108 @@ describe('ChapterPage', () => {
 
     expect(screen.queryByRole('button', { name: '投稿する' })).toBeNull()
     expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('ログイン済みなら章コメンター行に自身の commenter がある時アバターを描画', () => {
+    loaderData = {
+      ...baseChapterData,
+      chapterCommenters: [
+        { userId: 'u1', name: '中村さん', avatarUrl: null },
+      ],
+    }
+    render(<ChapterPage />)
+    expect(
+      screen.getByRole('button', { name: '中村さん を選ぶ' }),
+    ).toBeInTheDocument()
+  })
+
+  it('選択済みだと解除ボタンが出て、押すと store から解除される', async () => {
+    const { useSelectedUserStore } = await import('@/features/select-verse-view')
+    useSelectedUserStore.setState({ selectedUserId: 'u1' })
+    loaderData = {
+      ...baseChapterData,
+      chapterCommenters: [
+        { userId: 'u1', name: '中村さん', avatarUrl: null },
+      ],
+    }
+    const user = userEvent.setup()
+    render(<ChapterPage />)
+    await user.click(screen.getByRole('button', { name: '選択解除' }))
+    expect(useSelectedUserStore.getState().selectedUserId).toBeNull()
+  })
+
+  it('未ログインならアバター行を出さない', () => {
+    loaderData = {
+      ...baseChapterData,
+      userId: null,
+      chapterCommenters: [
+        { userId: 'u1', name: '中村さん', avatarUrl: null },
+      ],
+    }
+    render(<ChapterPage />)
+    expect(
+      screen.queryByRole('button', { name: '中村さん を選ぶ' }),
+    ).toBeNull()
+  })
+
+  it('mode=select 中は選択ユーザーがあっても吹き出しを描画しない', async () => {
+    Object.defineProperty(window, 'innerWidth', { writable: true, value: 1440 })
+    window.dispatchEvent(new Event('resize'))
+    const { useSelectedUserStore } = await import('@/features/select-verse-view')
+    useSelectedUserStore.setState({ selectedUserId: 'u1' })
+    loaderData = {
+      ...baseChapterData,
+      chapterCommenters: [{ userId: 'u1', name: '中村さん', avatarUrl: null }],
+      circlePosts: [
+        {
+          id: 'p1',
+          content: 'コメ',
+          visibility: 'public' as const,
+          created_at: '2026-07-19T00:00:00.000Z',
+          scripture_collection: 'bofm',
+          scripture_book: '1-ne',
+          scripture_chapter: 1,
+          scripture_verses: [1],
+          user_id: 'u1',
+          users: { display_name: '中村さん', avatar_url: null },
+        },
+      ],
+    }
+    search = { mode: 'select', select: [1] }
+    render(<ChapterPage />)
+    expect(screen.queryByRole('group', { name: /中村さんの吹き出し/ })).toBeNull()
+  })
+
+  it('desktop 相当なら選択ユーザーの吹き出しが節横に描画される', async () => {
+    Object.defineProperty(window, 'innerWidth', { writable: true, value: 1440 })
+    window.dispatchEvent(new Event('resize'))
+    const { useSelectedUserStore } = await import('@/features/select-verse-view')
+    useSelectedUserStore.setState({ selectedUserId: 'u1' })
+    loaderData = {
+      ...baseChapterData,
+      chapterCommenters: [{ userId: 'u1', name: '中村さん', avatarUrl: null }],
+      circlePosts: [
+        {
+          id: 'p1',
+          content: '節1 吹き出しテスト',
+          visibility: 'public' as const,
+          created_at: '2026-07-19T00:00:00.000Z',
+          scripture_collection: 'bofm',
+          scripture_book: '1-ne',
+          scripture_chapter: 1,
+          scripture_verses: [1],
+          user_id: 'u1',
+          users: { display_name: '中村さん', avatar_url: null },
+        },
+      ],
+    }
+    search = {}
+    render(<ChapterPage />)
+    await waitFor(() => {
+      expect(screen.getByText('節1 吹き出しテスト')).toBeInTheDocument()
+      expect(
+        screen.getByRole('group', { name: /中村さんの吹き出し/ }),
+      ).toBeInTheDocument()
+    })
   })
 })
