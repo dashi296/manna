@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { useMounted } from '@/shared/hooks/use-mounted'
 
 export type ScriptureLocation = {
   collection: string
@@ -53,24 +54,21 @@ export const useBookmarkStore = create<State>()(
 )
 
 // SSR-safe readers: SSR と初回クライアントレンダーは persist 未反映の初期値
-// (null/[]) で一致させ、mount 後に永続化された値へ切り替える
+// (null/[]/false) で一致させ、mount 後に永続化された値へ切り替える
 // (useSelectedUserId と同じパターン)。
-import { useMounted } from '@/shared/hooks/use-mounted'
+function useSSRSafe<T>(value: T, fallback: T): T {
+  return useMounted() ? value : fallback
+}
 
 export function useReadingPosition(): ScriptureLocation | null {
-  const position = useBookmarkStore((s) => s.readingPosition)
-  const mounted = useMounted()
-  return mounted ? position : null
+  return useSSRSafe(useBookmarkStore((s) => s.readingPosition), null)
 }
 
 export function useIsBookmarked(loc: ScriptureLocation): boolean {
   const bookmarks = useBookmarkStore((s) => s.bookmarks)
-  const mounted = useMounted()
-  return mounted && bookmarks.some((b) => sameLocation(b, loc))
+  return useSSRSafe(bookmarks.some((b) => sameLocation(b, loc)), false)
 }
 
 export function useBookmarks(): Bookmark[] {
-  const bookmarks = useBookmarkStore((s) => s.bookmarks)
-  const mounted = useMounted()
-  return mounted ? bookmarks : []
+  return useSSRSafe(useBookmarkStore((s) => s.bookmarks), [])
 }

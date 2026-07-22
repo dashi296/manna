@@ -24,7 +24,7 @@ import { VerseCommentSheet } from '@/widgets/verse-comment-sheet'
 import { useIsMobile } from '@/shared/hooks/use-mobile'
 import { getCircleUserIds } from '@/entities/user'
 import type { AvatarStackItem } from '@/shared/ui'
-import { useBookmarkStore, type ScriptureLocation } from '@/entities/bookmark'
+import { useBookmarkStore } from '@/entities/bookmark'
 import { BookmarkButton } from '@/features/toggle-bookmark'
 
 type VerseText = { verse: number; text_html: string }
@@ -211,17 +211,10 @@ function ComposeButton({ onClick, label }: { onClick: () => void; label: string 
 function ChapterPage() {
   const data = Route.useLoaderData()
   const setReadingPosition = useBookmarkStore((s) => s.setReadingPosition)
-  const loc: ScriptureLocation = {
-    collection: data.collection,
-    book: data.book.id,
-    chapter: data.chapter,
-  }
 
   useEffect(() => {
-    setReadingPosition(loc)
-    // loc は毎レンダーで新規オブジェクトになるため、プリミティブな依存項目で判定する
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loc.collection, loc.book, loc.chapter, setReadingPosition])
+    setReadingPosition({ collection: data.collection, book: data.book.id, chapter: data.chapter })
+  }, [data.collection, data.book.id, data.chapter, setReadingPosition])
 
   if (data.mode === 'verse') {
     return <VerseView
@@ -259,8 +252,9 @@ type VerseViewProps = {
 function VerseView({ book, chapter, collection, verses, posts, verseTexts, canCompose }: VerseViewProps) {
   const router = useRouter()
   const [sheetOpen, setSheetOpen] = useState(false)
-  const scriptureLabel = getScriptureLabel({ collection, book: book.id, chapter, verses })
-  const officialUrl = buildScriptureUrl({ collection, book: book.id, chapter, verses })
+  const loc = { collection, book: book.id, chapter }
+  const scriptureLabel = getScriptureLabel({ ...loc, verses })
+  const officialUrl = buildScriptureUrl({ ...loc, verses })
 
   const onSheetOpenChange = (open: boolean) => {
     setSheetOpen(open)
@@ -276,7 +270,7 @@ function VerseView({ book, chapter, collection, verses, posts, verseTexts, canCo
         action={
           <div className="flex items-center gap-2">
             {canCompose && <ComposeButton onClick={() => setSheetOpen(true)} label="投稿する" />}
-            <BookmarkButton loc={{ collection, book: book.id, chapter }} />
+            <BookmarkButton loc={loc} />
           </div>
         }
       />
@@ -379,6 +373,7 @@ function ChapterView({
     [search.select, maxVerse],
   )
   const mode: SelectionMode = canCompose && search.mode === 'select' ? 'select' : 'read'
+  const loc = { collection, book: book.id, chapter }
 
   const patchSearch = (patch: Partial<ChapterSearch>, replace = true) => {
     navigate({
@@ -423,7 +418,7 @@ function ChapterView({
           onSelectVerses={enterSelectMode}
         />
       )}
-      <BookmarkButton loc={{ collection, book: book.id, chapter }} />
+      <BookmarkButton loc={loc} />
     </div>
   )
 
