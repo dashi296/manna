@@ -30,7 +30,9 @@ export const Route = createRootRoute({
     links: [
       { rel: 'stylesheet', href: appCss },
       { rel: 'manifest', href: '/manifest.json' },
-      { rel: 'apple-touch-icon', href: '/logo192.png' },
+      { rel: 'icon', href: '/logo-mark.svg', type: 'image/svg+xml' },
+      { rel: 'alternate icon', href: '/favicon.ico' },
+      { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' },
     ],
   }),
   beforeLoad: async ({ location }) => {
