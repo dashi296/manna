@@ -27,7 +27,7 @@ function CollectionPage() {
                 style={{ color: 'var(--sea-ink)' }}
               >
                 <span>{book.name}</span>
-                <span className="text-sm" style={{ color: 'var(--sea-ink-soft)' }}>{book.chapters}章 ›</span>
+                <span className="text-sm" style={{ color: 'var(--sea-ink-soft)' }}>{book.isFrontMatter ? '›' : `${book.chapters}章 ›`}</span>
               </Link>
             </li>
           ))}
