@@ -42,6 +42,8 @@ ALTER TABLE scripture_books
   ADD COLUMN IF NOT EXISTS is_front_matter boolean NOT NULL DEFAULT false;
 ```
 
+マイグレーション適用後に `pnpm supabase:types` を実行し、`packages/database/index.ts` の生成 TypeScript 型へ `scripture_books.is_front_matter` を反映する。
+
 ### `apps/pwa/src/shared/config/scriptures.json`
 
 `bofm.books` 配列の**先頭**（`1-ne` より前）に5エントリを追加する。配列の並び順がそのまま DB の `sort_order` になる仕組み（`export-books-seed.mjs` が配列インデックスを `sort_order` として書き出す）なので、追加の並び替えは不要。
@@ -59,6 +61,8 @@ ALTER TABLE scripture_books
 ### `scripts/export-books-seed.mjs`
 
 `is_front_matter` 列も `supabase/seed.sql` に書き出すよう修正する（`b.isFrontMatter ?? false` を SQL の boolean リテラルに変換）。
+
+生成する `scripture_collections` / `scripture_books` の INSERT は `ON CONFLICT ... DO UPDATE` を付けた UPSERT にする。これにより、空のローカル DB への seed と既存データがある本番 DB へのメタデータ反映を同じ `supabase/seed.sql` で行えるようにする。`scripture_collections` は主キー `id` を競合対象として `name` と `sort_order` を更新する。`scripture_books` は複合主キー `(collection_id, id)` を競合対象とし、`name`、`chapters`、`verses`、`sort_order`、`is_front_matter` を更新する。前付け文書の追加で後続書の `sort_order` も変わるため、新規5行だけでなく既存書も更新対象に含める。
 
 ## パーサー: `scripts/lib/parse-paragraphs.mjs`（新規）
 
@@ -93,9 +97,36 @@ ALTER TABLE scripture_books
 
 - `scripts/lib/parse-paragraphs.test.mjs`（新規、TDD）
 - 上記フロントエンド6箇所について、既存テストがあれば `isFrontMatter=true` ケースを追加
+- 生成した `supabase/seed.sql` を同じ DB に2回適用し、主キー競合なしで完了して書メタデータが期待値に更新されることを確認
 
 ## 実装後の手動作業（実装計画の一部）
 
+- `node scripts/export-books-seed.mjs` で UPSERT 形式の `supabase/seed.sql`（git管理）を更新
+- `bash scripts/db-reset.sh` でマイグレーションと更新済み seed をローカル DB に適用
+- `pnpm supabase:types` で `packages/database/index.ts` の生成型を更新
 - `node scripts/fetch-scriptures.mjs` を実行し、新規5文書のデータをローカル DB に取得
 - `node scripts/export-verses-seed.mjs` で `supabase/seed-verses.sql`（gitignore・ローカルのみ）を更新
-- `node scripts/export-books-seed.mjs` で `supabase/seed.sql`（git管理）を更新
+
+## 本番 DB へのデータ投入
+
+フロントエンドのデプロイ前に、次の順序で本番 DB へ反映する。`supabase db push` はマイグレーションのみを適用し、seed は実行しないため、書メタデータと節データを別途投入する。
+
+1. `supabase db push` で `is_front_matter` カラムを追加するマイグレーションを本番 DB に適用
+2. 本番 DB の直接接続 URL を `PRODUCTION_DATABASE_URL` に設定し、`psql "$PRODUCTION_DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/seed.sql` を実行して、新規5書の追加と既存書の `sort_order` 更新を行う
+3. `DATABASE_URL="$PRODUCTION_DATABASE_URL" node scripts/fetch-scriptures.mjs` を実行する。既存章は件数が一致すればスキップされ、新規5文書の計51段落だけが取得・挿入される
+4. 本番 DB で次の検証 SQL を実行し、5書・51段落が揃っていることを確認してからフロントエンドをデプロイする
+
+```sql
+SELECT
+  COUNT(DISTINCT b.id) AS front_matter_books,
+  COUNT(v.verse) AS front_matter_verses
+FROM scripture_books AS b
+LEFT JOIN scripture_verses AS v
+  ON v.collection_id = b.collection_id
+ AND v.book_id = b.id
+WHERE b.collection_id = 'bofm'
+  AND b.is_front_matter = true;
+-- front_matter_books = 5, front_matter_verses = 51
+```
+
+本番用接続 URL はリポジトリやログへ記録しない。投入処理は UPSERT と取得済み章のスキップにより再実行可能とする。
