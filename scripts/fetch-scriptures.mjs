@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { parseVerses } from './lib/parse-verses.mjs'
+import { parseParagraphs } from './lib/parse-paragraphs.mjs'
 import { runPsql } from './lib/db.mjs'
 
 const API_BASE = 'https://www.churchofjesuschrist.org/study/api/v3/language-pages/type/content'
@@ -20,6 +21,7 @@ function buildChapterList() {
           bookId: book.id,
           chapter: ch,
           expectedVerses: book.verses[ch - 1],
+          isFrontMatter: book.isFrontMatter ?? false,
         })
       }
     }
@@ -39,8 +41,10 @@ function getCompletedChapters() {
   return map
 }
 
-async function fetchChapter(collectionId, bookId, chapter) {
-  const uri = `/scriptures/${collectionId}/${bookId}/${chapter}`
+async function fetchChapter(collectionId, bookId, chapter, isFrontMatter) {
+  const uri = isFrontMatter
+    ? `/scriptures/${collectionId}/${bookId}`
+    : `/scriptures/${collectionId}/${bookId}/${chapter}`
   const url = `${API_BASE}?lang=jpn&uri=${uri}`
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
@@ -91,12 +95,12 @@ async function main() {
 
   let inserted = 0
   for (let i = 0; i < todo.length; i++) {
-    const { collectionId, bookId, chapter, expectedVerses } = todo[i]
+    const { collectionId, bookId, chapter, expectedVerses, isFrontMatter } = todo[i]
     const label = `${collectionId}/${bookId}/${chapter}`
 
     try {
-      const html = await fetchChapter(collectionId, bookId, chapter)
-      const verses = parseVerses(html)
+      const html = await fetchChapter(collectionId, bookId, chapter, isFrontMatter)
+      const verses = isFrontMatter ? parseParagraphs(html) : parseVerses(html)
 
       if (verses.length !== expectedVerses) {
         console.warn(`Warning: Expected ${expectedVerses} verses but parsed ${verses.length} for ${label}`)
