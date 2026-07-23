@@ -78,20 +78,21 @@ ALTER TABLE scripture_books
 
 ## フロントエンド: 章ラベル表示の分岐
 
-`book.isFrontMatter === true` の場合に「第◯章」を省略する必要がある箇所は5つ（当初のコードベース調査で4箇所、設計中に公式サイトへの外部リンク生成で302リダイレクトの問題を発見しもう1箇所追加）:
+`book.isFrontMatter === true` の場合に「第◯章」を省略する必要がある箇所は6つ（当初のコードベース調査で4箇所、設計中に公式サイトへの外部リンク生成で302リダイレクトの問題をさらに1箇所発見、Codexレビューで `VerseView` の戻りラベルの見落としを1箇所指摘）:
 
-1. `pages/scriptures/$collection/$book/$chapter.tsx` — 章ビューのタイトル `${book.name} 第${chapter}章` → front matter なら `book.name` のみ
-2. `shared/lib/scriptureUtils.ts` の `getScriptureLabel()` — 節指定なし時の `${bookName} 第${chapter}章` → front matter なら `bookName` のみ（節指定ありの `1:4` 形式はそのまま）
-3. `shared/lib/scriptureUtils.ts` の `buildScriptureUrl()` — 教会公式サイトへのリンク生成。`.../bofm/introduction/1?lang=jpn` は **302 で `/study/scriptures/bofm?lang=jpn`（モルモン書トップ）にリダイレクトされてしまう**ことを curl で確認済み。front matter は章番号セグメントを省いた URL（`.../bofm/introduction?lang=jpn`）を生成する
-4. `pages/scriptures/$collection/index.tsx` — 書一覧の「1章 ›」表示 → front matter なら章数表示を省略
-5. `features/select-scripture/ui/ScriptureSelector.tsx` — 投稿作成時の章選択ドロップダウン → front matter は「第1章」ラベルを出さない
+1. `pages/scriptures/$collection/$book/$chapter.tsx` の `ChapterView` — 章ビューのタイトル `${book.name} 第${chapter}章`（428行目）→ front matter なら `book.name` のみ
+2. `pages/scriptures/$collection/$book/$chapter.tsx` の `VerseView` — 節（段落）詳細ビューの `backLabel={`第${chapter}章`}`（269行目）→ front matter なら `book.name` のみ。`ChapterView` のタイトルとは別コンポーネント・別箇所なので、1. を直しただけでは戻りラベルに「第1章」が残る
+3. `shared/lib/scriptureUtils.ts` の `getScriptureLabel()` — 節指定なし時の `${bookName} 第${chapter}章` → front matter なら `bookName` のみ（節指定ありの `1:4` 形式はそのまま）
+4. `shared/lib/scriptureUtils.ts` の `buildScriptureUrl()` — 教会公式サイトへのリンク生成。`.../bofm/introduction/1?lang=jpn` は **302 で `/study/scriptures/bofm?lang=jpn`（モルモン書トップ）にリダイレクトされてしまう**ことを curl で確認済み。front matter は章番号セグメントを省いた URL（`.../bofm/introduction?lang=jpn`）を生成する
+5. `pages/scriptures/$collection/index.tsx` — 書一覧の「1章 ›」表示 → front matter なら章数表示を省略
+6. `features/select-scripture/ui/ScriptureSelector.tsx` — 投稿作成時の章選択ドロップダウン → front matter は「第1章」ラベルを出さない
 
 チャプター選択グリッドをタップして進む既存の2段階ナビゲーション自体は変更しない（Out of Scope 参照）。
 
 ## テスト計画
 
 - `scripts/lib/parse-paragraphs.test.mjs`（新規、TDD）
-- 上記フロントエンド5箇所について、既存テストがあれば `isFrontMatter=true` ケースを追加
+- 上記フロントエンド6箇所について、既存テストがあれば `isFrontMatter=true` ケースを追加
 
 ## 実装後の手動作業（実装計画の一部）
 
