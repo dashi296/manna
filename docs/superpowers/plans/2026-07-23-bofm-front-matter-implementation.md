@@ -405,7 +405,7 @@ console.log(`Generated supabase/seed.sql (${scriptures.collections.length} colle
 - [ ] **Step 2: 生成し直して差分を目視確認する**
 
 Run: `node scripts/export-books-seed.mjs`
-Expected: `Generated supabase/seed.sql (5 collections, 74 books)`（前付け5書 + 既存69書）
+Expected: `Generated supabase/seed.sql (5 collections, 92 books)`（前付け5書 + 既存87書。実装時に判明した訂正: プラン作成時点の見積もり「既存69書」は誤りで、正しくは87書）
 
 Run: `git diff supabase/seed.sql | head -40`
 Expected: 先頭5書（`bofm-title` / `introduction` / `three` / `eight` / `js`）の INSERT 行が追加され、末尾に `ON CONFLICT ... DO UPDATE` 句が両方の INSERT に付与されている
