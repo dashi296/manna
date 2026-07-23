@@ -113,3 +113,24 @@ describe('VerseRow commenterMarker', () => {
     })
   })
 })
+
+describe('VerseRow showNumber', () => {
+  it("showNumber=false のとき mode='read' で節番号を表示しない", async () => {
+    renderInRouter(
+      <VerseRow {...baseProps} mode="read" selected={false} onSelect={vi.fn()} showNumber={false} />,
+    )
+    await waitFor(() => {
+      expect(screen.queryByText('19')).toBeNull()
+    })
+  })
+
+  it("showNumber=false のとき mode='select' でも節番号を表示しない", async () => {
+    renderInRouter(
+      <VerseRow {...baseProps} mode="select" selected={false} onSelect={vi.fn()} showNumber={false} />,
+    )
+    await waitFor(() => {
+      expect(screen.queryByText('19')).toBeNull()
+      expect(screen.getByRole('checkbox', { name: '19節を選択' })).toBeInTheDocument()
+    })
+  })
+})

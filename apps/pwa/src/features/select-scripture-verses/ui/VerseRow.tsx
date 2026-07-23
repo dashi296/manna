@@ -27,6 +27,7 @@ type Props = {
   onSelect: (verse: number) => void
   commenterMarker?: AvatarStackItem
   onMarkerClick?: (verse: number) => void
+  showNumber?: boolean
 }
 
 export function VerseRow({
@@ -40,6 +41,7 @@ export function VerseRow({
   onSelect,
   commenterMarker,
   onMarkerClick,
+  showNumber = true,
 }: Props) {
   const containerStyle = selected ? ROW_SELECTED_STYLE : ROW_UNSELECTED_STYLE
 
@@ -64,16 +66,18 @@ export function VerseRow({
         style={{ color: 'var(--sea-ink)' }}
       >
         <div className="flex-1 min-w-0">
-          <span
-            className="text-xs font-medium"
-            style={{ color: 'var(--sea-ink-soft)' }}
-          >
-            {verse}
-          </span>
+          {showNumber && (
+            <span
+              className="text-xs font-medium"
+              style={{ color: 'var(--sea-ink-soft)' }}
+            >
+              {verse}
+            </span>
+          )}
           {textHtml && (
             <SanitizedVerseHtml
               html={textHtml}
-              className="ml-2 text-sm"
+              className={showNumber ? 'ml-2 text-sm' : 'text-sm'}
               style={{ color: 'var(--sea-ink)' }}
             />
           )}

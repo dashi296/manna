@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createFileRoute, notFound, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
-import { getBook, buildScriptureUrl, getScriptureLabel } from '@/entities/scripture'
+import { getBook, getCollection, buildScriptureUrl, getScriptureLabel } from '@/entities/scripture'
 import { PostCard, POST_SELECT, CommenterBubble, type PostWithUser } from '@/entities/post'
 import { createSupabaseServer } from '@/shared/lib/auth'
 import { EmptyState, PageHeader, ScriptureText } from '@/shared/ui'
@@ -289,7 +289,7 @@ function VerseView({ book, chapter, collection, verses, posts, verseTexts, canCo
       {verseTexts.length > 0 && (
         <div className="px-4 py-3 border-b" style={{ borderColor: 'var(--line)', background: 'var(--surface)' }}>
           {verseTexts.map((vt) => (
-            <ScriptureText key={vt.verse} verse={vt.verse} textHtml={vt.text_html} />
+            <ScriptureText key={vt.verse} verse={vt.verse} textHtml={vt.text_html} showNumber={!book.isFrontMatter} />
           ))}
         </div>
       )}
@@ -422,12 +422,14 @@ function ChapterView({
     </div>
   )
 
+  const collectionName = book.isFrontMatter ? getCollection(collection)?.name : undefined
+
   const chapterHeader = (
     <>
       <PageHeader
         title={getScriptureLabel(loc, book)}
-        backTo="/scriptures/$collection/$book"
-        backLabel={book.name}
+        backTo={book.isFrontMatter ? '/scriptures/$collection' : '/scriptures/$collection/$book'}
+        backLabel={collectionName ?? book.name}
         action={headerAction}
       />
       {showCommenters && (
@@ -486,6 +488,7 @@ function ChapterView({
                   onSelect={(v) => setSelection(toggleVerse(selection, v))}
                   commenterMarker={marker}
                   onMarkerClick={(v) => setOpenVerseSheet(v)}
+                  showNumber={!book.isFrontMatter}
                 />
               </div>
               {showBubbles && (

@@ -23,4 +23,9 @@ describe('ScriptureText', () => {
     expect(container.querySelector('script')).toBeNull()
     expect(screen.getByText(/テスト/)).toBeInTheDocument()
   })
+
+  it('showNumber=false のとき節番号を表示しない', () => {
+    render(<ScriptureText verse={7} textHtml="テキスト" showNumber={false} />)
+    expect(screen.queryByText('7')).toBeNull()
+  })
 })

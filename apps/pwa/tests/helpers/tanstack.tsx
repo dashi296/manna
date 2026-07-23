@@ -22,6 +22,7 @@ export function routerMock(
       )
     },
     notFound: () => new Error('not found'),
+    redirect: (opts: { to: string; params?: Record<string, string> }) => opts,
     useRouterState: () => ({ location: { pathname: getPathname() } }),
   }
 }

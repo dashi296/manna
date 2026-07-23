@@ -1,4 +1,4 @@
-import { createFileRoute, Link, notFound } from '@tanstack/react-router'
+import { createFileRoute, Link, notFound, redirect } from '@tanstack/react-router'
 import { getBook, getCollection } from '@/entities/scripture'
 import { PageHeader } from '@/shared/ui'
 
@@ -7,6 +7,12 @@ export const Route = createFileRoute('/scriptures/$collection/$book/')({
     const book = getBook(params.collection, params.book)
     const collection = getCollection(params.collection)
     if (!book || !collection) throw notFound()
+    if (book.isFrontMatter) {
+      throw redirect({
+        to: '/scriptures/$collection/$book/$chapter',
+        params: { collection: params.collection, book: params.book, chapter: '1' },
+      })
+    }
     return { book, collection }
   },
   component: BookPage,
