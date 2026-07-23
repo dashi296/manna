@@ -422,7 +422,7 @@ function ChapterView({
     </div>
   )
 
-  const collectionName = getCollection(collection)?.name ?? collection
+  const collectionName = book.isFrontMatter ? getCollection(collection)?.name : undefined
 
   const chapterHeader = (
     <>
