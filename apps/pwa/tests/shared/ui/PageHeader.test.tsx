@@ -39,6 +39,6 @@ describe('PageHeader', () => {
     render(<PageHeader title="テストページ" />)
     const heading = screen.getByRole('heading', { name: 'テストページ' })
     const header = heading.closest('header')
-    expect(header?.className).toContain('pt-[calc(0.75rem_+_var(--safe-area-top))]')
+    expect(header?.className).toContain('pt-[var(--page-header-pt)]')
   })
 })

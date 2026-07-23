@@ -35,6 +35,6 @@ describe('SelectionModeHeader', () => {
   it('セーフエリア分の上部パディングクラスが付与される', () => {
     render(<SelectionModeHeader count={0} onCancel={vi.fn()} onSubmit={vi.fn()} />)
     const header = screen.getByRole('button', { name: '選択をキャンセル' }).closest('header')
-    expect(header?.className).toContain('pt-[calc(0.5rem_+_var(--safe-area-top))]')
+    expect(header?.className).toContain('pt-[var(--selection-header-pt)]')
   })
 })
