@@ -6,7 +6,7 @@ export function BottomNav() {
   const { location } = useRouterState()
 
   return (
-    <nav className="lg:hidden fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md border-t border-line bg-[var(--header-bg)] backdrop-blur-sm">
+    <nav className="lg:hidden fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md border-t border-line bg-[var(--header-bg)] backdrop-blur-sm pb-[var(--safe-area-bottom)]">
       <div className="flex">
         {NAV_ITEMS.map(({ to, label, shortLabel, Icon }) => {
           const active = isNavItemActive(to, location.pathname)
