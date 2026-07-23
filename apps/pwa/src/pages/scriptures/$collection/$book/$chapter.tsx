@@ -289,7 +289,7 @@ function VerseView({ book, chapter, collection, verses, posts, verseTexts, canCo
       {verseTexts.length > 0 && (
         <div className="px-4 py-3 border-b" style={{ borderColor: 'var(--line)', background: 'var(--surface)' }}>
           {verseTexts.map((vt) => (
-            <ScriptureText key={vt.verse} verse={vt.verse} textHtml={vt.text_html} />
+            <ScriptureText key={vt.verse} verse={vt.verse} textHtml={vt.text_html} showNumber={!book.isFrontMatter} />
           ))}
         </div>
       )}
@@ -488,6 +488,7 @@ function ChapterView({
                   onSelect={(v) => setSelection(toggleVerse(selection, v))}
                   commenterMarker={marker}
                   onMarkerClick={(v) => setOpenVerseSheet(v)}
+                  showNumber={!book.isFrontMatter}
                 />
               </div>
               {showBubbles && (

@@ -345,4 +345,25 @@ describe('ChapterPage', () => {
     render(<ChapterPage />)
     expect(screen.getByRole('link', { name: 'モルモン書' })).toBeInTheDocument()
   })
+
+  it('front matter の章表示では段落番号を表示しない', () => {
+    loaderData = {
+      ...baseChapterData,
+      book: { id: 'introduction', name: '序文', chapters: 1, verses: [9], isFrontMatter: true },
+    }
+    render(<ChapterPage />)
+    expect(screen.queryByText('1')).toBeNull()
+    expect(screen.queryByText('2')).toBeNull()
+  })
+
+  it('front matter の節表示では段落番号を表示しない', () => {
+    loaderData = {
+      ...baseChapterData,
+      mode: 'verse',
+      verses: [1],
+      book: { id: 'introduction', name: '序文', chapters: 1, verses: [9], isFrontMatter: true },
+    }
+    render(<ChapterPage />)
+    expect(screen.queryByText('1')).toBeNull()
+  })
 })
