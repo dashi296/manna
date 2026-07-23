@@ -83,6 +83,9 @@
   --sidebar-accent-foreground: var(--lagoon-deep);
   --sidebar-border: var(--line);
   --sidebar-ring: var(--lagoon);
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --bottom-nav-h: calc(4rem + var(--safe-area-bottom));
 }
 
 :root[data-theme="dark"] {
