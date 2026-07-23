@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createFileRoute, notFound, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
-import { getBook, buildScriptureUrl, getScriptureLabel } from '@/entities/scripture'
+import { getBook, getCollection, buildScriptureUrl, getScriptureLabel } from '@/entities/scripture'
 import { PostCard, POST_SELECT, CommenterBubble, type PostWithUser } from '@/entities/post'
 import { createSupabaseServer } from '@/shared/lib/auth'
 import { EmptyState, PageHeader, ScriptureText } from '@/shared/ui'
@@ -422,12 +422,14 @@ function ChapterView({
     </div>
   )
 
+  const collectionName = getCollection(collection)?.name ?? collection
+
   const chapterHeader = (
     <>
       <PageHeader
         title={getScriptureLabel(loc, book)}
-        backTo="/scriptures/$collection/$book"
-        backLabel={book.name}
+        backTo={book.isFrontMatter ? '/scriptures/$collection' : '/scriptures/$collection/$book'}
+        backLabel={book.isFrontMatter ? collectionName : book.name}
         action={headerAction}
       />
       {showCommenters && (
