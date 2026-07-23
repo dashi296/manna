@@ -1,2 +1,2 @@
 export { ScriptureSelector } from './ui/ScriptureSelector'
-export { parseVerses, type ScriptureRefPartial } from './model'
+export { parseVerses, buildChapterItems, type ScriptureRefPartial } from './model'

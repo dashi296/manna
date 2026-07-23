@@ -16,6 +16,11 @@ describe('buildScriptureUrl', () => {
     const url = buildScriptureUrl({ collection: 'bofm', book: '1-ne', chapter: 3, verses: [7, 9] })
     expect(url).toBe('https://www.churchofjesuschrist.org/study/scriptures/bofm/1-ne/3?lang=jpn&id=p7')
   })
+
+  it('front matter の書は章番号セグメントを省いたURLを生成する（302リダイレクト回避）', () => {
+    const url = buildScriptureUrl({ collection: 'bofm', book: 'introduction', chapter: 1 })
+    expect(url).toBe('https://www.churchofjesuschrist.org/study/scriptures/bofm/introduction?lang=jpn')
+  })
 })
 
 describe('getScriptureLabel', () => {
@@ -37,6 +42,16 @@ describe('getScriptureLabel', () => {
   it('飛び番節のラベルを返す', () => {
     const label = getScriptureLabel({ collection: 'bofm', book: '1-ne', chapter: 3, verses: [7, 9] })
     expect(label).toBe('第1ニーファイ書 3:7, 9')
+  })
+
+  it('front matter の書は節指定なしでは書名のみを返す', () => {
+    const label = getScriptureLabel({ collection: 'bofm', book: 'introduction', chapter: 1 })
+    expect(label).toBe('序文')
+  })
+
+  it('front matter の書でも節指定があれば通常の 章:節 形式を返す', () => {
+    const label = getScriptureLabel({ collection: 'bofm', book: 'introduction', chapter: 1, verses: [4] })
+    expect(label).toBe('序文 1:4')
   })
 })
 

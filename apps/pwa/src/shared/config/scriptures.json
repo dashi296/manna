@@ -4,6 +4,11 @@
       "id": "bofm",
       "name": "モルモン書",
       "books": [
+        { "id": "bofm-title", "name": "モルモン書のタイトルページ", "chapters": 1, "verses": [4], "isFrontMatter": true },
+        { "id": "introduction", "name": "序文", "chapters": 1, "verses": [9], "isFrontMatter": true },
+        { "id": "three", "name": "三人の証人の証", "chapters": 1, "verses": [4], "isFrontMatter": true },
+        { "id": "eight", "name": "八人の証人の証", "chapters": 1, "verses": [9], "isFrontMatter": true },
+        { "id": "js", "name": "預言者ジョセフ・スミスの証", "chapters": 1, "verses": [25], "isFrontMatter": true },
         { "id": "1-ne",   "name": "第1ニーファイ書",          "chapters": 22,  "verses": [20,24,25,38,22,6,22,38,6,22,36,23,42,30,36,39,55,25,24,22,26,31] },
         { "id": "2-ne",   "name": "第2ニーファイ書",          "chapters": 33,  "verses": [32,30,25,35,34,18,11,25,54,25,8,22,26,6,30,13,25,22,21,34,16,6,22,32,30,33,35,32,14,18,21,9,15] },
         { "id": "jacob",  "name": "ヤコブ書",                 "chapters": 7,   "verses": [8,35,14,18,77,13,27] },

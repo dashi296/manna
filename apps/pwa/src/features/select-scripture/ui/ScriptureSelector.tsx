@@ -9,7 +9,7 @@ import {
 } from '@/shared/ui/select'
 import { Input } from '@/shared/ui/input'
 
-import { parseVerses, type ScriptureRefPartial } from '../model'
+import { parseVerses, buildChapterItems, type ScriptureRefPartial } from '../model'
 
 type Props = {
   value: ScriptureRefPartial
@@ -55,12 +55,7 @@ export function ScriptureSelector({ value, onChange }: Props) {
 
   const collectionItems = collections.map((c) => ({ value: c.id, label: c.name }))
   const bookItems = (selectedCollection?.books ?? []).map((b) => ({ value: b.id, label: b.name }))
-  const chapterItems = selectedBook
-    ? Array.from({ length: selectedBook.chapters }, (_, i) => ({
-        value: (i + 1).toString(),
-        label: `第${i + 1}章`,
-      }))
-    : []
+  const chapterItems = selectedBook ? buildChapterItems(selectedBook) : []
 
   const versesText = value.verses?.join(', ') ?? ''
   const [versesInput, setVersesInput] = useState(versesText)

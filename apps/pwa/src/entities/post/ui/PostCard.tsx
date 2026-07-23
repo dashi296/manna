@@ -2,7 +2,7 @@ import type { ReactNode, KeyboardEvent, MouseEvent } from 'react'
 import { Link } from '@tanstack/react-router'
 import type { Components } from 'react-markdown'
 import { toScriptureRef, type PostWithUser } from '../model'
-import { getScriptureLabel, buildScriptureUrl } from '@/shared/lib/scriptureUtils'
+import { findBook, getScriptureLabel, buildScriptureUrl } from '@/shared/lib/scriptureUtils'
 import { resolveUserIdentity } from '@/shared/lib/constants'
 import { formatDate } from '@/shared/lib/date'
 import { MarkdownRenderer, UserAvatar } from '@/shared/ui'
@@ -41,8 +41,9 @@ export function PostCard({ post }: Props) {
   const { displayName, avatarUrl } = resolveUserIdentity(post.users)
 
   const scriptureRef = toScriptureRef(post)
-  const scriptureLabel = scriptureRef ? getScriptureLabel(scriptureRef) : null
-  const scriptureUrl = scriptureRef ? buildScriptureUrl(scriptureRef) : null
+  const scriptureBook = scriptureRef ? findBook(scriptureRef) : undefined
+  const scriptureLabel = scriptureRef ? getScriptureLabel(scriptureRef, scriptureBook) : null
+  const scriptureUrl = scriptureRef ? buildScriptureUrl(scriptureRef, scriptureBook) : null
 
   return (
     <Link to="/posts/$id" params={{ id: post.id }} className="block">

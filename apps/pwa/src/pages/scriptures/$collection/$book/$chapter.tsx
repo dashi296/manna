@@ -253,8 +253,8 @@ function VerseView({ book, chapter, collection, verses, posts, verseTexts, canCo
   const router = useRouter()
   const [sheetOpen, setSheetOpen] = useState(false)
   const loc = { collection, book: book.id, chapter }
-  const scriptureLabel = getScriptureLabel({ ...loc, verses })
-  const officialUrl = buildScriptureUrl({ ...loc, verses })
+  const scriptureLabel = getScriptureLabel({ ...loc, verses }, book)
+  const officialUrl = buildScriptureUrl({ ...loc, verses }, book)
 
   const onSheetOpenChange = (open: boolean) => {
     setSheetOpen(open)
@@ -266,7 +266,7 @@ function VerseView({ book, chapter, collection, verses, posts, verseTexts, canCo
       <PageHeader
         title={`📖 ${scriptureLabel}`}
         backTo="/scriptures/$collection/$book/$chapter"
-        backLabel={`第${chapter}章`}
+        backLabel={book.isFrontMatter ? book.name : `第${chapter}章`}
         action={
           <div className="flex items-center gap-2">
             {canCompose && <ComposeButton onClick={() => setSheetOpen(true)} label="投稿する" />}
@@ -425,7 +425,7 @@ function ChapterView({
   const chapterHeader = (
     <>
       <PageHeader
-        title={`${book.name} 第${chapter}章`}
+        title={getScriptureLabel(loc, book)}
         backTo="/scriptures/$collection/$book"
         backLabel={book.name}
         action={headerAction}

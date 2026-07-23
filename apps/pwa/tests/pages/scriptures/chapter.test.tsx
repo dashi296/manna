@@ -10,6 +10,7 @@ type TestLoaderData = {
     name: string
     chapters: number
     verses: number[]
+    isFrontMatter?: boolean
   }
   chapter: number
   collection: string
@@ -314,5 +315,25 @@ describe('ChapterPage', () => {
     loaderData = { ...baseChapterData, mode: 'verse', verses: [1] }
     render(<ChapterPage />)
     expect(screen.getByRole('button', { name: '栞に追加' })).toBeInTheDocument()
+  })
+
+  it('front matter の章表示ではタイトルに「第◯章」を付けず書名のみ表示する', () => {
+    loaderData = {
+      ...baseChapterData,
+      book: { id: 'introduction', name: '序文', chapters: 1, verses: [9], isFrontMatter: true },
+    }
+    render(<ChapterPage />)
+    expect(screen.getByRole('heading', { name: '序文' })).toBeInTheDocument()
+  })
+
+  it('front matter の節表示では戻りリンクに「第◯章」を付けず書名のみ表示する', () => {
+    loaderData = {
+      ...baseChapterData,
+      mode: 'verse',
+      verses: [1],
+      book: { id: 'introduction', name: '序文', chapters: 1, verses: [9], isFrontMatter: true },
+    }
+    render(<ChapterPage />)
+    expect(screen.getByRole('link', { name: '序文' })).toBeInTheDocument()
   })
 })
