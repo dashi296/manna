@@ -1,7 +1,7 @@
 import { createFileRoute, Link, notFound } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { POST_SELECT, toScriptureRef, type PostWithUser } from '@/entities/post'
-import { getScriptureLabel, buildScriptureUrl } from '@/entities/scripture'
+import { getScriptureLabel, buildScriptureUrl, getBook } from '@/entities/scripture'
 import { MarkdownRenderer, PageHeader, UserAvatar } from '@/shared/ui'
 import { resolveUserIdentity } from '@/shared/lib/constants'
 import { formatDate } from '@/shared/lib/date'
@@ -33,8 +33,9 @@ function PostDetailPage() {
   const { displayName, avatarUrl } = resolveUserIdentity(post.users)
 
   const scriptureRef = toScriptureRef(post)
-  const scriptureLabel = scriptureRef ? getScriptureLabel(scriptureRef) : null
-  const officialUrl = scriptureRef ? buildScriptureUrl(scriptureRef) : null
+  const scriptureBook = scriptureRef ? getBook(scriptureRef.collection, scriptureRef.book) : undefined
+  const scriptureLabel = scriptureRef ? getScriptureLabel(scriptureRef, scriptureBook) : null
+  const officialUrl = scriptureRef ? buildScriptureUrl(scriptureRef, scriptureBook) : null
 
   return (
     <div>

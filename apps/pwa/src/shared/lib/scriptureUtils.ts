@@ -7,9 +7,12 @@ export type ScriptureRef = {
   verses?: number[]
 }
 
+export function findCollection(collectionId: string) {
+  return scripturesData.collections.find((c) => c.id === collectionId)
+}
+
 export function findBook(ref: ScriptureRef) {
-  const collection = scripturesData.collections.find((c) => c.id === ref.collection)
-  return collection?.books.find((b) => b.id === ref.book)
+  return findCollection(ref.collection)?.books.find((b) => b.id === ref.book)
 }
 
 type ScriptureBook = ReturnType<typeof findBook>
