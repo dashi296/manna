@@ -7,14 +7,15 @@ export type ScriptureRef = {
   verses?: number[]
 }
 
-function findBook(ref: ScriptureRef) {
+export function findBook(ref: ScriptureRef) {
   const collection = scripturesData.collections.find((c) => c.id === ref.collection)
   return collection?.books.find((b) => b.id === ref.book)
 }
 
-export function buildScriptureUrl(ref: ScriptureRef): string {
+type ScriptureBook = ReturnType<typeof findBook>
+
+export function buildScriptureUrl(ref: ScriptureRef, book: ScriptureBook = findBook(ref)): string {
   const base = 'https://www.churchofjesuschrist.org/study/scriptures'
-  const book = findBook(ref)
   const chapterSegment = book?.isFrontMatter ? '' : `/${ref.chapter}`
   let url = `${base}/${ref.collection}/${ref.book}${chapterSegment}?lang=jpn`
   const first = ref.verses ? [...ref.verses].sort((a, b) => a - b)[0] : undefined
@@ -22,8 +23,7 @@ export function buildScriptureUrl(ref: ScriptureRef): string {
   return url
 }
 
-export function getScriptureLabel(ref: ScriptureRef): string {
-  const book = findBook(ref)
+export function getScriptureLabel(ref: ScriptureRef, book: ScriptureBook = findBook(ref)): string {
   const bookName = book?.name ?? ref.book
   if (!ref.chapter) return bookName
   if (!ref.verses?.length) {

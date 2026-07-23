@@ -21,7 +21,7 @@ function buildChapterList() {
           bookId: book.id,
           chapter: ch,
           expectedVerses: book.verses[ch - 1],
-          isFrontMatter: book.isFrontMatter ?? false,
+          isFrontMatter: book.isFrontMatter,
         })
       }
     }
