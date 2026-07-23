@@ -85,6 +85,7 @@
   --sidebar-ring: var(--lagoon);
   --safe-area-top: env(safe-area-inset-top, 0px);
   --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  /* 4rem は BottomNav の content 高さの実測値。BottomNav の padding/内容を変えたらここも合わせる */
   --bottom-nav-h: calc(4rem + var(--safe-area-bottom));
 }
 
