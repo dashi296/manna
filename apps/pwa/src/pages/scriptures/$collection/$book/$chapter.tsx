@@ -429,7 +429,7 @@ function ChapterView({
       <PageHeader
         title={getScriptureLabel(loc, book)}
         backTo={book.isFrontMatter ? '/scriptures/$collection' : '/scriptures/$collection/$book'}
-        backLabel={book.isFrontMatter ? collectionName : book.name}
+        backLabel={collectionName ?? book.name}
         action={headerAction}
       />
       {showCommenters && (
