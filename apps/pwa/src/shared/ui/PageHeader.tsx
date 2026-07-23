@@ -21,7 +21,7 @@ type Props = {
 export function PageHeader({ title, backTo, backLabel, action, className }: Props) {
   return (
     <header
-      className={cn(stickyHeaderClassName, 'px-4 py-3', className)}
+      className={cn(stickyHeaderClassName, 'px-4 pt-[var(--page-header-pt)] pb-3', className)}
       style={stickyHeaderStyle}
     >
       {backTo && (

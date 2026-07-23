@@ -92,7 +92,7 @@ function RootLayout() {
       <SidebarProvider defaultOpen={sidebarDefaultOpen}>
         <AppSidebar />
         <SidebarInset className="flex flex-col min-h-screen min-w-0">
-          <main className="flex-1 pb-16 lg:pb-0">
+          <main className="flex-1 pb-[var(--bottom-nav-h)] lg:pb-0">
             <div className={containerClass}>
               <Outlet />
             </div>

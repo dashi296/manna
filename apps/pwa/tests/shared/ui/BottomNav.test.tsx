@@ -53,4 +53,10 @@ describe('BottomNav', () => {
     const scriptureLink = screen.getByRole('link', { name: /聖典/ })
     expect(scriptureLink.className).toContain('text-lagoon-deep')
   })
+
+  it('nav要素にセーフエリア分の下部余白クラスが付与される', () => {
+    render(<BottomNav />)
+    const nav = screen.getByRole('navigation')
+    expect(nav.className).toContain('pb-[var(--safe-area-bottom)]')
+  })
 })

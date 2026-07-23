@@ -14,7 +14,7 @@ export function SelectionModeHeader({ count, onCancel, onSubmit }: Props) {
   const titleLabel = count === 0 ? '節を選んでください' : `${count}節選択中`
 
   return (
-    <header className={cn(stickyHeaderClassName, 'px-2 py-2')} style={stickyHeaderStyle}>
+    <header className={cn(stickyHeaderClassName, 'px-2 pt-[var(--selection-header-pt)] pb-2')} style={stickyHeaderStyle}>
       <Button
         variant="ghost"
         size="sm"

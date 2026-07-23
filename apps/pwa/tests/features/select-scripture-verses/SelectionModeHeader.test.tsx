@@ -31,4 +31,10 @@ describe('SelectionModeHeader', () => {
     await userEvent.click(screen.getByRole('button', { name: /2節に投稿/ }))
     expect(onSubmit).toHaveBeenCalledOnce()
   })
+
+  it('セーフエリア分の上部パディングクラスが付与される', () => {
+    render(<SelectionModeHeader count={0} onCancel={vi.fn()} onSubmit={vi.fn()} />)
+    const header = screen.getByRole('button', { name: '選択をキャンセル' }).closest('header')
+    expect(header?.className).toContain('pt-[var(--selection-header-pt)]')
+  })
 })

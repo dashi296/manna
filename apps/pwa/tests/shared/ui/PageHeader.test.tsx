@@ -34,4 +34,11 @@ describe('PageHeader', () => {
     render(<PageHeader title="投稿" action={<button>送信</button>} />)
     expect(screen.getByRole('button', { name: '送信' })).toBeInTheDocument()
   })
+
+  it('タイトルの上にセーフエリア分の上部パディングクラスが付与される', () => {
+    render(<PageHeader title="テストページ" />)
+    const heading = screen.getByRole('heading', { name: 'テストページ' })
+    const header = heading.closest('header')
+    expect(header?.className).toContain('pt-[var(--page-header-pt)]')
+  })
 })
