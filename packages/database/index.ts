@@ -240,6 +240,7 @@ export type Database = {
           chapters: number
           collection_id: string
           id: string
+          is_front_matter: boolean
           name: string
           sort_order: number
           verses: number[]
@@ -248,6 +249,7 @@ export type Database = {
           chapters: number
           collection_id: string
           id: string
+          is_front_matter?: boolean
           name: string
           sort_order?: number
           verses: number[]
@@ -256,6 +258,7 @@ export type Database = {
           chapters?: number
           collection_id?: string
           id?: string
+          is_front_matter?: boolean
           name?: string
           sort_order?: number
           verses?: number[]
