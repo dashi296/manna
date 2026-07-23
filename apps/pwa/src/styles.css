@@ -87,7 +87,9 @@
   --safe-area-bottom: env(safe-area-inset-bottom, 0px);
   /* 4rem は BottomNav の content 高さの実測値。BottomNav の padding/内容を変えたらここも合わせる */
   --bottom-nav-h: calc(4rem + var(--safe-area-bottom));
+  /* 0.75rem は PageHeader の pb-3 と同じ値。変えたら両方合わせる */
   --page-header-pt: calc(0.75rem + var(--safe-area-top));
+  /* 0.5rem は SelectionModeHeader の pb-2 と同じ値。変えたら両方合わせる */
   --selection-header-pt: calc(0.5rem + var(--safe-area-top));
 }
 
