@@ -41,17 +41,20 @@ type Props = {
   verse: number
   textHtml: string
   className?: string
+  showNumber?: boolean
 }
 
-export function ScriptureText({ verse, textHtml, className }: Props) {
+export function ScriptureText({ verse, textHtml, className, showNumber = true }: Props) {
   return (
     <div className={cn('flex gap-2 py-2 text-sm leading-relaxed', className)}>
-      <span
-        className="shrink-0 w-6 text-right text-xs font-medium pt-0.5"
-        style={{ color: 'var(--sea-ink-soft)' }}
-      >
-        {verse}
-      </span>
+      {showNumber && (
+        <span
+          className="shrink-0 w-6 text-right text-xs font-medium pt-0.5"
+          style={{ color: 'var(--sea-ink-soft)' }}
+        >
+          {verse}
+        </span>
+      )}
       <SanitizedVerseHtml html={textHtml} style={{ color: 'var(--sea-ink)' }} />
     </div>
   )
