@@ -200,17 +200,17 @@ WORKDIR=$(cat /tmp/manna-logo-workdir.txt)
 for SIZE in 512 192 180; do
   CW=$(python3 -c "print(round($SIZE*0.8))")
   magick -background none -density 600 apps/pwa/public/logo-mark.svg -resize "${CW}x" "$WORKDIR/render_$SIZE.png"
-  magick -size ${SIZE}x${SIZE} canvas:"#f6f3ee" "$WORKDIR/render_$SIZE.png" -gravity center -composite "$WORKDIR/icon_$SIZE.png"
+  magick -size ${SIZE}x${SIZE} canvas:"#f6f3ee" "$WORKDIR/render_$SIZE.png" -gravity center -composite -depth 8 "$WORKDIR/icon_$SIZE.png"
 done
 for SIZE in 16 32 48; do
   CW=$(python3 -c "print(round($SIZE*0.8))")
   magick -background none -density 600 apps/pwa/public/logo-mark.svg -resize "${CW}x" "$WORKDIR/render_f$SIZE.png"
-  magick -size ${SIZE}x${SIZE} canvas:"#f6f3ee" "$WORKDIR/render_f$SIZE.png" -gravity center -composite "$WORKDIR/fav_$SIZE.png"
+  magick -size ${SIZE}x${SIZE} canvas:"#f6f3ee" "$WORKDIR/render_f$SIZE.png" -gravity center -composite -depth 8 "$WORKDIR/fav_$SIZE.png"
 done
 magick "$WORKDIR/fav_16.png" "$WORKDIR/fav_32.png" "$WORKDIR/fav_48.png" "$WORKDIR/favicon.ico"
 ```
 
-Expected: `magick identify "$WORKDIR"/icon_*.png` が `icon_512.png` `icon_192.png` `icon_180.png` それぞれ指定サイズで表示され、`magick identify "$WORKDIR/favicon.ico"` が `16x16`, `32x32`, `48x48` の3エントリを表示する
+Expected: `magick identify "$WORKDIR"/icon_*.png` が `icon_512.png` `icon_192.png` `icon_180.png` それぞれ指定サイズ・`8-bit` 深度で表示され（`-depth 8` を付けないとImageMagickのSVGレンダリング既定である16-bitのまま書き出され、視覚的な利得なくファイルサイズが約2倍になる）、`magick identify "$WORKDIR/favicon.ico"` が `16x16`, `32x32`, `48x48` の3エントリを表示する
 
 - [ ] **Step 2: 生成物をpublicディレクトリに配置する**
 
