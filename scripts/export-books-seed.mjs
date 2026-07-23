@@ -12,7 +12,9 @@ const collections = scriptures.collections
 
 const books = scriptures.collections
   .flatMap((c) =>
-    c.books.map((b, i) => `  ('${q(b.id)}', '${q(c.id)}', '${q(b.name)}', ${b.chapters}, '{${b.verses.join(',')}}', ${i})`)
+    c.books.map((b, i) =>
+      `  ('${q(b.id)}', '${q(c.id)}', '${q(b.name)}', ${b.chapters}, '{${b.verses.join(',')}}', ${i}, ${b.isFrontMatter ? 'true' : 'false'})`
+    )
   )
   .join(',\n')
 
@@ -20,11 +22,20 @@ const output = `-- Auto-generated from apps/pwa/src/shared/config/scriptures.jso
 -- Re-generate: node scripts/export-books-seed.mjs
 -- Collections
 INSERT INTO scripture_collections (id, name, sort_order) VALUES
-${collections};
+${collections}
+ON CONFLICT (id) DO UPDATE SET
+  name = excluded.name,
+  sort_order = excluded.sort_order;
 
 -- Books
-INSERT INTO scripture_books (id, collection_id, name, chapters, verses, sort_order) VALUES
-${books};
+INSERT INTO scripture_books (id, collection_id, name, chapters, verses, sort_order, is_front_matter) VALUES
+${books}
+ON CONFLICT (collection_id, id) DO UPDATE SET
+  name = excluded.name,
+  chapters = excluded.chapters,
+  verses = excluded.verses,
+  sort_order = excluded.sort_order,
+  is_front_matter = excluded.is_front_matter;
 `
 
 writeFileSync(new URL('../supabase/seed.sql', import.meta.url), output)
