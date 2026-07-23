@@ -70,7 +70,7 @@ export function InstallPwaBanner() {
       <div
         role="region"
         aria-label="アプリのインストール案内"
-        className="fixed inset-x-0 bottom-16 z-40 lg:hidden"
+        className="fixed inset-x-0 bottom-[var(--bottom-nav-h)] z-40 lg:hidden"
       >
         <div className="mx-auto flex max-w-md items-center gap-3 border-t bg-background px-3 py-2">
           <img

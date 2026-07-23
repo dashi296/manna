@@ -93,4 +93,11 @@ describe('InstallPwaBanner', () => {
       await screen.findByRole('heading', { name: 'ホーム画面に追加' }),
     ).toBeInTheDocument()
   })
+
+  it('BottomNavの実高さ分のオフセットクラスが付与される', () => {
+    stubUa(IOS_SAFARI_UA)
+    render(<InstallPwaBanner />)
+    const banner = screen.getByRole('region', { name: BANNER_LABEL })
+    expect(banner.className).toContain('bottom-[var(--bottom-nav-h)]')
+  })
 })
