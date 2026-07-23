@@ -80,7 +80,7 @@
 
 ```tsx
 <header
-  className={cn(stickyHeaderClassName, 'px-4 pt-[calc(0.75rem+var(--safe-area-top))] pb-3', className)}
+  className={cn(stickyHeaderClassName, 'px-4 pt-[calc(0.75rem_+_var(--safe-area-top))] pb-3', className)}
   style={stickyHeaderStyle}
 >
 ```
@@ -89,12 +89,14 @@
 
 ```tsx
 <header
-  className={cn(stickyHeaderClassName, 'px-2 pt-[calc(0.5rem+var(--safe-area-top))] pb-2')}
+  className={cn(stickyHeaderClassName, 'px-2 pt-[calc(0.5rem_+_var(--safe-area-top))] pb-2')}
   style={stickyHeaderStyle}
 >
 ```
 
-（`py-3` → `pt-[calc(0.75rem+var(--safe-area-top))] pb-3`、`py-2` → `pt-[calc(0.5rem+var(--safe-area-top))] pb-2` と読み替え）
+（`py-3` → `pt-[calc(0.75rem_+_var(--safe-area-top))] pb-3`、`py-2` → `pt-[calc(0.5rem_+_var(--safe-area-top))] pb-2` と読み替え）
+
+CSS の `calc()` は `+`/`-` の前後に空白が必須（仕様上の制約）だが、Tailwind の任意値クラス名にはスペースを書けないため `_`（アンダースコア）でスペースを表す。`calc(0.75rem+var(...))`（アンダースコアなし）は無効な `calc()` として無視される。
 
 ## エラーハンドリング / エッジケース
 
@@ -106,8 +108,8 @@
 既存テストの class アサーションのパターン（`className.toContain(...)`）に合わせ、TDD で以下を追加してから実装する:
 
 - `BottomNav.test.tsx`: nav 要素の className に `pb-[var(--safe-area-bottom)]` が含まれる
-- `PageHeader.test.tsx`: header 要素の className に `pt-[calc(0.75rem+var(--safe-area-top))]` が含まれる
-- `SelectionModeHeader.test.tsx`: header 要素の className に `pt-[calc(0.5rem+var(--safe-area-top))]` が含まれる
+- `PageHeader.test.tsx`: header 要素の className に `pt-[calc(0.75rem_+_var(--safe-area-top))]` が含まれる
+- `SelectionModeHeader.test.tsx`: header 要素の className に `pt-[calc(0.5rem_+_var(--safe-area-top))]` が含まれる
 - `InstallPwaBanner.test.tsx`: バナー要素の className に `bottom-[var(--bottom-nav-h)]` が含まれる
 
 `__root.tsx` の `main` は既存パターンとしてテストが書かれていないため、今回も対象外（`InstallPwaBanner.test.tsx` の設計時の前例に倣う）。
