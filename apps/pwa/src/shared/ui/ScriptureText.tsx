@@ -19,13 +19,14 @@ type SanitizedVerseHtmlProps = {
   html: string
   className?: string
   style?: CSSProperties
+  lang?: string
 }
 
 // Renders sanitized `text_html` by injecting it imperatively after mount
 // (client-only), instead of `dangerouslySetInnerHTML`, so the raw HTML is
 // never touched during SSR — avoiding both a server crash (no DOM to
 // sanitize against) and ever serving unsanitized markup.
-export function SanitizedVerseHtml({ html, className, style }: SanitizedVerseHtmlProps) {
+export function SanitizedVerseHtml({ html, className, style, lang }: SanitizedVerseHtmlProps) {
   const ref = useRef<HTMLSpanElement>(null)
 
   useEffect(() => {
@@ -34,17 +35,26 @@ export function SanitizedVerseHtml({ html, className, style }: SanitizedVerseHtm
     }
   }, [html])
 
-  return <span ref={ref} className={className} style={style} />
+  return <span ref={ref} className={className} style={style} lang={lang} />
 }
 
 type Props = {
   verse: number
   textHtml: string
+  textHtmlSecondary?: string
+  secondaryLang?: string
   className?: string
   showNumber?: boolean
 }
 
-export function ScriptureText({ verse, textHtml, className, showNumber = true }: Props) {
+export function ScriptureText({
+  verse,
+  textHtml,
+  textHtmlSecondary,
+  secondaryLang,
+  className,
+  showNumber = true,
+}: Props) {
   return (
     <div className={cn('flex gap-2 py-2 text-sm leading-relaxed', className)}>
       {showNumber && (
@@ -55,7 +65,21 @@ export function ScriptureText({ verse, textHtml, className, showNumber = true }:
           {verse}
         </span>
       )}
-      <SanitizedVerseHtml html={textHtml} style={{ color: 'var(--sea-ink)' }} />
+      <div className={cn('flex-1 min-w-0', textHtmlSecondary && 'flex flex-col gap-1 lg:flex-row lg:gap-4')}>
+        <SanitizedVerseHtml
+          html={textHtml}
+          className={textHtmlSecondary ? 'lg:flex-1' : undefined}
+          style={{ color: 'var(--sea-ink)' }}
+        />
+        {textHtmlSecondary && (
+          <SanitizedVerseHtml
+            html={textHtmlSecondary}
+            className="lg:flex-1"
+            style={{ color: 'var(--sea-ink-soft)' }}
+            lang={secondaryLang}
+          />
+        )}
+      </div>
     </div>
   )
 }
