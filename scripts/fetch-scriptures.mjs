@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { parseVerses } from './lib/parse-verses.mjs'
 import { parseParagraphs } from './lib/parse-paragraphs.mjs'
 import { runPsql } from './lib/db.mjs'
+import { resolveLanguage } from './lib/languages.mjs'
 
 const API_BASE = 'https://www.churchofjesuschrist.org/study/api/v3/language-pages/type/content'
 const RATE_MS = 1000
@@ -10,6 +11,12 @@ const MAX_RETRIES = 3
 const scriptures = JSON.parse(
   readFileSync(new URL('../apps/pwa/src/shared/config/scriptures.json', import.meta.url), 'utf8')
 )
+
+function parseArgs() {
+  const langArg = process.argv.find(arg => arg.startsWith('--lang='))
+  const langCode = langArg ? langArg.slice('--lang='.length) : 'ja'
+  return resolveLanguage(langCode)
+}
 
 function buildChapterList() {
   const chapters = []
@@ -29,9 +36,9 @@ function buildChapterList() {
   return chapters
 }
 
-function getCompletedChapters() {
+function getCompletedChapters(languageCode) {
   const result = runPsql(
-    `SELECT collection_id, book_id, chapter, COUNT(*) FROM scripture_verses GROUP BY collection_id, book_id, chapter;`
+    `SELECT collection_id, book_id, chapter, COUNT(*) FROM scripture_verses WHERE language='${sqlQuote(languageCode)}' GROUP BY collection_id, book_id, chapter;`
   )
   const map = new Map()
   for (const line of result.trim().split('\n').filter(Boolean)) {
@@ -41,11 +48,11 @@ function getCompletedChapters() {
   return map
 }
 
-async function fetchChapter(collectionId, bookId, chapter, isFrontMatter) {
+async function fetchChapter(collectionId, bookId, chapter, isFrontMatter, apiCode) {
   const uri = isFrontMatter
     ? `/scriptures/${collectionId}/${bookId}`
     : `/scriptures/${collectionId}/${bookId}/${chapter}`
-  const url = `${API_BASE}?lang=jpn&uri=${uri}`
+  const url = `${API_BASE}?lang=${apiCode}&uri=${uri}`
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
@@ -69,12 +76,12 @@ function sqlQuote(s) {
   return s.replace(/'/g, "''")
 }
 
-function insertVerses(collectionId, bookId, chapter, verses) {
+function insertVerses(collectionId, bookId, chapter, verses, languageCode) {
   const values = verses.map(v => {
-    return `('${sqlQuote(collectionId)}','${sqlQuote(bookId)}',${chapter},${v.verse},'${sqlQuote(v.text)}','${sqlQuote(v.textHtml)}')`
+    return `('${sqlQuote(collectionId)}','${sqlQuote(bookId)}',${chapter},${v.verse},'${sqlQuote(v.text)}','${sqlQuote(v.textHtml)}','${sqlQuote(languageCode)}')`
   })
 
-  const sql = `INSERT INTO scripture_verses (collection_id, book_id, chapter, verse, text, text_html) VALUES ${values.join(',')};`
+  const sql = `INSERT INTO scripture_verses (collection_id, book_id, chapter, verse, text, text_html, language) VALUES ${values.join(',')};`
   runPsql(sql)
 }
 
@@ -83,14 +90,16 @@ function sleep(ms) {
 }
 
 async function main() {
+  const language = parseArgs()
   const allChapters = buildChapterList()
-  const completedCounts = getCompletedChapters()
+  const completedCounts = getCompletedChapters(language.code)
   const todo = allChapters.filter(c => {
     const key = `${c.collectionId}/${c.bookId}/${c.chapter}`
     const count = completedCounts.get(key)
     return count === undefined || count !== c.expectedVerses
   })
 
+  console.log(`Language: ${language.code} (${language.label})`)
   console.log(`Total: ${allChapters.length} chapters, Skipping: ${allChapters.length - todo.length}, Remaining: ${todo.length}`)
 
   let inserted = 0
@@ -99,7 +108,7 @@ async function main() {
     const label = `${collectionId}/${bookId}/${chapter}`
 
     try {
-      const html = await fetchChapter(collectionId, bookId, chapter, isFrontMatter)
+      const html = await fetchChapter(collectionId, bookId, chapter, isFrontMatter, language.apiCode)
       const verses = isFrontMatter ? parseParagraphs(html) : parseVerses(html)
 
       if (verses.length !== expectedVerses) {
@@ -108,9 +117,9 @@ async function main() {
 
       if (verses.length > 0) {
         if (completedCounts.has(label)) {
-          runPsql(`DELETE FROM scripture_verses WHERE collection_id='${sqlQuote(collectionId)}' AND book_id='${sqlQuote(bookId)}' AND chapter=${chapter};`)
+          runPsql(`DELETE FROM scripture_verses WHERE collection_id='${sqlQuote(collectionId)}' AND book_id='${sqlQuote(bookId)}' AND chapter=${chapter} AND language='${sqlQuote(language.code)}';`)
         }
-        insertVerses(collectionId, bookId, chapter, verses)
+        insertVerses(collectionId, bookId, chapter, verses, language.code)
         inserted += verses.length
       }
 
