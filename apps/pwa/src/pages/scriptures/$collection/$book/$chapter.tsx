@@ -31,6 +31,7 @@ import { BookmarkButton } from '@/features/toggle-bookmark'
 import { useBilingualEnabled } from '@/entities/bilingual-display'
 import { BilingualToggleButton } from '@/features/toggle-bilingual'
 import { PRIMARY_LANGUAGE, SECONDARY_LANGUAGE } from '@/shared/config/scriptureLanguage'
+import { SwipeableChapterView } from '@/features/swipe-chapter-navigation'
 
 type VerseTextRow = { verse: number; text_html: string }
 type Book = NonNullable<ReturnType<typeof getBook>>
@@ -585,17 +586,19 @@ function ChapterView({
   return (
     <div>
       {mode === 'select' ? selectionHeader : chapterHeader}
-      {posts.length > 0 && (
-        <div className="border-b" style={{ borderColor: 'var(--line)' }}>
-          <p className="px-4 pt-3 pb-1 text-xs font-medium" style={{ color: 'var(--sea-ink-soft)' }}>
-            この章への投稿
-          </p>
-          {posts.map((post) => (
-            <PostCard key={post.id} post={post} />
-          ))}
-        </div>
-      )}
-      {verseList}
+      <SwipeableChapterView loc={loc} disabled={mode === 'select' || !isMobile}>
+        {posts.length > 0 && (
+          <div className="border-b" style={{ borderColor: 'var(--line)' }}>
+            <p className="px-4 pt-3 pb-1 text-xs font-medium" style={{ color: 'var(--sea-ink-soft)' }}>
+              この章への投稿
+            </p>
+            {posts.map((post) => (
+              <PostCard key={post.id} post={post} />
+            ))}
+          </div>
+        )}
+        {verseList}
+      </SwipeableChapterView>
       {canCompose && (
         <PostComposerSheet
           open={sheetOpen}

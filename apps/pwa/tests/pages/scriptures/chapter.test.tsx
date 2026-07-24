@@ -1,5 +1,5 @@
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { render as rtlRender, screen, waitFor } from '@testing-library/react'
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { render as rtlRender, screen, waitFor, fireEvent, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClientProvider } from '@tanstack/react-query'
 import type { PostWithUser } from '@/entities/post'
@@ -485,5 +485,35 @@ describe('ChapterPage', () => {
     render(<ChapterPage />)
     expect(screen.getByText('一節の日本語')).toBeInTheDocument()
     expect(screen.queryByText('Verse one in English')).toBeNull()
+  })
+})
+
+describe('ChapterView スワイプナビゲーション', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 800 })
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('モバイル幅で右スワイプすると次の章へnavigateする', () => {
+    loaderData = { ...baseChapterData, chapter: 1 }
+    const { container } = render(<ChapterPage />)
+    const swipable = container.querySelector('[style*="touch-action"]') as HTMLElement
+    Object.defineProperty(swipable, 'clientWidth', { configurable: true, value: 400 })
+
+    fireEvent.pointerDown(swipable, { pointerId: 1, clientX: 100 })
+    fireEvent.pointerMove(swipable, { pointerId: 1, clientX: 200 })
+    fireEvent.pointerUp(swipable, { pointerId: 1, clientX: 200 })
+    act(() => {
+      vi.advanceTimersByTime(200)
+    })
+
+    expect(navigateSpy).toHaveBeenCalledWith({
+      to: '/scriptures/$collection/$book/$chapter',
+      params: { collection: 'bofm', book: '1-ne', chapter: '2' },
+    })
   })
 })
