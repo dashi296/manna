@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createFileRoute, notFound, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
+import { useQuery } from '@tanstack/react-query'
 import { getBook, getCollection, buildScriptureUrl, getScriptureLabel } from '@/entities/scripture'
 import { PostCard, POST_SELECT, CommenterBubble, type PostWithUser } from '@/entities/post'
 import { createSupabaseServer } from '@/shared/lib/auth'
 import { supabase } from '@/shared/lib/supabase'
-import { queryClient } from '@/shared/lib/queryClient'
 import { EmptyState, PageHeader, ScriptureText } from '@/shared/ui'
 import { Button } from '@/shared/ui/button'
 import { PostComposerSheet } from '@/widgets/post-composer-sheet'
@@ -97,34 +97,23 @@ function useSecondaryVerseTexts(
   verses: number[] | undefined,
   enabled: boolean,
 ): Map<number, string> {
-  const [texts, setTexts] = useState<Map<number, string>>(new Map())
   const versesKey = verses?.join(',') ?? ''
 
-  useEffect(() => {
-    // 章・節が切り替わった際に前ページの第2言語テキストが新しい日本語本文と
-    // 誤って組み合わさって表示されないよう、依存値が変わるたびに必ずクリアする。
-    setTexts(new Map())
-    if (!enabled) return
+  // useQuery の data は常に現在の queryKey に対応する値のみを返すため、章が
+  // 切り替わった瞬間に前章のデータへ自動的に戻ることはない（queryKey が変わると
+  // data は一旦 undefined に戻る）。staleTime: Infinity で ON/OFF の切り替えや
+  // 同じ章への再訪問での再取得も避ける。
+  const { data } = useQuery({
+    queryKey: ['scripture-verse-secondary-text', loc.collection, loc.book, loc.chapter, versesKey],
+    queryFn: () => queryClientVerseTexts(loc, verses),
+    enabled,
+    staleTime: Infinity,
+  })
 
-    let cancelled = false
-    // 節本文は変わらないため staleTime: Infinity でキャッシュし、
-    // ON/OFF を切り替えるたびの再取得を避ける。
-    queryClient
-      .fetchQuery({
-        queryKey: ['scripture-verse-secondary-text', loc.collection, loc.book, loc.chapter, versesKey],
-        queryFn: () => queryClientVerseTexts(loc, verses),
-        staleTime: Infinity,
-      })
-      .then((rows) => {
-        if (!cancelled) setTexts(new Map(rows.map((r) => [r.verse, r.text_html])))
-      })
-    return () => {
-      cancelled = true
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, loc.collection, loc.book, loc.chapter, versesKey])
-
-  return texts
+  return useMemo(
+    () => (enabled ? new Map((data ?? []).map((r) => [r.verse, r.text_html])) : new Map()),
+    [enabled, data],
+  )
 }
 
 const fetchVerseData = createServerFn({ method: 'POST' })

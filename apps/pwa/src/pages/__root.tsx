@@ -1,8 +1,10 @@
 import { useEffect } from 'react'
 import { HeadContent, Scripts, Outlet, createRootRoute, redirect, useRouterState } from '@tanstack/react-router'
+import { QueryClientProvider } from '@tanstack/react-query'
 import { getSession, getServerSession } from '@/shared/lib/auth'
 import { getCookieHeader } from '@/shared/lib/cookies'
 import { registerServiceWorker } from '@/shared/lib/pwa'
+import { queryClient } from '@/shared/lib/queryClient'
 import { AppSidebar } from '@/shared/ui/AppSidebar'
 import { BottomNav } from '@/shared/ui/BottomNav'
 import { DevTools } from '@/shared/ui/DevTools'
@@ -84,23 +86,29 @@ function RootLayout() {
   }, [])
 
   if (isAuthPage) {
-    return <Outlet />
+    return (
+      <QueryClientProvider client={queryClient}>
+        <Outlet />
+      </QueryClientProvider>
+    )
   }
 
   return (
-    <TooltipProvider>
-      <SidebarProvider defaultOpen={sidebarDefaultOpen}>
-        <AppSidebar />
-        <SidebarInset className="flex flex-col min-h-screen min-w-0">
-          <main className="flex-1 pb-[var(--bottom-nav-h)] lg:pb-0">
-            <div className={containerClass}>
-              <Outlet />
-            </div>
-          </main>
-          <InstallPwaBanner />
-          <BottomNav />
-        </SidebarInset>
-      </SidebarProvider>
-    </TooltipProvider>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <SidebarProvider defaultOpen={sidebarDefaultOpen}>
+          <AppSidebar />
+          <SidebarInset className="flex flex-col min-h-screen min-w-0">
+            <main className="flex-1 pb-[var(--bottom-nav-h)] lg:pb-0">
+              <div className={containerClass}>
+                <Outlet />
+              </div>
+            </main>
+            <InstallPwaBanner />
+            <BottomNav />
+          </SidebarInset>
+        </SidebarProvider>
+      </TooltipProvider>
+    </QueryClientProvider>
   )
 }

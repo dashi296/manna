@@ -1,8 +1,21 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render as rtlRender, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { QueryClientProvider } from '@tanstack/react-query'
 import type { PostWithUser } from '@/entities/post'
+import { queryClient } from '@/shared/lib/queryClient'
 import { routeComponent } from '../../helpers/tanstack'
+
+// useSecondaryVerseTexts が useQuery を使うため QueryClientProvider が必要。
+// 呼び出し側の render(<ChapterPage />) はそのままで自動的にラップされる。
+function render(ui: React.ReactElement) {
+  const utils = rtlRender(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>)
+  return {
+    ...utils,
+    rerender: (nextUi: React.ReactElement) =>
+      utils.rerender(<QueryClientProvider client={queryClient}>{nextUi}</QueryClientProvider>),
+  }
+}
 
 type TestLoaderData = {
   book: {
