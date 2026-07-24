@@ -442,6 +442,36 @@ describe('ChapterPage', () => {
     expect(clientVerseFetchCount).toBe(fetchCountAfterFirstOn)
   })
 
+  it('併記表示が有効なまま別の章へ遷移すると、前の章の第2言語テキストが一瞬でも表示されない', async () => {
+    const { useBilingualDisplayStore } = await import('@/entities/bilingual-display')
+    useBilingualDisplayStore.setState({ enabled: true })
+    const bookWithTwoChapters = { ...baseChapterData.book, verses: [20, 20] }
+    clientVerseTexts = [{ verse: 1, text_html: 'Chapter 1 English' }]
+    loaderData = {
+      ...baseChapterData,
+      book: bookWithTwoChapters,
+      chapter: 1,
+      verseTexts: [{ verse: 1, text_html: '第1章の日本語' }],
+    }
+    const { rerender } = render(<ChapterPage />)
+    expect(await screen.findByText('Chapter 1 English')).toBeInTheDocument()
+
+    // SPA遷移（同一マウントのまま props/loaderData だけ更新される）を模す
+    clientVerseTexts = [{ verse: 1, text_html: 'Chapter 2 English' }]
+    loaderData = {
+      ...baseChapterData,
+      book: bookWithTwoChapters,
+      chapter: 2,
+      verseTexts: [{ verse: 1, text_html: '第2章の日本語' }],
+    }
+    rerender(<ChapterPage />)
+
+    expect(screen.getByText('第2章の日本語')).toBeInTheDocument()
+    expect(screen.queryByText('Chapter 1 English')).toBeNull()
+
+    expect(await screen.findByText('Chapter 2 English')).toBeInTheDocument()
+  })
+
   it('併記表示が無効なとき、第2言語の節本文は表示しない', () => {
     loaderData = {
       ...baseChapterData,

@@ -101,10 +101,11 @@ function useSecondaryVerseTexts(
   const versesKey = verses?.join(',') ?? ''
 
   useEffect(() => {
-    if (!enabled) {
-      setTexts(new Map())
-      return
-    }
+    // 章・節が切り替わった際に前ページの第2言語テキストが新しい日本語本文と
+    // 誤って組み合わさって表示されないよう、依存値が変わるたびに必ずクリアする。
+    setTexts(new Map())
+    if (!enabled) return
+
     let cancelled = false
     // 節本文は変わらないため staleTime: Infinity でキャッシュし、
     // ON/OFF を切り替えるたびの再取得を避ける。
