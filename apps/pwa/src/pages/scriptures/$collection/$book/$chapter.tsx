@@ -341,7 +341,7 @@ function VerseView({ book, chapter, collection, verses, posts, verseTexts, canCo
               verse={vt.verse}
               textHtml={vt.text_html}
               textHtmlSecondary={secondaryTexts.get(vt.verse)}
-              secondaryLang={bilingual ? SECONDARY_LANGUAGE : undefined}
+              secondaryLang={SECONDARY_LANGUAGE}
               showNumber={!book.isFrontMatter}
             />
           ))}
@@ -541,7 +541,7 @@ function ChapterView({
                   verse={verse}
                   textHtml={textHtml}
                   textHtmlSecondary={secondaryTexts.get(verse)}
-                  secondaryLang={bilingual ? SECONDARY_LANGUAGE : undefined}
+                  secondaryLang={SECONDARY_LANGUAGE}
                   mode={mode}
                   selected={isSelected}
                   onSelect={(v) => setSelection(toggleVerse(selection, v))}

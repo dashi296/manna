@@ -88,32 +88,27 @@ function RootLayout() {
     registerServiceWorker()
   }, [])
 
-  if (isAuthPage) {
-    return (
-      <QueryClientProvider client={queryClient}>
-        <Outlet />
-        {isDev && <DevTools queryClient={queryClient} />}
-      </QueryClientProvider>
-    )
-  }
-
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <SidebarProvider defaultOpen={sidebarDefaultOpen}>
-          <AppSidebar />
-          <SidebarInset className="flex flex-col min-h-screen min-w-0">
-            <main className="flex-1 pb-[var(--bottom-nav-h)] lg:pb-0">
-              <div className={containerClass}>
-                <Outlet />
-              </div>
-            </main>
-            <InstallPwaBanner />
-            <BottomNav />
-          </SidebarInset>
-        </SidebarProvider>
-      </TooltipProvider>
-      {isDev && <DevTools queryClient={queryClient} />}
+      {isAuthPage ? (
+        <Outlet />
+      ) : (
+        <TooltipProvider>
+          <SidebarProvider defaultOpen={sidebarDefaultOpen}>
+            <AppSidebar />
+            <SidebarInset className="flex flex-col min-h-screen min-w-0">
+              <main className="flex-1 pb-[var(--bottom-nav-h)] lg:pb-0">
+                <div className={containerClass}>
+                  <Outlet />
+                </div>
+              </main>
+              <InstallPwaBanner />
+              <BottomNav />
+            </SidebarInset>
+          </SidebarProvider>
+        </TooltipProvider>
+      )}
+      {isDev && <DevTools />}
     </QueryClientProvider>
   )
 }
