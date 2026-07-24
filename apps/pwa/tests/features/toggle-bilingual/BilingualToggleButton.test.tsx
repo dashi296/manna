@@ -1,26 +1,35 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BilingualToggleButton } from '@/features/toggle-bilingual'
+import { useBilingualDisplayStore } from '@/entities/bilingual-display'
 
 describe('BilingualToggleButton', () => {
-  it('active=false のとき「オンにする」ラベルで aria-pressed=false', () => {
-    render(<BilingualToggleButton active={false} onToggle={vi.fn()} />)
+  beforeEach(() => {
+    localStorage.clear()
+    useBilingualDisplayStore.setState({ enabled: false })
+  })
+
+  it('enabled=false のとき「オンにする」ラベルで aria-pressed=false', () => {
+    render(<BilingualToggleButton />)
     const btn = screen.getByRole('button', { name: '日英併記表示をオンにする' })
     expect(btn).toHaveAttribute('aria-pressed', 'false')
   })
 
-  it('active=true のとき「オフにする」ラベルで aria-pressed=true', () => {
-    render(<BilingualToggleButton active={true} onToggle={vi.fn()} />)
-    const btn = screen.getByRole('button', { name: '日英併記表示をオフにする' })
-    expect(btn).toHaveAttribute('aria-pressed', 'true')
+  it('クリックするとストアの enabled が反転し「オフにする」ラベルに切り替わる', async () => {
+    const user = userEvent.setup()
+    render(<BilingualToggleButton />)
+    await user.click(screen.getByRole('button', { name: '日英併記表示をオンにする' }))
+    expect(await screen.findByRole('button', { name: '日英併記表示をオフにする' })).toBeInTheDocument()
+    expect(useBilingualDisplayStore.getState().enabled).toBe(true)
   })
 
-  it('クリックで onToggle が呼ばれる', async () => {
-    const onToggle = vi.fn()
+  it('enabled=true 状態でクリックすると解除される', async () => {
+    useBilingualDisplayStore.setState({ enabled: true })
     const user = userEvent.setup()
-    render(<BilingualToggleButton active={false} onToggle={onToggle} />)
-    await user.click(screen.getByRole('button', { name: '日英併記表示をオンにする' }))
-    expect(onToggle).toHaveBeenCalledOnce()
+    render(<BilingualToggleButton />)
+    await user.click(screen.getByRole('button', { name: '日英併記表示をオフにする' }))
+    expect(await screen.findByRole('button', { name: '日英併記表示をオンにする' })).toBeInTheDocument()
+    expect(useBilingualDisplayStore.getState().enabled).toBe(false)
   })
 })

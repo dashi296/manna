@@ -45,19 +45,30 @@ export const LANGUAGES = {
 - `COPY` の列リストに `language` を追加する
 - `supabase/seed-verses.sql` は日英両方の行を含むようになる（行数はほぼ倍増）。`db-reset.sh` 側の変更は不要（同じファイルを読み込むだけ）
 
-## クエリ / ローダー変更（`pages/scriptures/$collection/$book/$chapter.tsx`）
+## 状態管理（`entities/bilingual-display`）
 
-- `queryVerseTexts` を `languages: string[]` を受け取る汎用シグネチャにする（`.in('language', languages)`）。呼び出し側で `bilingual` が false なら `['ja']`、true なら `['ja', SECONDARY_LANGUAGE]` を渡す
+併記表示のON/OFFは `zustand` の `persist` ミドルウェアで `localStorage` に保存する（`entities/bookmark` と同じパターン）。URL検索パラメータは使わない。
+
+```ts
+type State = {
+  enabled: boolean
+  toggle: () => void
+}
+```
+
+localStorage キーは `manna:bilingual-display:v1`。SSR/初回クライアントレンダーは `enabled: false` で一致させ、mount 後に永続化された値へ切り替える（`useIsBookmarked` と同じ `useMounted` ガードパターン、`useBilingualEnabled()`）。
+
+## クエリ変更（`pages/scriptures/$collection/$book/$chapter.tsx`）
+
+- 併記表示の状態はクライアントのみの `localStorage` に存在するため、SSR ローダーは事前にON/OFFを知ることができない。`queryVerseTexts`（SSR）は常に `language='ja'` のみを取得する（通常閲覧時のクエリコストは常に変わらない）
+- 併記表示がONのとき（`useBilingualEnabled()` が `true` を返したとき）だけ、クライアント側から `@/shared/lib/supabase`（ブラウザ用クライアント）経由で `language=SECONDARY_LANGUAGE` の節テキストを追加取得する（`queryClientVerseTexts` + `useSecondaryVerseTexts` フック）。ONにした直後や、既にONの状態でページを開いた直後は、取得が完了するまで一瞬日本語のみの表示になる（トレードオフとして許容）
 - 「日本語と一緒に出す2言語目」は `shared/config` 配下の定数 `SECONDARY_LANGUAGE = 'en'` に一元化する。将来ピッカーUIを足す際は、この定数を選択値に差し替えるだけで済む
-- 取得した行は節ごとにグルーピングし、`Map<number, { ja?: string; secondary?: string }>` の形にしてからコンポーネントへ渡す（コンポーネント側の型変更を最小限にする）
-- `ChapterSearch` / `loaderDeps` に `bilingual?: boolean` を追加し、既存の `verses`/`select`/`mode` と同様に URL 検索パラメータとして扱う（`?bilingual=true`）。SSR ローダーがこの値を見て言語配列を組み立てる
-- `bilingual=false`（デフォルト）のときは従来通り日本語のみ1クエリ。英語行を余分に取得するのはONのときだけなので、通常閲覧時のクエリコストは変わらない
 
 ## UI / トグル・表示
 
 ### トグルボタン
 
-`ChapterView` と `VerseView` のヘッダーアクション（`BookmarkButton` の隣）に日英切替ボタンを追加する。押すと `bilingual` 検索パラメータをON/OFFし、ローダーが再実行される。ON/OFF 状態は URL に載るのみで、DB や localStorage への永続化はしない（セッションやページ間で自動的に引き継がれることは意図しない — 各ページ表示時の一時的な表示設定）。
+`ChapterView` と `VerseView` のヘッダーアクション（`BookmarkButton` の隣）に日英切替ボタンを追加する。`features/toggle-bilingual` の `BilingualToggleButton` は props を持たず、`entities/bilingual-display` のストアを直接購読・操作する（`BookmarkButton` と同じ構成）。ON/OFF 状態は `localStorage` に永続化され、ページ・セッションをまたいで引き継がれる。
 
 ### レイアウト
 
@@ -66,18 +77,15 @@ export const LANGUAGES = {
 - `lg` 幅以上: `lg:flex-row` で左右2カラムに切替（節番号は日本語列の左に固定、レイアウトはブレークポイントで自動切替。JS判定は不要）
 - 第2言語テキストは既存の `SanitizedVerseHtml` を再利用し、`<span lang={secondaryLang}>` でラップしてスクリーンリーダー・ブラウザの言語処理に正しい言語コードを伝える
 
-### ナビゲーション時のパラメータ引き継ぎ
-
-`VerseRow` 内の `Link` を `search={{ verses: [verse] }}` の静的オブジェクトから `search: (prev) => ({ ...prev, verses: [verse] })` に変更し、章一覧から単一節ビューへ移動しても `bilingual` の状態を保持する。
-
 ## テスト方針
 
 TDD で進める（失敗テスト → 実装 → 通過）。
 
+- `tests/entities/bilingual-display/bilingualDisplayStore.test.ts`: 初期値・`toggle()`・`localStorage` への永続化を確認
+- `tests/features/toggle-bilingual/BilingualToggleButton.test.tsx`: クリックでストアの `enabled` が反転し、ラベル/`aria-pressed` が切り替わることを確認
 - `tests/shared/ui/ScriptureText.test.tsx`: `textHtmlSecondary` 指定時に第2言語テキストが `lang` 属性付きで描画されることを確認
 - `tests/features/select-scripture-verses/VerseRow.test.tsx`: 同様に secondary テキストの描画、`lg` 幅クラス（2カラム）とデフォルト（縦並び）のクラス切替を確認
-- `tests/pages/scriptures/chapter.test.tsx`: `bilingual` 検索パラメータで `queryVerseTexts` に渡る言語配列が `['ja']` / `['ja', 'en']` のどちらになるか、既存の `mode`/`select` パラメータのテストと同様に検証
-- 新規トグルボタンコンポーネントのテスト: クリックで `bilingual` 検索パラメータがON/OFFすること
+- `tests/pages/scriptures/chapter.test.tsx`: `@/shared/lib/supabase` をモックし、併記表示ONのときにクライアント取得した第2言語テキストが表示され、OFFのときは表示されないことを確認
 
 ## ロールアウト手順
 
@@ -93,4 +101,3 @@ TDD で進める（失敗テスト → 実装 → 通過）。
 - 3言語以上の同時表示
 - 日英以外の言語データの取得・投入（レジストリへのエントリ追加自体は今回のスクリプト変更で可能になるが、実際に英語以外のデータを取得するのは今回のスコープ外）
 - 節テキストの全文検索の言語別対応
-- 日英併記トグルの状態をユーザー設定として永続化すること（DB・localStorage）

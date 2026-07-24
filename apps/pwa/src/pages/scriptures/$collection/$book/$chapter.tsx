@@ -4,6 +4,7 @@ import { createServerFn } from '@tanstack/react-start'
 import { getBook, getCollection, buildScriptureUrl, getScriptureLabel } from '@/entities/scripture'
 import { PostCard, POST_SELECT, CommenterBubble, type PostWithUser } from '@/entities/post'
 import { createSupabaseServer } from '@/shared/lib/auth'
+import { supabase } from '@/shared/lib/supabase'
 import { EmptyState, PageHeader, ScriptureText } from '@/shared/ui'
 import { Button } from '@/shared/ui/button'
 import { PostComposerSheet } from '@/widgets/post-composer-sheet'
@@ -26,11 +27,11 @@ import { getCircleUserIds } from '@/entities/user'
 import type { AvatarStackItem } from '@/shared/ui'
 import { useBookmarkStore } from '@/entities/bookmark'
 import { BookmarkButton } from '@/features/toggle-bookmark'
+import { useBilingualEnabled } from '@/entities/bilingual-display'
 import { BilingualToggleButton } from '@/features/toggle-bilingual'
 import { SECONDARY_LANGUAGE } from '@/shared/config/scriptureLanguage'
 
-type VerseText = { verse: number; language: string; text_html: string }
-type VerseTextPair = { ja: string; secondary?: string }
+type VerseTextRow = { verse: number; text_html: string }
 type Book = NonNullable<ReturnType<typeof getBook>>
 type SupabaseServer = Awaited<ReturnType<typeof createSupabaseServer>>
 type ChapterRef = { collection: string; book: string; chapter: number }
@@ -52,46 +53,74 @@ async function queryUserAndCircle(supabase: SupabaseServer) {
 async function queryVerseTexts(
   supabase: SupabaseServer,
   { collection, book, chapter }: ChapterRef,
-  languages: string[],
   verses?: number[],
 ) {
   let query = supabase
     .from('scripture_verses')
-    .select('verse, language, text_html')
+    .select('verse, text_html')
     .eq('collection_id', collection)
     .eq('book_id', book)
     .eq('chapter', chapter)
-    .in('language', languages)
+    .eq('language', 'ja')
     .order('verse', { ascending: true })
   if (verses?.length) {
     query = query.in('verse', verses)
   }
   const { data } = await query
-  return (data ?? []) as VerseText[]
+  return (data ?? []) as VerseTextRow[]
 }
 
-// bilingual=false のときは 'ja' のみ取得するため、この関数は常に ja/secondary の
-// 2言語までしか扱わない前提でグルーピングする（3言語以上の同時表示は Out of Scope）。
-function groupVerseTexts(rows: VerseText[]): Map<number, VerseTextPair> {
-  const map = new Map<number, VerseTextPair>()
-  for (const row of rows) {
-    const entry = map.get(row.verse) ?? { ja: '' }
-    if (row.language === 'ja') entry.ja = row.text_html
-    else entry.secondary = row.text_html
-    map.set(row.verse, entry)
+// 併記表示（entities/bilingual-display）はクライアントのみの状態なので、SSR ローダーは
+// 常に日本語のみ取得する。ON のときだけブラウザから第2言語をこの関数で追加取得する。
+async function queryClientVerseTexts(
+  { collection, book, chapter }: ChapterRef,
+  verses?: number[],
+): Promise<VerseTextRow[]> {
+  let query = supabase
+    .from('scripture_verses')
+    .select('verse, text_html')
+    .eq('collection_id', collection)
+    .eq('book_id', book)
+    .eq('chapter', chapter)
+    .eq('language', SECONDARY_LANGUAGE)
+    .order('verse', { ascending: true })
+  if (verses?.length) {
+    query = query.in('verse', verses)
   }
-  return map
+  const { data } = await query
+  return (data ?? []) as VerseTextRow[]
 }
 
-export function resolveQueryLanguages(bilingual: boolean): string[] {
-  return bilingual ? ['ja', SECONDARY_LANGUAGE] : ['ja']
+function useSecondaryVerseTexts(
+  loc: ChapterRef,
+  verses: number[] | undefined,
+  enabled: boolean,
+): Map<number, string> {
+  const [texts, setTexts] = useState<Map<number, string>>(new Map())
+  const versesKey = verses?.join(',') ?? ''
+
+  useEffect(() => {
+    if (!enabled) {
+      setTexts(new Map())
+      return
+    }
+    let cancelled = false
+    queryClientVerseTexts(loc, verses).then((rows) => {
+      if (!cancelled) setTexts(new Map(rows.map((r) => [r.verse, r.text_html])))
+    })
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled, loc.collection, loc.book, loc.chapter, versesKey])
+
+  return texts
 }
 
 const fetchVerseData = createServerFn({ method: 'POST' })
-  .inputValidator((data: ChapterRef & { verses: number[]; bilingual: boolean }) => data)
+  .inputValidator((data: ChapterRef & { verses: number[] }) => data)
   .handler(async (ctx) => {
-    const { collection, book, chapter, verses, bilingual } = ctx.data
-    const languages = resolveQueryLanguages(bilingual)
+    const { collection, book, chapter, verses } = ctx.data
     const serverSupabase = await createSupabaseServer()
     const [{ data: posts }, verseTexts, userId] = await Promise.all([
       serverSupabase
@@ -102,17 +131,16 @@ const fetchVerseData = createServerFn({ method: 'POST' })
         .eq('scripture_chapter', chapter)
         .overlaps('scripture_verses', verses)
         .order('created_at', { ascending: false }),
-      queryVerseTexts(serverSupabase, ctx.data, languages, verses),
+      queryVerseTexts(serverSupabase, ctx.data, verses),
       queryCurrentUserId(serverSupabase),
     ])
     return { posts: (posts ?? []) as PostWithUser[], verseTexts, userId }
   })
 
 const fetchChapterData = createServerFn({ method: 'POST' })
-  .inputValidator((data: ChapterRef & { bilingual: boolean }) => data)
+  .inputValidator((data: ChapterRef) => data)
   .handler(async (ctx) => {
-    const { collection, book, chapter, bilingual } = ctx.data
-    const languages = resolveQueryLanguages(bilingual)
+    const { collection, book, chapter } = ctx.data
     const serverSupabase = await createSupabaseServer()
 
     const [
@@ -137,7 +165,7 @@ const fetchChapterData = createServerFn({ method: 'POST' })
         .eq('scripture_chapter', chapter)
         .not('scripture_verses', 'is', null)
         .order('created_at', { ascending: false }),
-      queryVerseTexts(serverSupabase, ctx.data, languages),
+      queryVerseTexts(serverSupabase, ctx.data),
       queryUserAndCircle(serverSupabase),
     ])
 
@@ -184,7 +212,6 @@ type ChapterSearch = {
   verses?: number[]
   select?: number[]
   mode?: SelectionMode
-  bilingual?: boolean
 }
 
 export const Route = createFileRoute('/scriptures/$collection/$book/$chapter')({
@@ -192,11 +219,9 @@ export const Route = createFileRoute('/scriptures/$collection/$book/$chapter')({
     verses: search.verses !== undefined ? parseSelection(search.verses) : undefined,
     select: search.select !== undefined ? parseSelection(search.select) : undefined,
     mode: search.mode === 'select' ? 'select' : undefined,
-    bilingual: search.bilingual === true || search.bilingual === 'true' ? true : undefined,
   }),
   loaderDeps: ({ search }) => ({
     verses: search.verses,
-    bilingual: search.bilingual,
   }),
   loader: async ({ params, deps }) => {
     const book = getBook(params.collection, params.book)
@@ -206,12 +231,11 @@ export const Route = createFileRoute('/scriptures/$collection/$book/$chapter')({
     if (chapterNum < 1 || chapterNum > book.chapters) throw notFound()
 
     const base = { collection: params.collection, book: params.book, chapter: chapterNum }
-    const bilingual = deps.bilingual ?? false
 
     if (deps.verses?.length) {
       const verseCount = book.verses[chapterNum - 1]
       if (deps.verses.some((v) => v < 1 || v > verseCount)) throw notFound()
-      const { posts, verseTexts, userId } = await fetchVerseData({ data: { ...base, verses: deps.verses, bilingual } })
+      const { posts, verseTexts, userId } = await fetchVerseData({ data: { ...base, verses: deps.verses } })
       return {
         book, chapter: chapterNum, collection: params.collection,
         mode: 'verse' as const, verses: deps.verses,
@@ -221,7 +245,7 @@ export const Route = createFileRoute('/scriptures/$collection/$book/$chapter')({
       }
     }
 
-    const data = await fetchChapterData({ data: { ...base, bilingual } })
+    const data = await fetchChapterData({ data: base })
 
     return {
       book, chapter: chapterNum, collection: params.collection,
@@ -277,33 +301,22 @@ type VerseViewProps = {
   collection: string
   verses: number[]
   posts: PostWithUser[]
-  verseTexts: VerseText[]
+  verseTexts: VerseTextRow[]
   canCompose: boolean
 }
 
 function VerseView({ book, chapter, collection, verses, posts, verseTexts, canCompose }: VerseViewProps) {
   const router = useRouter()
-  const navigate = Route.useNavigate()
-  const search = Route.useSearch()
   const [sheetOpen, setSheetOpen] = useState(false)
   const loc = { collection, book: book.id, chapter }
   const scriptureLabel = getScriptureLabel({ ...loc, verses }, book)
   const officialUrl = buildScriptureUrl({ ...loc, verses }, book)
-  const bilingual = search.bilingual ?? false
-  const verseTextMap = useMemo(() => groupVerseTexts(verseTexts), [verseTexts])
+  const bilingual = useBilingualEnabled()
+  const secondaryTexts = useSecondaryVerseTexts(loc, verses, bilingual)
 
   const onSheetOpenChange = (open: boolean) => {
     setSheetOpen(open)
     if (!open) router.invalidate()
-  }
-
-  const toggleBilingual = () => {
-    navigate({
-      to: '/scriptures/$collection/$book/$chapter',
-      params: { collection, book: book.id, chapter: String(chapter) },
-      search: (prev) => ({ ...prev, bilingual: prev.bilingual ? undefined : true }),
-      replace: true,
-    })
   }
 
   return (
@@ -315,7 +328,7 @@ function VerseView({ book, chapter, collection, verses, posts, verseTexts, canCo
         action={
           <div className="flex items-center gap-2">
             {canCompose && <ComposeButton onClick={() => setSheetOpen(true)} label="投稿する" />}
-            <BilingualToggleButton active={bilingual} onToggle={toggleBilingual} />
+            <BilingualToggleButton />
             <BookmarkButton loc={loc} />
           </div>
         }
@@ -332,14 +345,14 @@ function VerseView({ book, chapter, collection, verses, posts, verseTexts, canCo
         </a>
         <span className="text-xs ml-3" style={{ color: 'var(--sea-ink-soft)' }}>新着順</span>
       </div>
-      {verseTextMap.size > 0 && (
+      {verseTexts.length > 0 && (
         <div className="px-4 py-3 border-b" style={{ borderColor: 'var(--line)', background: 'var(--surface)' }}>
-          {[...verseTextMap.entries()].map(([verse, vt]) => (
+          {verseTexts.map((vt) => (
             <ScriptureText
-              key={verse}
-              verse={verse}
-              textHtml={vt.ja}
-              textHtmlSecondary={vt.secondary}
+              key={vt.verse}
+              verse={vt.verse}
+              textHtml={vt.text_html}
+              textHtmlSecondary={secondaryTexts.get(vt.verse)}
               secondaryLang={bilingual ? SECONDARY_LANGUAGE : undefined}
               showNumber={!book.isFrontMatter}
             />
@@ -371,7 +384,7 @@ type ChapterViewProps = {
   chapter: number
   collection: string
   posts: PostWithUser[]
-  verseTexts: VerseText[]
+  verseTexts: VerseTextRow[]
   canCompose: boolean
   chapterCommenters: AvatarStackItem[]
   circlePosts: PostWithUser[]
@@ -389,7 +402,9 @@ function ChapterView({
   const search = Route.useSearch()
   const navigate = Route.useNavigate()
   const maxVerse = book.verses[chapter - 1]
-  const bilingual = search.bilingual ?? false
+  const loc = { collection, book: book.id, chapter }
+  const bilingual = useBilingualEnabled()
+  const secondaryTexts = useSecondaryVerseTexts(loc, undefined, bilingual)
 
   const storedUserId = useSelectedUserId()
   const selectUser = useSelectedUserStore((s) => s.select)
@@ -417,14 +432,16 @@ function ChapterView({
     return { versesWithMarker: verses, postsByVerse: byVerse }
   }, [selectedUserPosts])
 
-  const verseTextMap = useMemo(() => groupVerseTexts(verseTexts), [verseTexts])
+  const verseTextMap = useMemo(
+    () => new Map(verseTexts.map((vt) => [vt.verse, vt.text_html])),
+    [verseTexts],
+  )
   const verseNumbers = Array.from({ length: maxVerse }, (_, i) => i + 1)
   const selection = useMemo(
     () => parseSelection(search.select, maxVerse),
     [search.select, maxVerse],
   )
   const mode: SelectionMode = canCompose && search.mode === 'select' ? 'select' : 'read'
-  const loc = { collection, book: book.id, chapter }
 
   const patchSearch = (patch: Partial<ChapterSearch>, replace = true) => {
     navigate({
@@ -469,10 +486,7 @@ function ChapterView({
           onSelectVerses={enterSelectMode}
         />
       )}
-      <BilingualToggleButton
-        active={bilingual}
-        onToggle={() => patchSearch({ bilingual: bilingual ? undefined : true })}
-      />
+      <BilingualToggleButton />
       <BookmarkButton loc={loc} />
     </div>
   )
@@ -518,7 +532,7 @@ function ChapterView({
         }
       >
         {verseNumbers.map((verse, i) => {
-          const vt = verseTextMap.get(verse)
+          const textHtml = verseTextMap.get(verse)
           const isSelected = mode === 'select' && selection.includes(verse)
           const marker =
             showMarkers && versesWithMarker.has(verse) && selectedUser
@@ -537,8 +551,8 @@ function ChapterView({
                   book={book.id}
                   chapter={chapter}
                   verse={verse}
-                  textHtml={vt?.ja}
-                  textHtmlSecondary={vt?.secondary}
+                  textHtml={textHtml}
+                  textHtmlSecondary={secondaryTexts.get(verse)}
                   secondaryLang={bilingual ? SECONDARY_LANGUAGE : undefined}
                   mode={mode}
                   selected={isSelected}

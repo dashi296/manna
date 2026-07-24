@@ -17,7 +17,7 @@ type TestLoaderData = {
   mode: 'chapter' | 'verse'
   verses: number[]
   posts: PostWithUser[]
-  verseTexts: { verse: number; language: string; text_html: string }[]
+  verseTexts: { verse: number; text_html: string }[]
   userId: string | null
   chapterCommenters: { userId: string; name: string; avatarUrl: string | null }[]
   circlePosts: PostWithUser[]
@@ -36,8 +36,8 @@ const baseChapterData: TestLoaderData = {
   verses: [],
   posts: [],
   verseTexts: [
-    { verse: 1, language: 'ja', text_html: '一節の本文' },
-    { verse: 2, language: 'ja', text_html: '二節の本文' },
+    { verse: 1, text_html: '一節の本文' },
+    { verse: 2, text_html: '二節の本文' },
   ],
   userId: 'user-1',
   chapterCommenters: [],
@@ -45,8 +45,11 @@ const baseChapterData: TestLoaderData = {
 }
 
 let loaderData: TestLoaderData
-let search: { select?: number[]; mode?: 'select'; bilingual?: boolean } = { select: [1, 2] }
+let search: { select?: number[]; mode?: 'select' } = { select: [1, 2] }
 const navigateSpy = vi.fn()
+
+// 併記表示ONのときにクライアント側で取得する第2言語の節本文（テストごとに差し替える）
+let clientVerseTexts: { verse: number; text_html: string }[] = []
 
 vi.mock('@tanstack/react-router', async () => {
   const { routerMock } = await import('../../helpers/tanstack')
@@ -59,12 +62,28 @@ vi.mock('@tanstack/react-router', async () => {
 
 vi.mock('@tanstack/react-start', async () => (await import('../../helpers/tanstack')).startMock())
 
-vi.mock('@/shared/lib/supabase', () => ({
-  supabase: {
-    from: () => ({ insert: vi.fn().mockResolvedValue({ error: null }) }),
-    auth: { getUser: vi.fn().mockResolvedValue({ data: { user: null } }) },
-  },
-}))
+vi.mock('@/shared/lib/supabase', () => {
+  const verseQueryChain = () => {
+    const chain = {
+      select: () => chain,
+      eq: () => chain,
+      in: () => chain,
+      order: () => chain,
+      then: (resolve: (result: { data: typeof clientVerseTexts }) => void) =>
+        resolve({ data: clientVerseTexts }),
+    }
+    return chain
+  }
+  return {
+    supabase: {
+      from: (table: string) =>
+        table === 'scripture_verses'
+          ? verseQueryChain()
+          : { insert: vi.fn().mockResolvedValue({ error: null }) },
+      auth: { getUser: vi.fn().mockResolvedValue({ data: { user: null } }) },
+    },
+  }
+})
 
 let ChapterPage: React.ComponentType
 
@@ -83,12 +102,15 @@ describe('ChapterPage', () => {
   beforeEach(async () => {
     loaderData = baseChapterData
     search = { select: [1, 2] }
+    clientVerseTexts = []
     navigateSpy.mockClear()
     localStorage.clear()
     const { useSelectedUserStore } = await import('@/features/select-verse-view')
     useSelectedUserStore.setState({ selectedUserId: null })
     const { useBookmarkStore } = await import('@/entities/bookmark')
     useBookmarkStore.setState({ readingPosition: null, bookmarks: [] })
+    const { useBilingualDisplayStore } = await import('@/entities/bilingual-display')
+    useBilingualDisplayStore.setState({ enabled: false })
   })
 
   it('選択中でも「章に投稿」は節指定なしでシートを開く', async () => {
@@ -367,36 +389,32 @@ describe('ChapterPage', () => {
     expect(screen.queryByText('1')).toBeNull()
   })
 
-  it('日英併記ボタンをクリックすると bilingual=true で navigate される', async () => {
-    search = {}
+  it('日英併記ボタンをクリックするとストアの enabled が切り替わる（URLは変化しない）', async () => {
+    const { useBilingualDisplayStore } = await import('@/entities/bilingual-display')
     const user = userEvent.setup()
     render(<ChapterPage />)
     await user.click(screen.getByRole('button', { name: '日英併記表示をオンにする' }))
-    expect(navigateSpy).toHaveBeenCalled()
-    const lastCall = navigateSpy.mock.calls.at(-1)?.[0]
-    const result = lastCall.search({})
-    expect(result.bilingual).toBe(true)
+    expect(useBilingualDisplayStore.getState().enabled).toBe(true)
+    expect(navigateSpy).not.toHaveBeenCalled()
   })
 
-  it('bilingual=true のとき第2言語の節本文も表示する', () => {
-    search = { bilingual: true }
+  it('併記表示が有効なとき、クライアント側で取得した第2言語の節本文を表示する', async () => {
+    const { useBilingualDisplayStore } = await import('@/entities/bilingual-display')
+    useBilingualDisplayStore.setState({ enabled: true })
+    clientVerseTexts = [{ verse: 1, text_html: 'Verse one in English' }]
     loaderData = {
       ...baseChapterData,
-      verseTexts: [
-        { verse: 1, language: 'ja', text_html: '一節の日本語' },
-        { verse: 1, language: 'en', text_html: 'Verse one in English' },
-      ],
+      verseTexts: [{ verse: 1, text_html: '一節の日本語' }],
     }
     render(<ChapterPage />)
     expect(screen.getByText('一節の日本語')).toBeInTheDocument()
-    expect(screen.getByText('Verse one in English')).toBeInTheDocument()
+    expect(await screen.findByText('Verse one in English')).toBeInTheDocument()
   })
 
-  it('bilingual=false のとき第2言語の節本文は表示しない', () => {
-    search = {}
+  it('併記表示が無効なとき、第2言語の節本文は表示しない', () => {
     loaderData = {
       ...baseChapterData,
-      verseTexts: [{ verse: 1, language: 'ja', text_html: '一節の日本語' }],
+      verseTexts: [{ verse: 1, text_html: '一節の日本語' }],
     }
     render(<ChapterPage />)
     expect(screen.getByText('一節の日本語')).toBeInTheDocument()

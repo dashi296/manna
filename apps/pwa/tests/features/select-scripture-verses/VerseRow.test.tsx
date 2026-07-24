@@ -191,34 +191,4 @@ describe('VerseRow bilingual', () => {
     const numberSpan = screen.getByText('19')
     expect(numberSpan.nextElementSibling?.tagName).toBe('SPAN')
   })
-
-  it('mode="read" のリンクは既存の検索パラメータ（bilingual等）を引き継ぐ', async () => {
-    const rootRoute = createRootRoute({
-      component: () => <Outlet />,
-      notFoundComponent: () => <div>404</div>,
-    })
-    const chapterRoute = createRoute({
-      getParentRoute: () => rootRoute,
-      path: '/scriptures/$collection/$book/$chapter',
-      validateSearch: (search: Record<string, unknown>) => ({
-        bilingual: search.bilingual === true ? true : undefined,
-      }),
-      component: () => (
-        <VerseRow {...baseProps} mode="read" selected={false} onSelect={vi.fn()} />
-      ),
-    })
-    const router = createRouter({
-      routeTree: rootRoute.addChildren([chapterRoute]),
-      history: createMemoryHistory({
-        initialEntries: ['/scriptures/bofm/mosiah/3?bilingual=true'],
-      }),
-    })
-    render(<RouterProvider router={router} />)
-    await waitFor(() => {
-      expect(screen.getByRole('link')).toHaveAttribute(
-        'href',
-        expect.stringContaining('bilingual'),
-      )
-    })
-  })
 })

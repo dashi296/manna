@@ -133,7 +133,7 @@ export function VerseRow({
       <Link
         to="/scriptures/$collection/$book/$chapter"
         params={{ collection, book, chapter: String(chapter) }}
-        search={(prev) => ({ ...prev, verses: [verse] })}
+        search={{ verses: [verse] }}
         className="block"
       >
         {inner}
