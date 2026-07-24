@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, fireEvent, act } from '@testing-library/react'
-import { SwipeableChapterView } from '@/features/swipe-chapter-navigation'
+import { SwipeableChapterView, SWIPE_ANIMATION_MS } from '@/features/swipe-chapter-navigation'
 
 const mockNavigate = vi.fn()
 
@@ -21,7 +21,7 @@ function drag(el: HTMLElement, startX: number, endX: number) {
   fireEvent.pointerMove(el, { pointerId: 1, clientX: endX })
   fireEvent.pointerUp(el, { pointerId: 1, clientX: endX })
   act(() => {
-    vi.advanceTimersByTime(200)
+    vi.advanceTimersByTime(SWIPE_ANIMATION_MS)
   })
 }
 
@@ -95,6 +95,52 @@ describe('SwipeableChapterView', () => {
     )
     const el = setContainerWidth(container, 400)
     drag(el, 200, 100) // 前方向だが移動先なし
+    expect(mockNavigate).not.toHaveBeenCalled()
+  })
+
+  it('複数タッチ：2番目のポインタIDが最初のドラッグをハイジャックしない', () => {
+    const { container } = render(
+      <SwipeableChapterView loc={loc}>
+        <p>content</p>
+      </SwipeableChapterView>,
+    )
+    const el = setContainerWidth(container, 400)
+    // 1番目のポインタでドラッグ開始
+    fireEvent.pointerDown(el, { pointerId: 1, clientX: 100 })
+    fireEvent.pointerMove(el, { pointerId: 1, clientX: 150 })
+    // 2番目のポインタが触れる（無視されるべき）
+    fireEvent.pointerDown(el, { pointerId: 2, clientX: 100 })
+    // 1番目のポインタが続ける（ハイジャックされずに機能するべき）
+    fireEvent.pointerMove(el, { pointerId: 1, clientX: 200 })
+    fireEvent.pointerUp(el, { pointerId: 1, clientX: 200 })
+    act(() => {
+      vi.advanceTimersByTime(SWIPE_ANIMATION_MS)
+    })
+    // 1番目のポインタの +100px ドラッグで navigateされるべき
+    expect(mockNavigate).toHaveBeenCalledWith({
+      to: '/scriptures/$collection/$book/$chapter',
+      params: { collection: 'bofm', book: '1-ne', chapter: '6' },
+    })
+  })
+
+  it('アンマウント時に待機中のnavigateタイムアウトがキャンセルされる', () => {
+    const { container, unmount } = render(
+      <SwipeableChapterView loc={loc}>
+        <p>content</p>
+      </SwipeableChapterView>,
+    )
+    const el = setContainerWidth(container, 400)
+    // ドラッグしてnavigateをスケジュール
+    fireEvent.pointerDown(el, { pointerId: 1, clientX: 100 })
+    fireEvent.pointerMove(el, { pointerId: 1, clientX: 200 })
+    fireEvent.pointerUp(el, { pointerId: 1, clientX: 200 })
+    // タイムアウト前にアンマウント
+    unmount()
+    // タイマーを進める
+    act(() => {
+      vi.advanceTimersByTime(SWIPE_ANIMATION_MS)
+    })
+    // タイムアウトがキャンセルされていたのでnavigateは呼ばれないはず
     expect(mockNavigate).not.toHaveBeenCalled()
   })
 })

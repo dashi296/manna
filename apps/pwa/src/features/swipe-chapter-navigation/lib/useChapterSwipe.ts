@@ -16,6 +16,7 @@ export function useChapterSwipe(loc: ChapterRef, disabled: boolean) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const dragRef = useRef<DragState | null>(null)
   const deltaRef = useRef(0)
+  const timeoutRef = useRef<number | null>(null)
   const [deltaX, setDeltaX] = useState(0)
   const [animating, setAnimating] = useState(false)
 
@@ -24,6 +25,16 @@ export function useChapterSwipe(loc: ChapterRef, disabled: boolean) {
     dragRef.current = null
     setDeltaX(0)
     setAnimating(false)
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current)
+      timeoutRef.current = null
+    }
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current)
+        timeoutRef.current = null
+      }
+    }
   }, [loc.collection, loc.book, loc.chapter])
 
   const targetFor = (dx: number) =>
@@ -35,7 +46,7 @@ export function useChapterSwipe(loc: ChapterRef, disabled: boolean) {
   }
 
   const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
-    if (disabled || animating) return
+    if (disabled || animating || dragRef.current) return
     const width = containerRef.current?.clientWidth ?? 0
     if (width === 0) return
     dragRef.current = { pointerId: e.pointerId, startX: e.clientX, containerWidth: width }
@@ -60,7 +71,8 @@ export function useChapterSwipe(loc: ChapterRef, disabled: boolean) {
     if (target && Math.abs(current) >= threshold) {
       setAnimating(true)
       applyDelta(current > 0 ? drag.containerWidth : -drag.containerWidth)
-      window.setTimeout(() => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current)
+      timeoutRef.current = window.setTimeout(() => {
         navigate({
           to: '/scriptures/$collection/$book/$chapter',
           params: {
@@ -75,7 +87,8 @@ export function useChapterSwipe(loc: ChapterRef, disabled: boolean) {
 
     setAnimating(true)
     applyDelta(0)
-    window.setTimeout(() => setAnimating(false), SWIPE_ANIMATION_MS)
+    if (timeoutRef.current) clearTimeout(timeoutRef.current)
+    timeoutRef.current = window.setTimeout(() => setAnimating(false), SWIPE_ANIMATION_MS)
   }
 
   const onPointerUp = (e: ReactPointerEvent<HTMLDivElement>) => endDrag(e.pointerId)
