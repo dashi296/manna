@@ -35,12 +35,14 @@ export function useChapterSwipe(loc: ChapterRef, disabled: boolean) {
       timeoutRef.current = null
     }
     clickSuppressorRef.current?.()
+    detachWindowListeners()
     return () => {
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current)
         timeoutRef.current = null
       }
       clickSuppressorRef.current?.()
+      detachWindowListeners()
     }
   }, [loc.collection, loc.book, loc.chapter])
 
@@ -54,14 +56,17 @@ export function useChapterSwipe(loc: ChapterRef, disabled: boolean) {
     setDeltaX(dx)
   }
 
-  const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
-    if (disabled || animating || dragRef.current) return
-    const width = containerRef.current?.clientWidth ?? 0
-    if (width === 0) return
-    dragRef.current = { pointerId: e.pointerId, startX: e.clientX, containerWidth: width, locked: false }
+  // move/up/cancel は要素ではなく window に登録する。マウスドラッグは要素外に
+  // ポインタが出ると暗黙のキャプチャがなく、要素側のリスナーには届かなくなって
+  // dragRef が残り続けてしまうため（setPointerCapture はCDP/一部環境で逆に
+  // pointercancel を誘発することを確認したため使わない）。
+  const detachWindowListeners = () => {
+    window.removeEventListener('pointermove', onWindowPointerMove)
+    window.removeEventListener('pointerup', onWindowPointerUp)
+    window.removeEventListener('pointercancel', onWindowPointerCancel)
   }
 
-  const onPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
+  const onWindowPointerMove = (e: PointerEvent) => {
     const drag = dragRef.current
     if (!drag || drag.pointerId !== e.pointerId) return
     const rawDelta = e.clientX - drag.startX
@@ -94,6 +99,7 @@ export function useChapterSwipe(loc: ChapterRef, disabled: boolean) {
     const drag = dragRef.current
     if (!drag || drag.pointerId !== pointerId) return
     dragRef.current = null
+    detachWindowListeners()
 
     const current = deltaRef.current
     const target = targetFor(current)
@@ -125,15 +131,23 @@ export function useChapterSwipe(loc: ChapterRef, disabled: boolean) {
     timeoutRef.current = window.setTimeout(() => setAnimating(false), SWIPE_ANIMATION_MS)
   }
 
-  const onPointerUp = (e: ReactPointerEvent<HTMLDivElement>) => endDrag(e.pointerId, false)
-  const onPointerCancel = (e: ReactPointerEvent<HTMLDivElement>) => endDrag(e.pointerId, true)
+  const onWindowPointerUp = (e: PointerEvent) => endDrag(e.pointerId, false)
+  const onWindowPointerCancel = (e: PointerEvent) => endDrag(e.pointerId, true)
+
+  const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (disabled || animating || dragRef.current) return
+    const width = containerRef.current?.clientWidth ?? 0
+    if (width === 0) return
+    dragRef.current = { pointerId: e.pointerId, startX: e.clientX, containerWidth: width, locked: false }
+    window.addEventListener('pointermove', onWindowPointerMove)
+    window.addEventListener('pointerup', onWindowPointerUp)
+    window.addEventListener('pointercancel', onWindowPointerCancel)
+  }
 
   return {
     containerRef,
     deltaX,
     animating,
-    handlers: disabled
-      ? undefined
-      : { onPointerDown, onPointerMove, onPointerUp, onPointerCancel },
+    handlers: disabled ? undefined : { onPointerDown },
   }
 }

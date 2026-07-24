@@ -37,6 +37,50 @@ describe('SwipeableChapterView', () => {
     vi.useRealTimers()
   })
 
+  it('要素の外にポインタが出てもwindowで検知してドラッグを継続・確定できる（マウスは暗黙キャプチャがないため）', () => {
+    const { container } = render(
+      <SwipeableChapterView loc={loc}>
+        <p>content</p>
+      </SwipeableChapterView>,
+    )
+    const el = setContainerWidth(container, 400)
+    fireEvent.pointerDown(el, { pointerId: 1, clientX: 200 })
+    // pointermove/pointerupが要素にではなくwindowに（要素の外に出た想定で）届く
+    fireEvent.pointerMove(window, { pointerId: 1, clientX: 100 })
+    fireEvent.pointerUp(window, { pointerId: 1, clientX: 100 })
+    act(() => {
+      vi.advanceTimersByTime(SWIPE_ANIMATION_MS)
+    })
+    expect(mockNavigate).toHaveBeenCalledWith({
+      to: '/scriptures/$collection/$book/$chapter',
+      params: { collection: 'bofm', book: '1-ne', chapter: '6' },
+    })
+  })
+
+  it('要素外でドラッグを終えても次のドラッグが使用不能にならない', () => {
+    const { container } = render(
+      <SwipeableChapterView loc={loc}>
+        <p>content</p>
+      </SwipeableChapterView>,
+    )
+    const el = setContainerWidth(container, 400)
+    // 1回目: 要素外（window）でしきい値未満のまま終える
+    fireEvent.pointerDown(el, { pointerId: 1, clientX: 200 })
+    fireEvent.pointerMove(window, { pointerId: 1, clientX: 190 })
+    fireEvent.pointerUp(window, { pointerId: 1, clientX: 190 })
+    act(() => {
+      vi.advanceTimersByTime(SWIPE_ANIMATION_MS)
+    })
+    expect(mockNavigate).not.toHaveBeenCalled()
+
+    // 2回目: 通常通り要素内でしきい値を超えて確定できるはず
+    drag(el, 200, 100)
+    expect(mockNavigate).toHaveBeenCalledWith({
+      to: '/scriptures/$collection/$book/$chapter',
+      params: { collection: 'bofm', book: '1-ne', chapter: '6' },
+    })
+  })
+
   it('touch-actionにpinch-zoomを含めピンチズームを妨げない', () => {
     const { container } = render(
       <SwipeableChapterView loc={loc}>
