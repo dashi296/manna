@@ -500,15 +500,15 @@ describe('ChapterView スワイプナビゲーション', () => {
     vi.useRealTimers()
   })
 
-  it('モバイル幅で右スワイプすると次の章へnavigateする', () => {
+  it('モバイル幅で左スワイプすると次の章へnavigateする', () => {
     loaderData = { ...baseChapterData, chapter: 1 }
     const { container } = render(<ChapterPage />)
     const swipable = container.querySelector('[style*="touch-action"]') as HTMLElement
     Object.defineProperty(swipable, 'clientWidth', { configurable: true, value: 400 })
 
-    fireEvent.pointerDown(swipable, { pointerId: 1, clientX: 100 })
-    fireEvent.pointerMove(swipable, { pointerId: 1, clientX: 200 })
-    fireEvent.pointerUp(swipable, { pointerId: 1, clientX: 200 })
+    fireEvent.pointerDown(swipable, { pointerId: 1, clientX: 200 })
+    fireEvent.pointerMove(swipable, { pointerId: 1, clientX: 100 })
+    fireEvent.pointerUp(swipable, { pointerId: 1, clientX: 100 })
     act(() => {
       vi.advanceTimersByTime(200)
     })

@@ -37,28 +37,28 @@ describe('SwipeableChapterView', () => {
     vi.useRealTimers()
   })
 
-  it('しきい値を超える右ドラッグで次の章へnavigateする', () => {
+  it('しきい値を超える左ドラッグで次の章へnavigateする', () => {
     const { container } = render(
       <SwipeableChapterView loc={loc}>
         <p>content</p>
       </SwipeableChapterView>,
     )
     const el = setContainerWidth(container, 400)
-    drag(el, 100, 200) // +100px = 400px の25% > 20%しきい値
+    drag(el, 200, 100) // -100px = 400px の25% > 20%しきい値
     expect(mockNavigate).toHaveBeenCalledWith({
       to: '/scriptures/$collection/$book/$chapter',
       params: { collection: 'bofm', book: '1-ne', chapter: '6' },
     })
   })
 
-  it('しきい値を超える左ドラッグで前の章へnavigateする', () => {
+  it('しきい値を超える右ドラッグで前の章へnavigateする', () => {
     const { container } = render(
       <SwipeableChapterView loc={loc}>
         <p>content</p>
       </SwipeableChapterView>,
     )
     const el = setContainerWidth(container, 400)
-    drag(el, 200, 100) // -100px
+    drag(el, 100, 200) // +100px
     expect(mockNavigate).toHaveBeenCalledWith({
       to: '/scriptures/$collection/$book/$chapter',
       params: { collection: 'bofm', book: '1-ne', chapter: '4' },
@@ -94,7 +94,7 @@ describe('SwipeableChapterView', () => {
       </SwipeableChapterView>,
     )
     const el = setContainerWidth(container, 400)
-    drag(el, 200, 100) // 前方向だが移動先なし
+    drag(el, 100, 200) // 前の章方向（右ドラッグ）だが移動先なし
     expect(mockNavigate).not.toHaveBeenCalled()
   })
 
@@ -116,10 +116,10 @@ describe('SwipeableChapterView', () => {
     act(() => {
       vi.advanceTimersByTime(SWIPE_ANIMATION_MS)
     })
-    // 1番目のポインタの +100px ドラッグで navigateされるべき
+    // 1番目のポインタの +100px（右）ドラッグで前の章へnavigateされるべき
     expect(mockNavigate).toHaveBeenCalledWith({
       to: '/scriptures/$collection/$book/$chapter',
-      params: { collection: 'bofm', book: '1-ne', chapter: '6' },
+      params: { collection: 'bofm', book: '1-ne', chapter: '4' },
     })
   })
 

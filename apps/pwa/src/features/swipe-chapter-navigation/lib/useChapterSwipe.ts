@@ -44,8 +44,10 @@ export function useChapterSwipe(loc: ChapterRef, disabled: boolean) {
     }
   }, [loc.collection, loc.book, loc.chapter])
 
+  // 左スワイプ（指を左に動かす = dx < 0）で次の章、右スワイプで前の章。
+  // 写真送り・ページめくり系アプリの一般的な慣習に合わせている。
   const targetFor = (dx: number) =>
-    dx === 0 ? null : getAdjacentChapterRef(loc, dx > 0 ? 'next' : 'prev')
+    dx === 0 ? null : getAdjacentChapterRef(loc, dx > 0 ? 'prev' : 'next')
 
   const applyDelta = (dx: number) => {
     deltaRef.current = dx
