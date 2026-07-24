@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createFileRoute, notFound, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
+import { useQuery } from '@tanstack/react-query'
 import { getBook, getCollection, buildScriptureUrl, getScriptureLabel } from '@/entities/scripture'
 import { PostCard, POST_SELECT, CommenterBubble, type PostWithUser } from '@/entities/post'
 import { createSupabaseServer } from '@/shared/lib/auth'
+import { supabase } from '@/shared/lib/supabase'
 import { EmptyState, PageHeader, ScriptureText } from '@/shared/ui'
 import { Button } from '@/shared/ui/button'
 import { PostComposerSheet } from '@/widgets/post-composer-sheet'
@@ -26,10 +28,17 @@ import { getCircleUserIds } from '@/entities/user'
 import type { AvatarStackItem } from '@/shared/ui'
 import { useBookmarkStore } from '@/entities/bookmark'
 import { BookmarkButton } from '@/features/toggle-bookmark'
+import { useBilingualEnabled } from '@/entities/bilingual-display'
+import { BilingualToggleButton } from '@/features/toggle-bilingual'
+import { PRIMARY_LANGUAGE, SECONDARY_LANGUAGE } from '@/shared/config/scriptureLanguage'
 
-type VerseText = { verse: number; text_html: string }
+type VerseTextRow = { verse: number; text_html: string }
 type Book = NonNullable<ReturnType<typeof getBook>>
 type SupabaseServer = Awaited<ReturnType<typeof createSupabaseServer>>
+// queryScriptureVerseTexts は SSR の serverSupabase とブラウザの supabase の両方から
+// 呼ばれる。両者は構造的に同じ型（@supabase/ssr の SupabaseClient<Database>）なので
+// SupabaseServer をそのまま別名として使う。
+type SupabaseClientLike = SupabaseServer
 type ChapterRef = { collection: string; book: string; chapter: number }
 
 async function queryCurrentUserId(supabase: SupabaseServer) {
@@ -46,19 +55,59 @@ async function queryUserAndCircle(supabase: SupabaseServer) {
   return { userId, circle }
 }
 
-async function queryVerseTexts(supabase: SupabaseServer, { collection, book, chapter }: ChapterRef, verses?: number[]) {
-  let query = supabase
+// SSR ローダー（PRIMARY_LANGUAGE、serverSupabase）とクライアント側の第2言語取得
+// （SECONDARY_LANGUAGE、ブラウザの supabase）の両方から呼ぶ共通クエリ。
+// エラーを空配列として握りつぶすと、
+// SSR では章表示が「0件」に見え、クライアントでは React Query が「取得成功」とみなして
+// staleTime: Infinity のキャッシュに乗ってしまう（通信復旧後も再取得されない）ため、
+// 必ず throw して呼び出し側にエラーとして伝える。
+export async function queryScriptureVerseTexts(
+  client: SupabaseClientLike,
+  { collection, book, chapter }: ChapterRef,
+  language: string,
+  verses?: number[],
+  signal?: AbortSignal,
+): Promise<VerseTextRow[]> {
+  let query = client
     .from('scripture_verses')
     .select('verse, text_html')
     .eq('collection_id', collection)
     .eq('book_id', book)
     .eq('chapter', chapter)
+    .eq('language', language)
     .order('verse', { ascending: true })
   if (verses?.length) {
     query = query.in('verse', verses)
   }
-  const { data } = await query
-  return (data ?? []) as VerseText[]
+  if (signal) {
+    query = query.abortSignal(signal)
+  }
+  const { data, error } = await query
+  if (error) throw error
+  return (data ?? []) as VerseTextRow[]
+}
+
+function useSecondaryVerseTexts(
+  loc: ChapterRef,
+  verses: number[] | undefined,
+  enabled: boolean,
+): Map<number, string> {
+  // useQuery の data は常に現在の queryKey に対応する値のみを返すため、章が
+  // 切り替わった瞬間に前章のデータへ自動的に戻ることはない（queryKey が変わると
+  // data は一旦 undefined に戻る）。staleTime: Infinity で ON/OFF の切り替えや
+  // 同じ章への再訪問での再取得も避ける。TanStack Query はクエリキーを構造的に
+  // 比較するため、verses 配列はそのまま渡せば良い（手動の文字列化は不要）。
+  const { data } = useQuery({
+    queryKey: ['scripture-verse-secondary-text', loc.collection, loc.book, loc.chapter, verses ?? []],
+    queryFn: ({ signal }) => queryScriptureVerseTexts(supabase, loc, SECONDARY_LANGUAGE, verses, signal),
+    enabled,
+    staleTime: Infinity,
+  })
+
+  return useMemo(
+    () => (enabled ? new Map((data ?? []).map((r) => [r.verse, r.text_html])) : new Map()),
+    [enabled, data],
+  )
 }
 
 const fetchVerseData = createServerFn({ method: 'POST' })
@@ -75,7 +124,7 @@ const fetchVerseData = createServerFn({ method: 'POST' })
         .eq('scripture_chapter', chapter)
         .overlaps('scripture_verses', verses)
         .order('created_at', { ascending: false }),
-      queryVerseTexts(serverSupabase, ctx.data, verses),
+      queryScriptureVerseTexts(serverSupabase, ctx.data, PRIMARY_LANGUAGE, verses),
       queryCurrentUserId(serverSupabase),
     ])
     return { posts: (posts ?? []) as PostWithUser[], verseTexts, userId }
@@ -109,7 +158,7 @@ const fetchChapterData = createServerFn({ method: 'POST' })
         .eq('scripture_chapter', chapter)
         .not('scripture_verses', 'is', null)
         .order('created_at', { ascending: false }),
-      queryVerseTexts(serverSupabase, ctx.data),
+      queryScriptureVerseTexts(serverSupabase, ctx.data, PRIMARY_LANGUAGE),
       queryUserAndCircle(serverSupabase),
     ])
 
@@ -245,7 +294,7 @@ type VerseViewProps = {
   collection: string
   verses: number[]
   posts: PostWithUser[]
-  verseTexts: VerseText[]
+  verseTexts: VerseTextRow[]
   canCompose: boolean
 }
 
@@ -255,6 +304,8 @@ function VerseView({ book, chapter, collection, verses, posts, verseTexts, canCo
   const loc = { collection, book: book.id, chapter }
   const scriptureLabel = getScriptureLabel({ ...loc, verses }, book)
   const officialUrl = buildScriptureUrl({ ...loc, verses }, book)
+  const bilingual = useBilingualEnabled()
+  const secondaryTexts = useSecondaryVerseTexts(loc, verses, bilingual)
 
   const onSheetOpenChange = (open: boolean) => {
     setSheetOpen(open)
@@ -270,6 +321,7 @@ function VerseView({ book, chapter, collection, verses, posts, verseTexts, canCo
         action={
           <div className="flex items-center gap-2">
             {canCompose && <ComposeButton onClick={() => setSheetOpen(true)} label="投稿する" />}
+            <BilingualToggleButton />
             <BookmarkButton loc={loc} />
           </div>
         }
@@ -289,7 +341,14 @@ function VerseView({ book, chapter, collection, verses, posts, verseTexts, canCo
       {verseTexts.length > 0 && (
         <div className="px-4 py-3 border-b" style={{ borderColor: 'var(--line)', background: 'var(--surface)' }}>
           {verseTexts.map((vt) => (
-            <ScriptureText key={vt.verse} verse={vt.verse} textHtml={vt.text_html} showNumber={!book.isFrontMatter} />
+            <ScriptureText
+              key={vt.verse}
+              verse={vt.verse}
+              textHtml={vt.text_html}
+              textHtmlSecondary={secondaryTexts.get(vt.verse)}
+              secondaryLang={SECONDARY_LANGUAGE}
+              showNumber={!book.isFrontMatter}
+            />
           ))}
         </div>
       )}
@@ -318,7 +377,7 @@ type ChapterViewProps = {
   chapter: number
   collection: string
   posts: PostWithUser[]
-  verseTexts: VerseText[]
+  verseTexts: VerseTextRow[]
   canCompose: boolean
   chapterCommenters: AvatarStackItem[]
   circlePosts: PostWithUser[]
@@ -336,6 +395,9 @@ function ChapterView({
   const search = Route.useSearch()
   const navigate = Route.useNavigate()
   const maxVerse = book.verses[chapter - 1]
+  const loc = { collection, book: book.id, chapter }
+  const bilingual = useBilingualEnabled()
+  const secondaryTexts = useSecondaryVerseTexts(loc, undefined, bilingual)
 
   const storedUserId = useSelectedUserId()
   const selectUser = useSelectedUserStore((s) => s.select)
@@ -364,7 +426,7 @@ function ChapterView({
   }, [selectedUserPosts])
 
   const verseTextMap = useMemo(
-    () => new Map(verseTexts.map((vt) => [vt.verse, vt])),
+    () => new Map(verseTexts.map((vt) => [vt.verse, vt.text_html])),
     [verseTexts],
   )
   const verseNumbers = Array.from({ length: maxVerse }, (_, i) => i + 1)
@@ -373,7 +435,6 @@ function ChapterView({
     [search.select, maxVerse],
   )
   const mode: SelectionMode = canCompose && search.mode === 'select' ? 'select' : 'read'
-  const loc = { collection, book: book.id, chapter }
 
   const patchSearch = (patch: Partial<ChapterSearch>, replace = true) => {
     navigate({
@@ -418,6 +479,7 @@ function ChapterView({
           onSelectVerses={enterSelectMode}
         />
       )}
+      <BilingualToggleButton />
       <BookmarkButton loc={loc} />
     </div>
   )
@@ -463,7 +525,7 @@ function ChapterView({
         }
       >
         {verseNumbers.map((verse, i) => {
-          const vt = verseTextMap.get(verse)
+          const textHtml = verseTextMap.get(verse)
           const isSelected = mode === 'select' && selection.includes(verse)
           const marker =
             showMarkers && versesWithMarker.has(verse) && selectedUser
@@ -482,7 +544,9 @@ function ChapterView({
                   book={book.id}
                   chapter={chapter}
                   verse={verse}
-                  textHtml={vt?.text_html}
+                  textHtml={textHtml}
+                  textHtmlSecondary={secondaryTexts.get(verse)}
+                  secondaryLang={SECONDARY_LANGUAGE}
                   mode={mode}
                   selected={isSelected}
                   onSelect={(v) => setSelection(toggleVerse(selection, v))}

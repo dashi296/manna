@@ -3,6 +3,7 @@ import { Link } from '@tanstack/react-router'
 import { Check } from 'lucide-react'
 import { SanitizedVerseHtml, UserAvatar } from '@/shared/ui'
 import type { AvatarStackItem } from '@/shared/ui'
+import { cn } from '@/shared/lib/utils'
 
 const ROW_TRANSITION = 'background-color 200ms, border-color 200ms'
 const ROW_SELECTED_STYLE: CSSProperties = {
@@ -22,6 +23,8 @@ type Props = {
   chapter: number
   verse: number
   textHtml?: string
+  textHtmlSecondary?: string
+  secondaryLang?: string
   mode: 'read' | 'select'
   selected: boolean
   onSelect: (verse: number) => void
@@ -36,6 +39,8 @@ export function VerseRow({
   chapter,
   verse,
   textHtml,
+  textHtmlSecondary,
+  secondaryLang,
   mode,
   selected,
   onSelect,
@@ -44,6 +49,23 @@ export function VerseRow({
   showNumber = true,
 }: Props) {
   const containerStyle = selected ? ROW_SELECTED_STYLE : ROW_UNSELECTED_STYLE
+
+  const numberLabel = showNumber && (
+    <span
+      className="text-xs font-medium"
+      style={{ color: 'var(--sea-ink-soft)' }}
+    >
+      {verse}
+    </span>
+  )
+
+  const primaryText = textHtml && (
+    <SanitizedVerseHtml
+      html={textHtml}
+      className={showNumber ? 'ml-2 text-sm' : 'text-sm'}
+      style={{ color: 'var(--sea-ink)' }}
+    />
+  )
 
   const inner = (
     <div className="flex items-start gap-2 px-4 py-3">
@@ -66,20 +88,24 @@ export function VerseRow({
         style={{ color: 'var(--sea-ink)' }}
       >
         <div className="flex-1 min-w-0">
-          {showNumber && (
-            <span
-              className="text-xs font-medium"
-              style={{ color: 'var(--sea-ink-soft)' }}
-            >
-              {verse}
-            </span>
-          )}
-          {textHtml && (
-            <SanitizedVerseHtml
-              html={textHtml}
-              className={showNumber ? 'ml-2 text-sm' : 'text-sm'}
-              style={{ color: 'var(--sea-ink)' }}
-            />
+          {textHtml && textHtmlSecondary ? (
+            <div className="flex flex-col gap-1 lg:flex-row lg:gap-4">
+              <div className="lg:flex-1">
+                {numberLabel}
+                {primaryText}
+              </div>
+              <SanitizedVerseHtml
+                html={textHtmlSecondary}
+                className={cn('text-sm lg:flex-1', showNumber && 'ml-2 lg:ml-0')}
+                style={{ color: 'var(--sea-ink-soft)' }}
+                lang={secondaryLang}
+              />
+            </div>
+          ) : (
+            <>
+              {numberLabel}
+              {primaryText}
+            </>
           )}
         </div>
       </div>

@@ -1,8 +1,27 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render as rtlRender, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { QueryClientProvider } from '@tanstack/react-query'
 import type { PostWithUser } from '@/entities/post'
+import { createQueryClient } from '@/shared/lib/queryClient'
 import { routeComponent } from '../../helpers/tanstack'
+import { createSupabaseQueryChain } from '../../helpers/supabase'
+
+const queryClient = createQueryClient()
+
+// useSecondaryVerseTexts が useQuery を使うため QueryClientProvider が必要。
+// 呼び出し側の render(<ChapterPage />) はそのままで自動的にラップされる。
+const withQueryClient = (ui: React.ReactElement) => (
+  <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>
+)
+
+function render(ui: React.ReactElement) {
+  const utils = rtlRender(withQueryClient(ui))
+  return {
+    ...utils,
+    rerender: (nextUi: React.ReactElement) => utils.rerender(withQueryClient(nextUi)),
+  }
+}
 
 type TestLoaderData = {
   book: {
@@ -48,6 +67,11 @@ let loaderData: TestLoaderData
 let search: { select?: number[]; mode?: 'select' } = { select: [1, 2] }
 const navigateSpy = vi.fn()
 
+// 併記表示ONのときにクライアント側で取得する第2言語の節本文（テストごとに差し替える）
+let clientVerseTexts: { verse: number; text_html: string }[] = []
+// scripture_verses へのクライアント側クエリが実行された回数（キャッシュ検証用）
+let clientVerseFetchCount = 0
+
 vi.mock('@tanstack/react-router', async () => {
   const { routerMock } = await import('../../helpers/tanstack')
   return {
@@ -61,7 +85,13 @@ vi.mock('@tanstack/react-start', async () => (await import('../../helpers/tansta
 
 vi.mock('@/shared/lib/supabase', () => ({
   supabase: {
-    from: () => ({ insert: vi.fn().mockResolvedValue({ error: null }) }),
+    from: (table: string) => {
+      if (table !== 'scripture_verses') {
+        return { insert: vi.fn().mockResolvedValue({ error: null }) }
+      }
+      clientVerseFetchCount += 1
+      return createSupabaseQueryChain(() => ({ data: clientVerseTexts }))
+    },
     auth: { getUser: vi.fn().mockResolvedValue({ data: { user: null } }) },
   },
 }))
@@ -83,12 +113,17 @@ describe('ChapterPage', () => {
   beforeEach(async () => {
     loaderData = baseChapterData
     search = { select: [1, 2] }
+    clientVerseTexts = []
+    clientVerseFetchCount = 0
     navigateSpy.mockClear()
     localStorage.clear()
     const { useSelectedUserStore } = await import('@/features/select-verse-view')
     useSelectedUserStore.setState({ selectedUserId: null })
     const { useBookmarkStore } = await import('@/entities/bookmark')
     useBookmarkStore.setState({ readingPosition: null, bookmarks: [] })
+    const { useBilingualDisplayStore } = await import('@/entities/bilingual-display')
+    useBilingualDisplayStore.setState({ enabled: false })
+    queryClient.clear()
   })
 
   it('選択中でも「章に投稿」は節指定なしでシートを開く', async () => {
@@ -365,5 +400,90 @@ describe('ChapterPage', () => {
     }
     render(<ChapterPage />)
     expect(screen.queryByText('1')).toBeNull()
+  })
+
+  it('日英併記ボタンをクリックするとストアの enabled が切り替わる（URLは変化しない）', async () => {
+    const { useBilingualDisplayStore } = await import('@/entities/bilingual-display')
+    const user = userEvent.setup()
+    render(<ChapterPage />)
+    await user.click(screen.getByRole('button', { name: '日英併記表示をオンにする' }))
+    expect(useBilingualDisplayStore.getState().enabled).toBe(true)
+    expect(navigateSpy).not.toHaveBeenCalled()
+  })
+
+  it('併記表示が有効なとき、クライアント側で取得した第2言語の節本文を表示する', async () => {
+    const { useBilingualDisplayStore } = await import('@/entities/bilingual-display')
+    useBilingualDisplayStore.setState({ enabled: true })
+    clientVerseTexts = [{ verse: 1, text_html: 'Verse one in English' }]
+    loaderData = {
+      ...baseChapterData,
+      verseTexts: [{ verse: 1, text_html: '一節の日本語' }],
+    }
+    render(<ChapterPage />)
+    expect(screen.getByText('一節の日本語')).toBeInTheDocument()
+    expect(await screen.findByText('Verse one in English')).toBeInTheDocument()
+  })
+
+  it('併記表示を ON→OFF→ON と切り替えても同じ章なら再取得しない（キャッシュされる）', async () => {
+    clientVerseTexts = [{ verse: 1, text_html: 'Verse one in English' }]
+    loaderData = {
+      ...baseChapterData,
+      verseTexts: [{ verse: 1, text_html: '一節の日本語' }],
+    }
+    const user = userEvent.setup()
+    render(<ChapterPage />)
+
+    await user.click(screen.getByRole('button', { name: '日英併記表示をオンにする' }))
+    await screen.findByText('Verse one in English')
+    const fetchCountAfterFirstOn = clientVerseFetchCount
+    expect(fetchCountAfterFirstOn).toBeGreaterThan(0)
+
+    await user.click(screen.getByRole('button', { name: '日英併記表示をオフにする' }))
+    expect(screen.queryByText('Verse one in English')).toBeNull()
+
+    await user.click(screen.getByRole('button', { name: '日英併記表示をオンにする' }))
+    await screen.findByText('Verse one in English')
+
+    expect(clientVerseFetchCount).toBe(fetchCountAfterFirstOn)
+  })
+
+  it('併記表示が有効なまま別の章へ遷移すると、前の章の第2言語テキストが一瞬でも表示されない', async () => {
+    const { useBilingualDisplayStore } = await import('@/entities/bilingual-display')
+    useBilingualDisplayStore.setState({ enabled: true })
+    const bookWithTwoChapters = { ...baseChapterData.book, verses: [20, 20] }
+    clientVerseTexts = [{ verse: 1, text_html: 'Chapter 1 English' }]
+    loaderData = {
+      ...baseChapterData,
+      book: bookWithTwoChapters,
+      chapter: 1,
+      verseTexts: [{ verse: 1, text_html: '第1章の日本語' }],
+    }
+    const { rerender } = render(<ChapterPage />)
+    expect(await screen.findByText('Chapter 1 English')).toBeInTheDocument()
+
+    // SPA遷移（同一マウントのまま props/loaderData だけ更新される）を模す
+    clientVerseTexts = [{ verse: 1, text_html: 'Chapter 2 English' }]
+    loaderData = {
+      ...baseChapterData,
+      book: bookWithTwoChapters,
+      chapter: 2,
+      verseTexts: [{ verse: 1, text_html: '第2章の日本語' }],
+    }
+    rerender(<ChapterPage />)
+
+    expect(screen.getByText('第2章の日本語')).toBeInTheDocument()
+    expect(screen.queryByText('Chapter 1 English')).toBeNull()
+
+    expect(await screen.findByText('Chapter 2 English')).toBeInTheDocument()
+  })
+
+  it('併記表示が無効なとき、第2言語の節本文は表示しない', () => {
+    loaderData = {
+      ...baseChapterData,
+      verseTexts: [{ verse: 1, text_html: '一節の日本語' }],
+    }
+    render(<ChapterPage />)
+    expect(screen.getByText('一節の日本語')).toBeInTheDocument()
+    expect(screen.queryByText('Verse one in English')).toBeNull()
   })
 })
