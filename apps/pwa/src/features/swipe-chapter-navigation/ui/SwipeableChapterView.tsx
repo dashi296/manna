@@ -18,6 +18,7 @@ export function SwipeableChapterView({ loc, disabled = false, children }: Swipea
         transform: `translateX(${deltaX}px)`,
         transition: animating ? `transform ${SWIPE_ANIMATION_MS}ms ease-out` : 'none',
         touchAction: 'pan-y',
+        WebkitTouchCallout: 'none',
       }}
       {...handlers}
     >

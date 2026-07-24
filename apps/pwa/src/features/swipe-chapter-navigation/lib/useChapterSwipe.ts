@@ -4,11 +4,15 @@ import { getAdjacentChapterRef, type ChapterRef } from '@/entities/scripture'
 
 export const SWIPE_COMMIT_RATIO = 0.2
 export const SWIPE_ANIMATION_MS = 200
+// この距離までは横方向の意図を確定しない。ロック前は preventDefault() を呼ばないため、
+// タップや縦スクロール、iOSのリンク長押しプレビューなどネイティブな挙動を妨げない。
+const DIRECTION_LOCK_PX = 10
 
 type DragState = {
   pointerId: number
   startX: number
   containerWidth: number
+  locked: boolean
 }
 
 export function useChapterSwipe(loc: ChapterRef, disabled: boolean) {
@@ -17,6 +21,7 @@ export function useChapterSwipe(loc: ChapterRef, disabled: boolean) {
   const dragRef = useRef<DragState | null>(null)
   const deltaRef = useRef(0)
   const timeoutRef = useRef<number | null>(null)
+  const clickSuppressorRef = useRef<(() => void) | null>(null)
   const [deltaX, setDeltaX] = useState(0)
   const [animating, setAnimating] = useState(false)
 
@@ -29,11 +34,13 @@ export function useChapterSwipe(loc: ChapterRef, disabled: boolean) {
       clearTimeout(timeoutRef.current)
       timeoutRef.current = null
     }
+    clickSuppressorRef.current?.()
     return () => {
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current)
         timeoutRef.current = null
       }
+      clickSuppressorRef.current?.()
     }
   }, [loc.collection, loc.book, loc.chapter])
 
@@ -49,18 +56,39 @@ export function useChapterSwipe(loc: ChapterRef, disabled: boolean) {
     if (disabled || animating || dragRef.current) return
     const width = containerRef.current?.clientWidth ?? 0
     if (width === 0) return
-    e.preventDefault()
-    dragRef.current = { pointerId: e.pointerId, startX: e.clientX, containerWidth: width }
+    dragRef.current = { pointerId: e.pointerId, startX: e.clientX, containerWidth: width, locked: false }
   }
 
   const onPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
     const drag = dragRef.current
     if (!drag || drag.pointerId !== e.pointerId) return
     const rawDelta = e.clientX - drag.startX
+
+    if (!drag.locked) {
+      if (Math.abs(rawDelta) < DIRECTION_LOCK_PX) return
+      drag.locked = true
+    }
+    e.preventDefault()
     applyDelta(targetFor(rawDelta) ? rawDelta : 0)
   }
 
-  const endDrag = (pointerId: number) => {
+  // 確定したスワイプの直後にブラウザが合成する click（例: 節本文を包む Link）が
+  // 二重に発火しないよう、次の1回だけ捕捉フェーズで握りつぶす。
+  const armClickSuppression = () => {
+    const container = containerRef.current
+    if (!container) return
+    clickSuppressorRef.current?.()
+    const onClickCapture = (ev: MouseEvent) => {
+      container.removeEventListener('click', onClickCapture, true)
+      clickSuppressorRef.current = null
+      ev.preventDefault()
+      ev.stopPropagation()
+    }
+    container.addEventListener('click', onClickCapture, true)
+    clickSuppressorRef.current = () => container.removeEventListener('click', onClickCapture, true)
+  }
+
+  const endDrag = (pointerId: number, canceled: boolean) => {
     const drag = dragRef.current
     if (!drag || drag.pointerId !== pointerId) return
     dragRef.current = null
@@ -69,7 +97,10 @@ export function useChapterSwipe(loc: ChapterRef, disabled: boolean) {
     const target = targetFor(current)
     const threshold = drag.containerWidth * SWIPE_COMMIT_RATIO
 
-    if (target && Math.abs(current) >= threshold) {
+    // pointercancel はユーザーが指を離して確定した操作ではないため、
+    // どれだけ移動していても遷移は確定させず必ずスナップバックする。
+    if (!canceled && drag.locked && target && Math.abs(current) >= threshold) {
+      armClickSuppression()
       setAnimating(true)
       applyDelta(current > 0 ? drag.containerWidth : -drag.containerWidth)
       if (timeoutRef.current) clearTimeout(timeoutRef.current)
@@ -92,8 +123,8 @@ export function useChapterSwipe(loc: ChapterRef, disabled: boolean) {
     timeoutRef.current = window.setTimeout(() => setAnimating(false), SWIPE_ANIMATION_MS)
   }
 
-  const onPointerUp = (e: ReactPointerEvent<HTMLDivElement>) => endDrag(e.pointerId)
-  const onPointerCancel = (e: ReactPointerEvent<HTMLDivElement>) => endDrag(e.pointerId)
+  const onPointerUp = (e: ReactPointerEvent<HTMLDivElement>) => endDrag(e.pointerId, false)
+  const onPointerCancel = (e: ReactPointerEvent<HTMLDivElement>) => endDrag(e.pointerId, true)
 
   return {
     containerRef,

@@ -144,7 +144,7 @@ describe('SwipeableChapterView', () => {
     expect(mockNavigate).not.toHaveBeenCalled()
   })
 
-  it('有効なpointerdownはpreventDefault()を呼ぶ（ブラウザのデフォルト動作を抑止）', () => {
+  it('pointerdown単体ではpreventDefault()を呼ばない（タップや長押しなどネイティブ操作を妨げない）', () => {
     const { container } = render(
       <SwipeableChapterView loc={loc}>
         <p>content</p>
@@ -158,23 +158,96 @@ describe('SwipeableChapterView', () => {
     })
     const spy = vi.spyOn(event, 'preventDefault')
     el.dispatchEvent(event)
-    expect(spy).toHaveBeenCalled()
+    expect(spy).not.toHaveBeenCalled()
   })
 
-  it('disabledのpointerdownはpreventDefault()を呼ばない', () => {
+  it('横方向ロック距離未満のpointermoveはpreventDefault()を呼ばず追従もしない', () => {
+    const { container } = render(
+      <SwipeableChapterView loc={loc}>
+        <p>content</p>
+      </SwipeableChapterView>,
+    )
+    const el = setContainerWidth(container, 400)
+    fireEvent.pointerDown(el, { pointerId: 1, clientX: 100 })
+    const moveEvent = new PointerEvent('pointermove', { pointerId: 1, clientX: 105, bubbles: true })
+    const spy = vi.spyOn(moveEvent, 'preventDefault')
+    el.dispatchEvent(moveEvent)
+    expect(spy).not.toHaveBeenCalled()
+    expect(el.getAttribute('style')).toContain('translateX(0px)')
+  })
+
+  it('横方向ロック距離を超えたpointermoveでpreventDefault()を呼び追従を開始する', () => {
+    const { container } = render(
+      <SwipeableChapterView loc={loc}>
+        <p>content</p>
+      </SwipeableChapterView>,
+    )
+    const el = setContainerWidth(container, 400)
+    fireEvent.pointerDown(el, { pointerId: 1, clientX: 100 })
+    const moveEvent = new PointerEvent('pointermove', { pointerId: 1, clientX: 115, bubbles: true })
+    const spy = vi.spyOn(moveEvent, 'preventDefault')
+    act(() => {
+      el.dispatchEvent(moveEvent)
+    })
+    expect(spy).toHaveBeenCalled()
+    expect(el.getAttribute('style')).toContain('translateX(15px)')
+  })
+
+  it('disabledのpointerdown後のpointermoveはpreventDefault()を呼ばない', () => {
     const { container } = render(
       <SwipeableChapterView loc={loc} disabled>
         <p>content</p>
       </SwipeableChapterView>,
     )
     const el = setContainerWidth(container, 400)
-    const event = new PointerEvent('pointerdown', {
-      pointerId: 1,
-      clientX: 100,
-      bubbles: true,
-    })
-    const spy = vi.spyOn(event, 'preventDefault')
-    el.dispatchEvent(event)
+    fireEvent.pointerDown(el, { pointerId: 1, clientX: 100 })
+    const moveEvent = new PointerEvent('pointermove', { pointerId: 1, clientX: 200, bubbles: true })
+    const spy = vi.spyOn(moveEvent, 'preventDefault')
+    el.dispatchEvent(moveEvent)
     expect(spy).not.toHaveBeenCalled()
+  })
+
+  it('pointercancelはしきい値を超えていても遷移を確定させない', () => {
+    const { container } = render(
+      <SwipeableChapterView loc={loc}>
+        <p>content</p>
+      </SwipeableChapterView>,
+    )
+    const el = setContainerWidth(container, 400)
+    fireEvent.pointerDown(el, { pointerId: 1, clientX: 100 })
+    fireEvent.pointerMove(el, { pointerId: 1, clientX: 200 }) // +100px、しきい値超え
+    fireEvent.pointerCancel(el, { pointerId: 1, clientX: 200 })
+    act(() => {
+      vi.advanceTimersByTime(SWIPE_ANIMATION_MS)
+    })
+    expect(mockNavigate).not.toHaveBeenCalled()
+  })
+
+  it('スワイプ確定後に発火する合成clickは抑止される（節Linkなどへの誤遷移防止）', () => {
+    const onChildClick = vi.fn()
+    const { container } = render(
+      <SwipeableChapterView loc={loc}>
+        <button type="button" onClick={onChildClick}>child</button>
+      </SwipeableChapterView>,
+    )
+    const el = setContainerWidth(container, 400)
+    drag(el, 100, 200) // しきい値超えで確定
+    const button = container.querySelector('button') as HTMLElement
+    fireEvent.click(button)
+    expect(onChildClick).not.toHaveBeenCalled()
+  })
+
+  it('しきい値未満（確定なし）の場合はクリックが通常通り伝播する', () => {
+    const onChildClick = vi.fn()
+    const { container } = render(
+      <SwipeableChapterView loc={loc}>
+        <button type="button" onClick={onChildClick}>child</button>
+      </SwipeableChapterView>,
+    )
+    const el = setContainerWidth(container, 400)
+    drag(el, 100, 130) // しきい値未満
+    const button = container.querySelector('button') as HTMLElement
+    fireEvent.click(button)
+    expect(onChildClick).toHaveBeenCalled()
   })
 })
