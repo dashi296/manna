@@ -30,11 +30,15 @@ import { useBookmarkStore } from '@/entities/bookmark'
 import { BookmarkButton } from '@/features/toggle-bookmark'
 import { useBilingualEnabled } from '@/entities/bilingual-display'
 import { BilingualToggleButton } from '@/features/toggle-bilingual'
-import { SECONDARY_LANGUAGE } from '@/shared/config/scriptureLanguage'
+import { PRIMARY_LANGUAGE, SECONDARY_LANGUAGE } from '@/shared/config/scriptureLanguage'
 
 type VerseTextRow = { verse: number; text_html: string }
 type Book = NonNullable<ReturnType<typeof getBook>>
 type SupabaseServer = Awaited<ReturnType<typeof createSupabaseServer>>
+// queryScriptureVerseTexts は SSR の serverSupabase とブラウザの supabase の両方から
+// 呼ばれる。両者は構造的に同じ型（@supabase/ssr の SupabaseClient<Database>）なので
+// SupabaseServer をそのまま別名として使う。
+type SupabaseClientLike = SupabaseServer
 type ChapterRef = { collection: string; book: string; chapter: number }
 
 async function queryCurrentUserId(supabase: SupabaseServer) {
@@ -51,13 +55,14 @@ async function queryUserAndCircle(supabase: SupabaseServer) {
   return { userId, circle }
 }
 
-// SSR ローダー（'ja'、serverSupabase）とクライアント側の第2言語取得（SECONDARY_LANGUAGE、
-// ブラウザの supabase）の両方から呼ぶ共通クエリ。エラーを空配列として握りつぶすと、
+// SSR ローダー（PRIMARY_LANGUAGE、serverSupabase）とクライアント側の第2言語取得
+// （SECONDARY_LANGUAGE、ブラウザの supabase）の両方から呼ぶ共通クエリ。
+// エラーを空配列として握りつぶすと、
 // SSR では章表示が「0件」に見え、クライアントでは React Query が「取得成功」とみなして
 // staleTime: Infinity のキャッシュに乗ってしまう（通信復旧後も再取得されない）ため、
 // 必ず throw して呼び出し側にエラーとして伝える。
 export async function queryScriptureVerseTexts(
-  client: SupabaseServer,
+  client: SupabaseClientLike,
   { collection, book, chapter }: ChapterRef,
   language: string,
   verses?: number[],
@@ -119,7 +124,7 @@ const fetchVerseData = createServerFn({ method: 'POST' })
         .eq('scripture_chapter', chapter)
         .overlaps('scripture_verses', verses)
         .order('created_at', { ascending: false }),
-      queryScriptureVerseTexts(serverSupabase, ctx.data, 'ja', verses),
+      queryScriptureVerseTexts(serverSupabase, ctx.data, PRIMARY_LANGUAGE, verses),
       queryCurrentUserId(serverSupabase),
     ])
     return { posts: (posts ?? []) as PostWithUser[], verseTexts, userId }
@@ -153,7 +158,7 @@ const fetchChapterData = createServerFn({ method: 'POST' })
         .eq('scripture_chapter', chapter)
         .not('scripture_verses', 'is', null)
         .order('created_at', { ascending: false }),
-      queryScriptureVerseTexts(serverSupabase, ctx.data, 'ja'),
+      queryScriptureVerseTexts(serverSupabase, ctx.data, PRIMARY_LANGUAGE),
       queryUserAndCircle(serverSupabase),
     ])
 

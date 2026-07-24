@@ -65,21 +65,27 @@ export function ScriptureText({
           {verse}
         </span>
       )}
-      <div className={cn('flex-1 min-w-0', textHtmlSecondary && 'flex flex-col gap-1 lg:flex-row lg:gap-4')}>
-        <SanitizedVerseHtml
-          html={textHtml}
-          className={textHtmlSecondary ? 'lg:flex-1' : undefined}
-          style={{ color: 'var(--sea-ink)' }}
-        />
-        {textHtmlSecondary && (
+      {textHtmlSecondary ? (
+        <div className="flex-1 min-w-0 flex flex-col gap-1 lg:flex-row lg:gap-4">
+          <SanitizedVerseHtml
+            html={textHtml}
+            className="lg:flex-1"
+            style={{ color: 'var(--sea-ink)' }}
+          />
           <SanitizedVerseHtml
             html={textHtmlSecondary}
             className="lg:flex-1"
             style={{ color: 'var(--sea-ink-soft)' }}
             lang={secondaryLang}
           />
-        )}
-      </div>
+        </div>
+      ) : (
+        <SanitizedVerseHtml
+          html={textHtml}
+          className="flex-1 min-w-0"
+          style={{ color: 'var(--sea-ink)' }}
+        />
+      )}
     </div>
   )
 }

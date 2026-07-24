@@ -49,4 +49,10 @@ describe('ScriptureText', () => {
     const { container } = render(<ScriptureText verse={1} textHtml="日本語のテキスト" />)
     expect(container.querySelector('[lang]')).toBeNull()
   })
+
+  it('textHtmlSecondary が無ければ本文を余分な div で包まない', () => {
+    render(<ScriptureText verse={7} textHtml="テキスト" />)
+    const numberSpan = screen.getByText('7')
+    expect(numberSpan.nextElementSibling?.tagName).toBe('SPAN')
+  })
 })

@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
+import { createSupabaseQueryChain } from '../../helpers/supabase'
 
 vi.mock('@tanstack/react-router', async () => {
   const { routerMock } = await import('../../helpers/tanstack')
@@ -15,15 +16,7 @@ vi.mock('@/shared/lib/supabase', () => ({
 }))
 
 function createMockClient(response: { data: unknown; error: unknown }) {
-  const chain = {
-    select: () => chain,
-    eq: () => chain,
-    in: () => chain,
-    order: () => chain,
-    abortSignal: () => chain,
-    then: (resolve: (result: typeof response) => void) => resolve(response),
-  }
-  return { from: () => chain }
+  return { from: () => createSupabaseQueryChain(() => response) }
 }
 
 describe('queryScriptureVerseTexts', () => {

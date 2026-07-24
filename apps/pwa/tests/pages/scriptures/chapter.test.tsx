@@ -5,6 +5,7 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import type { PostWithUser } from '@/entities/post'
 import { createQueryClient } from '@/shared/lib/queryClient'
 import { routeComponent } from '../../helpers/tanstack'
+import { createSupabaseQueryChain } from '../../helpers/supabase'
 
 const queryClient = createQueryClient()
 
@@ -79,32 +80,18 @@ vi.mock('@tanstack/react-router', async () => {
 
 vi.mock('@tanstack/react-start', async () => (await import('../../helpers/tanstack')).startMock())
 
-vi.mock('@/shared/lib/supabase', () => {
-  const verseQueryChain = () => {
-    const chain = {
-      select: () => chain,
-      eq: () => chain,
-      in: () => chain,
-      order: () => chain,
-      abortSignal: () => chain,
-      then: (resolve: (result: { data: typeof clientVerseTexts }) => void) =>
-        resolve({ data: clientVerseTexts }),
-    }
-    return chain
-  }
-  return {
-    supabase: {
-      from: (table: string) => {
-        if (table !== 'scripture_verses') {
-          return { insert: vi.fn().mockResolvedValue({ error: null }) }
-        }
-        clientVerseFetchCount += 1
-        return verseQueryChain()
-      },
-      auth: { getUser: vi.fn().mockResolvedValue({ data: { user: null } }) },
+vi.mock('@/shared/lib/supabase', () => ({
+  supabase: {
+    from: (table: string) => {
+      if (table !== 'scripture_verses') {
+        return { insert: vi.fn().mockResolvedValue({ error: null }) }
+      }
+      clientVerseFetchCount += 1
+      return createSupabaseQueryChain(() => ({ data: clientVerseTexts }))
     },
-  }
-})
+    auth: { getUser: vi.fn().mockResolvedValue({ data: { user: null } }) },
+  },
+}))
 
 let ChapterPage: React.ComponentType
 
