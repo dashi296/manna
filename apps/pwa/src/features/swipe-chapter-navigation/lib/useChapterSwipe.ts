@@ -49,6 +49,7 @@ export function useChapterSwipe(loc: ChapterRef, disabled: boolean) {
     if (disabled || animating || dragRef.current) return
     const width = containerRef.current?.clientWidth ?? 0
     if (width === 0) return
+    e.preventDefault()
     dragRef.current = { pointerId: e.pointerId, startX: e.clientX, containerWidth: width }
   }
 

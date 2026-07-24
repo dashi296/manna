@@ -143,4 +143,38 @@ describe('SwipeableChapterView', () => {
     // タイムアウトがキャンセルされていたのでnavigateは呼ばれないはず
     expect(mockNavigate).not.toHaveBeenCalled()
   })
+
+  it('有効なpointerdownはpreventDefault()を呼ぶ（ブラウザのデフォルト動作を抑止）', () => {
+    const { container } = render(
+      <SwipeableChapterView loc={loc}>
+        <p>content</p>
+      </SwipeableChapterView>,
+    )
+    const el = setContainerWidth(container, 400)
+    const event = new PointerEvent('pointerdown', {
+      pointerId: 1,
+      clientX: 100,
+      bubbles: true,
+    })
+    const spy = vi.spyOn(event, 'preventDefault')
+    el.dispatchEvent(event)
+    expect(spy).toHaveBeenCalled()
+  })
+
+  it('disabledのpointerdownはpreventDefault()を呼ばない', () => {
+    const { container } = render(
+      <SwipeableChapterView loc={loc} disabled>
+        <p>content</p>
+      </SwipeableChapterView>,
+    )
+    const el = setContainerWidth(container, 400)
+    const event = new PointerEvent('pointerdown', {
+      pointerId: 1,
+      clientX: 100,
+      bubbles: true,
+    })
+    const spy = vi.spyOn(event, 'preventDefault')
+    el.dispatchEvent(event)
+    expect(spy).not.toHaveBeenCalled()
+  })
 })
