@@ -296,6 +296,7 @@ export type Database = {
           book_id: string
           chapter: number
           collection_id: string
+          language: string
           text: string
           text_html: string
           verse: number
@@ -304,6 +305,7 @@ export type Database = {
           book_id: string
           chapter: number
           collection_id: string
+          language?: string
           text: string
           text_html: string
           verse: number
@@ -312,6 +314,7 @@ export type Database = {
           book_id?: string
           chapter?: number
           collection_id?: string
+          language?: string
           text?: string
           text_html?: string
           verse?: number

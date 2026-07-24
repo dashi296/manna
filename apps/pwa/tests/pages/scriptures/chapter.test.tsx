@@ -17,7 +17,7 @@ type TestLoaderData = {
   mode: 'chapter' | 'verse'
   verses: number[]
   posts: PostWithUser[]
-  verseTexts: { verse: number; text_html: string }[]
+  verseTexts: { verse: number; language: string; text_html: string }[]
   userId: string | null
   chapterCommenters: { userId: string; name: string; avatarUrl: string | null }[]
   circlePosts: PostWithUser[]
@@ -36,8 +36,8 @@ const baseChapterData: TestLoaderData = {
   verses: [],
   posts: [],
   verseTexts: [
-    { verse: 1, text_html: '一節の本文' },
-    { verse: 2, text_html: '二節の本文' },
+    { verse: 1, language: 'ja', text_html: '一節の本文' },
+    { verse: 2, language: 'ja', text_html: '二節の本文' },
   ],
   userId: 'user-1',
   chapterCommenters: [],
@@ -45,7 +45,7 @@ const baseChapterData: TestLoaderData = {
 }
 
 let loaderData: TestLoaderData
-let search: { select?: number[]; mode?: 'select' } = { select: [1, 2] }
+let search: { select?: number[]; mode?: 'select'; bilingual?: boolean } = { select: [1, 2] }
 const navigateSpy = vi.fn()
 
 vi.mock('@tanstack/react-router', async () => {
@@ -365,5 +365,41 @@ describe('ChapterPage', () => {
     }
     render(<ChapterPage />)
     expect(screen.queryByText('1')).toBeNull()
+  })
+
+  it('日英併記ボタンをクリックすると bilingual=true で navigate される', async () => {
+    search = {}
+    const user = userEvent.setup()
+    render(<ChapterPage />)
+    await user.click(screen.getByRole('button', { name: '日英併記表示をオンにする' }))
+    expect(navigateSpy).toHaveBeenCalled()
+    const lastCall = navigateSpy.mock.calls.at(-1)?.[0]
+    const result = lastCall.search({})
+    expect(result.bilingual).toBe(true)
+  })
+
+  it('bilingual=true のとき第2言語の節本文も表示する', () => {
+    search = { bilingual: true }
+    loaderData = {
+      ...baseChapterData,
+      verseTexts: [
+        { verse: 1, language: 'ja', text_html: '一節の日本語' },
+        { verse: 1, language: 'en', text_html: 'Verse one in English' },
+      ],
+    }
+    render(<ChapterPage />)
+    expect(screen.getByText('一節の日本語')).toBeInTheDocument()
+    expect(screen.getByText('Verse one in English')).toBeInTheDocument()
+  })
+
+  it('bilingual=false のとき第2言語の節本文は表示しない', () => {
+    search = {}
+    loaderData = {
+      ...baseChapterData,
+      verseTexts: [{ verse: 1, language: 'ja', text_html: '一節の日本語' }],
+    }
+    render(<ChapterPage />)
+    expect(screen.getByText('一節の日本語')).toBeInTheDocument()
+    expect(screen.queryByText('Verse one in English')).toBeNull()
   })
 })
