@@ -50,7 +50,7 @@ export const LANGUAGES = {
 - `queryVerseTexts` を `languages: string[]` を受け取る汎用シグネチャにする（`.in('language', languages)`）。呼び出し側で `bilingual` が false なら `['ja']`、true なら `['ja', SECONDARY_LANGUAGE]` を渡す
 - 「日本語と一緒に出す2言語目」は `shared/config` 配下の定数 `SECONDARY_LANGUAGE = 'en'` に一元化する。将来ピッカーUIを足す際は、この定数を選択値に差し替えるだけで済む
 - 取得した行は節ごとにグルーピングし、`Map<number, { ja?: string; secondary?: string }>` の形にしてからコンポーネントへ渡す（コンポーネント側の型変更を最小限にする）
-- `ChapterSearch` / `loaderDeps` に `bilingual?: boolean` を追加し、既存の `verses`/`select`/`mode` と同様に URL 検索パラメータとして扱う（`?bilingual=1`）。SSR ローダーがこの値を見て言語配列を組み立てる
+- `ChapterSearch` / `loaderDeps` に `bilingual?: boolean` を追加し、既存の `verses`/`select`/`mode` と同様に URL 検索パラメータとして扱う（`?bilingual=true`）。SSR ローダーがこの値を見て言語配列を組み立てる
 - `bilingual=false`（デフォルト）のときは従来通り日本語のみ1クエリ。英語行を余分に取得するのはONのときだけなので、通常閲覧時のクエリコストは変わらない
 
 ## UI / トグル・表示

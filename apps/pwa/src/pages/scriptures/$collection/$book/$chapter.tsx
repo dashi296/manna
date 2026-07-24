@@ -83,11 +83,15 @@ function groupVerseTexts(rows: VerseText[]): Map<number, VerseTextPair> {
   return map
 }
 
+export function resolveQueryLanguages(bilingual: boolean): string[] {
+  return bilingual ? ['ja', SECONDARY_LANGUAGE] : ['ja']
+}
+
 const fetchVerseData = createServerFn({ method: 'POST' })
   .inputValidator((data: ChapterRef & { verses: number[]; bilingual: boolean }) => data)
   .handler(async (ctx) => {
     const { collection, book, chapter, verses, bilingual } = ctx.data
-    const languages = bilingual ? ['ja', SECONDARY_LANGUAGE] : ['ja']
+    const languages = resolveQueryLanguages(bilingual)
     const serverSupabase = await createSupabaseServer()
     const [{ data: posts }, verseTexts, userId] = await Promise.all([
       serverSupabase
@@ -108,7 +112,7 @@ const fetchChapterData = createServerFn({ method: 'POST' })
   .inputValidator((data: ChapterRef & { bilingual: boolean }) => data)
   .handler(async (ctx) => {
     const { collection, book, chapter, bilingual } = ctx.data
-    const languages = bilingual ? ['ja', SECONDARY_LANGUAGE] : ['ja']
+    const languages = resolveQueryLanguages(bilingual)
     const serverSupabase = await createSupabaseServer()
 
     const [
