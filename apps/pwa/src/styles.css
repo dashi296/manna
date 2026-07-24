@@ -335,3 +335,10 @@ a {
   }
 }
 
+/* -webkit-touch-callout はReactのインラインstyle経由では再設定できない
+   （ブラウザがCSSOM経由のプロパティ更新を認識せずSSR時点の値のまま固定される）
+   ため、className の付け外しで切り替える。 */
+.no-native-callout {
+  -webkit-touch-callout: none;
+}
+

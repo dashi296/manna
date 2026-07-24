@@ -37,6 +37,36 @@ describe('SwipeableChapterView', () => {
     vi.useRealTimers()
   })
 
+  it('touch-actionにpinch-zoomを含めピンチズームを妨げない', () => {
+    const { container } = render(
+      <SwipeableChapterView loc={loc}>
+        <p>content</p>
+      </SwipeableChapterView>,
+    )
+    const el = container.firstElementChild as HTMLElement
+    expect(el.getAttribute('style')).toContain('pinch-zoom')
+  })
+
+  it('有効時はiOSの長押しリンクプレビュー抑止クラスを付与する', () => {
+    const { container } = render(
+      <SwipeableChapterView loc={loc}>
+        <p>content</p>
+      </SwipeableChapterView>,
+    )
+    const el = container.firstElementChild as HTMLElement
+    expect(el.className).toContain('no-native-callout')
+  })
+
+  it('disabledのときは長押しリンクプレビュー抑止クラスを付与しない', () => {
+    const { container } = render(
+      <SwipeableChapterView loc={loc} disabled>
+        <p>content</p>
+      </SwipeableChapterView>,
+    )
+    const el = container.firstElementChild as HTMLElement
+    expect(el.className).not.toContain('no-native-callout')
+  })
+
   it('しきい値を超える左ドラッグで次の章へnavigateする', () => {
     const { container } = render(
       <SwipeableChapterView loc={loc}>

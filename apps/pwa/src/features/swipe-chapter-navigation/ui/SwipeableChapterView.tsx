@@ -14,11 +14,15 @@ export function SwipeableChapterView({ loc, disabled = false, children }: Swipea
   return (
     <div
       ref={containerRef}
+      // -webkit-touch-callout はインラインstyleでは disabled 変化時に再設定できない
+      // （CSSOM経由の更新が効かずSSR時点の値のまま固定される）ため、
+      // className の付け外しで切り替える（.no-native-callout は styles.css）。
+      className={disabled ? undefined : 'no-native-callout'}
       style={{
         transform: `translateX(${deltaX}px)`,
         transition: animating ? `transform ${SWIPE_ANIMATION_MS}ms ease-out` : 'none',
-        touchAction: 'pan-y',
-        WebkitTouchCallout: 'none',
+        // pinch-zoom を明示しないと pan-y だけではピンチズームまで無効化されてしまう。
+        touchAction: 'pan-y pinch-zoom',
       }}
       {...handlers}
     >
