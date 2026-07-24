@@ -51,46 +51,33 @@ async function queryUserAndCircle(supabase: SupabaseServer) {
   return { userId, circle }
 }
 
-async function queryVerseTexts(
-  supabase: SupabaseServer,
+// SSR ローダー（'ja'、serverSupabase）とクライアント側の第2言語取得（SECONDARY_LANGUAGE、
+// ブラウザの supabase）の両方から呼ぶ共通クエリ。エラーを空配列として握りつぶすと、
+// SSR では章表示が「0件」に見え、クライアントでは React Query が「取得成功」とみなして
+// staleTime: Infinity のキャッシュに乗ってしまう（通信復旧後も再取得されない）ため、
+// 必ず throw して呼び出し側にエラーとして伝える。
+export async function queryScriptureVerseTexts(
+  client: SupabaseServer,
   { collection, book, chapter }: ChapterRef,
+  language: string,
   verses?: number[],
-) {
-  let query = supabase
+  signal?: AbortSignal,
+): Promise<VerseTextRow[]> {
+  let query = client
     .from('scripture_verses')
     .select('verse, text_html')
     .eq('collection_id', collection)
     .eq('book_id', book)
     .eq('chapter', chapter)
-    .eq('language', 'ja')
+    .eq('language', language)
     .order('verse', { ascending: true })
   if (verses?.length) {
     query = query.in('verse', verses)
   }
-  const { data } = await query
-  return (data ?? []) as VerseTextRow[]
-}
-
-// 併記表示（entities/bilingual-display）はクライアントのみの状態なので、SSR ローダーは
-// 常に日本語のみ取得する。ON のときだけブラウザから第2言語をこの関数で追加取得する。
-export async function queryClientVerseTexts(
-  { collection, book, chapter }: ChapterRef,
-  verses?: number[],
-): Promise<VerseTextRow[]> {
-  let query = supabase
-    .from('scripture_verses')
-    .select('verse, text_html')
-    .eq('collection_id', collection)
-    .eq('book_id', book)
-    .eq('chapter', chapter)
-    .eq('language', SECONDARY_LANGUAGE)
-    .order('verse', { ascending: true })
-  if (verses?.length) {
-    query = query.in('verse', verses)
+  if (signal) {
+    query = query.abortSignal(signal)
   }
   const { data, error } = await query
-  // エラーを空配列として握りつぶすと React Query が「取得成功」とみなし
-  // staleTime: Infinity のキャッシュに乗ってしまう（通信復旧後も再取得されない）。
   if (error) throw error
   return (data ?? []) as VerseTextRow[]
 }
@@ -100,15 +87,14 @@ function useSecondaryVerseTexts(
   verses: number[] | undefined,
   enabled: boolean,
 ): Map<number, string> {
-  const versesKey = verses?.join(',') ?? ''
-
   // useQuery の data は常に現在の queryKey に対応する値のみを返すため、章が
   // 切り替わった瞬間に前章のデータへ自動的に戻ることはない（queryKey が変わると
   // data は一旦 undefined に戻る）。staleTime: Infinity で ON/OFF の切り替えや
-  // 同じ章への再訪問での再取得も避ける。
+  // 同じ章への再訪問での再取得も避ける。TanStack Query はクエリキーを構造的に
+  // 比較するため、verses 配列はそのまま渡せば良い（手動の文字列化は不要）。
   const { data } = useQuery({
-    queryKey: ['scripture-verse-secondary-text', loc.collection, loc.book, loc.chapter, versesKey],
-    queryFn: () => queryClientVerseTexts(loc, verses),
+    queryKey: ['scripture-verse-secondary-text', loc.collection, loc.book, loc.chapter, verses ?? []],
+    queryFn: ({ signal }) => queryScriptureVerseTexts(supabase, loc, SECONDARY_LANGUAGE, verses, signal),
     enabled,
     staleTime: Infinity,
   })
@@ -133,7 +119,7 @@ const fetchVerseData = createServerFn({ method: 'POST' })
         .eq('scripture_chapter', chapter)
         .overlaps('scripture_verses', verses)
         .order('created_at', { ascending: false }),
-      queryVerseTexts(serverSupabase, ctx.data, verses),
+      queryScriptureVerseTexts(serverSupabase, ctx.data, 'ja', verses),
       queryCurrentUserId(serverSupabase),
     ])
     return { posts: (posts ?? []) as PostWithUser[], verseTexts, userId }
@@ -167,7 +153,7 @@ const fetchChapterData = createServerFn({ method: 'POST' })
         .eq('scripture_chapter', chapter)
         .not('scripture_verses', 'is', null)
         .order('created_at', { ascending: false }),
-      queryVerseTexts(serverSupabase, ctx.data),
+      queryScriptureVerseTexts(serverSupabase, ctx.data, 'ja'),
       queryUserAndCircle(serverSupabase),
     ])
 

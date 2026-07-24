@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { useMounted } from '@/shared/hooks/use-mounted'
+import { useSSRSafe } from '@/shared/hooks/use-ssr-safe-value'
 
 export type ScriptureLocation = {
   collection: string
@@ -52,13 +52,6 @@ export const useBookmarkStore = create<State>()(
     { name: BOOKMARK_STORAGE_KEY },
   ),
 )
-
-// SSR-safe readers: SSR と初回クライアントレンダーは persist 未反映の初期値
-// (null/[]/false) で一致させ、mount 後に永続化された値へ切り替える
-// (useSelectedUserId と同じパターン)。
-function useSSRSafe<T>(value: T, fallback: T): T {
-  return useMounted() ? value : fallback
-}
 
 export function useReadingPosition(): ScriptureLocation | null {
   return useSSRSafe(useBookmarkStore((s) => s.readingPosition), null)

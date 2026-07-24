@@ -3,8 +3,10 @@ import { render as rtlRender, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClientProvider } from '@tanstack/react-query'
 import type { PostWithUser } from '@/entities/post'
-import { queryClient } from '@/shared/lib/queryClient'
+import { createQueryClient } from '@/shared/lib/queryClient'
 import { routeComponent } from '../../helpers/tanstack'
+
+const queryClient = createQueryClient()
 
 // useSecondaryVerseTexts が useQuery を使うため QueryClientProvider が必要。
 // 呼び出し側の render(<ChapterPage />) はそのままで自動的にラップされる。
@@ -84,6 +86,7 @@ vi.mock('@/shared/lib/supabase', () => {
       eq: () => chain,
       in: () => chain,
       order: () => chain,
+      abortSignal: () => chain,
       then: (resolve: (result: { data: typeof clientVerseTexts }) => void) =>
         resolve({ data: clientVerseTexts }),
     }
@@ -130,7 +133,6 @@ describe('ChapterPage', () => {
     useBookmarkStore.setState({ readingPosition: null, bookmarks: [] })
     const { useBilingualDisplayStore } = await import('@/entities/bilingual-display')
     useBilingualDisplayStore.setState({ enabled: false })
-    const { queryClient } = await import('@/shared/lib/queryClient')
     queryClient.clear()
   })
 
