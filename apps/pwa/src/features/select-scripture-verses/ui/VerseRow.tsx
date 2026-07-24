@@ -79,23 +79,27 @@ export function VerseRow({
               {verse}
             </span>
           )}
-          {textHtml && (
-            <div className={textHtmlSecondary ? 'flex flex-col gap-1 lg:flex-row lg:gap-4' : undefined}>
+          {textHtml && (textHtmlSecondary ? (
+            <div className="flex flex-col gap-1 lg:flex-row lg:gap-4">
               <SanitizedVerseHtml
                 html={textHtml}
-                className={cn(showNumber ? 'ml-2 text-sm' : 'text-sm', textHtmlSecondary && 'lg:flex-1')}
+                className={cn(showNumber ? 'ml-2 text-sm' : 'text-sm', 'lg:flex-1')}
                 style={{ color: 'var(--sea-ink)' }}
               />
-              {textHtmlSecondary && (
-                <SanitizedVerseHtml
-                  html={textHtmlSecondary}
-                  className={cn('text-sm lg:flex-1', showNumber && 'ml-2 lg:ml-0')}
-                  style={{ color: 'var(--sea-ink-soft)' }}
-                  lang={secondaryLang}
-                />
-              )}
+              <SanitizedVerseHtml
+                html={textHtmlSecondary}
+                className={cn('text-sm lg:flex-1', showNumber && 'ml-2 lg:ml-0')}
+                style={{ color: 'var(--sea-ink-soft)' }}
+                lang={secondaryLang}
+              />
             </div>
-          )}
+          ) : (
+            <SanitizedVerseHtml
+              html={textHtml}
+              className={showNumber ? 'ml-2 text-sm' : 'text-sm'}
+              style={{ color: 'var(--sea-ink)' }}
+            />
+          ))}
         </div>
       </div>
     </div>

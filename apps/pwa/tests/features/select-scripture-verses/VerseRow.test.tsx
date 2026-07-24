@@ -163,6 +163,17 @@ describe('VerseRow bilingual', () => {
     expect(container.querySelector('[lang]')).toBeNull()
   })
 
+  it('textHtmlSecondary が無ければ本文をdivで包まず、節番号と同じ行に並ぶ', async () => {
+    renderInRouter(
+      <VerseRow {...baseProps} mode="read" selected={false} onSelect={vi.fn()} />,
+    )
+    await waitFor(() => {
+      expect(screen.getByText('19')).toBeInTheDocument()
+    })
+    const numberSpan = screen.getByText('19')
+    expect(numberSpan.nextElementSibling?.tagName).toBe('SPAN')
+  })
+
   it('mode="read" のリンクは既存の検索パラメータ（bilingual等）を引き継ぐ', async () => {
     const rootRoute = createRootRoute({
       component: () => <Outlet />,
