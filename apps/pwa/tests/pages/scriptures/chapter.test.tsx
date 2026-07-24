@@ -492,6 +492,8 @@ describe('ChapterView スワイプナビゲーション', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 800 })
+    search = { select: [1, 2] }
+    navigateSpy.mockClear()
   })
 
   afterEach(() => {
