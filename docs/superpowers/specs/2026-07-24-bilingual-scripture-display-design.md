@@ -62,6 +62,7 @@ localStorage キーは `manna:bilingual-display:v1`。SSR/初回クライアン�
 
 - 併記表示の状態はクライアントのみの `localStorage` に存在するため、SSR ローダーは事前にON/OFFを知ることができない。`queryVerseTexts`（SSR）は常に `language='ja'` のみを取得する（通常閲覧時のクエリコストは常に変わらない）
 - 併記表示がONのとき（`useBilingualEnabled()` が `true` を返したとき）だけ、クライアント側から `@/shared/lib/supabase`（ブラウザ用クライアント）経由で `language=SECONDARY_LANGUAGE` の節テキストを追加取得する（`queryClientVerseTexts` + `useSecondaryVerseTexts` フック）。ONにした直後や、既にONの状態でページを開いた直後は、取得が完了するまで一瞬日本語のみの表示になる（トレードオフとして許容）
+- 節本文は変わらないデータなので、`@tanstack/react-query` の `QueryClient`（`shared/lib/queryClient.ts` のシングルトン、`React` の `QueryClientProvider` は使わず `fetchQuery()` を直接呼ぶだけ）で `staleTime: Infinity` としてキャッシュする。同じ章に対してON/OFFを繰り返しても、一度取得した第2言語テキストは再取得しない
 - 「日本語と一緒に出す2言語目」は `shared/config` 配下の定数 `SECONDARY_LANGUAGE = 'en'` に一元化する。将来ピッカーUIを足す際は、この定数を選択値に差し替えるだけで済む
 
 ## UI / トグル・表示

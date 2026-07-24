@@ -5,6 +5,7 @@ import { getBook, getCollection, buildScriptureUrl, getScriptureLabel } from '@/
 import { PostCard, POST_SELECT, CommenterBubble, type PostWithUser } from '@/entities/post'
 import { createSupabaseServer } from '@/shared/lib/auth'
 import { supabase } from '@/shared/lib/supabase'
+import { queryClient } from '@/shared/lib/queryClient'
 import { EmptyState, PageHeader, ScriptureText } from '@/shared/ui'
 import { Button } from '@/shared/ui/button'
 import { PostComposerSheet } from '@/widgets/post-composer-sheet'
@@ -105,9 +106,17 @@ function useSecondaryVerseTexts(
       return
     }
     let cancelled = false
-    queryClientVerseTexts(loc, verses).then((rows) => {
-      if (!cancelled) setTexts(new Map(rows.map((r) => [r.verse, r.text_html])))
-    })
+    // 節本文は変わらないため staleTime: Infinity でキャッシュし、
+    // ON/OFF を切り替えるたびの再取得を避ける。
+    queryClient
+      .fetchQuery({
+        queryKey: ['scripture-verse-secondary-text', loc.collection, loc.book, loc.chapter, versesKey],
+        queryFn: () => queryClientVerseTexts(loc, verses),
+        staleTime: Infinity,
+      })
+      .then((rows) => {
+        if (!cancelled) setTexts(new Map(rows.map((r) => [r.verse, r.text_html])))
+      })
     return () => {
       cancelled = true
     }

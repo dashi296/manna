@@ -50,6 +50,8 @@ const navigateSpy = vi.fn()
 
 // 併記表示ONのときにクライアント側で取得する第2言語の節本文（テストごとに差し替える）
 let clientVerseTexts: { verse: number; text_html: string }[] = []
+// scripture_verses へのクライアント側クエリが実行された回数（キャッシュ検証用）
+let clientVerseFetchCount = 0
 
 vi.mock('@tanstack/react-router', async () => {
   const { routerMock } = await import('../../helpers/tanstack')
@@ -76,10 +78,13 @@ vi.mock('@/shared/lib/supabase', () => {
   }
   return {
     supabase: {
-      from: (table: string) =>
-        table === 'scripture_verses'
-          ? verseQueryChain()
-          : { insert: vi.fn().mockResolvedValue({ error: null }) },
+      from: (table: string) => {
+        if (table !== 'scripture_verses') {
+          return { insert: vi.fn().mockResolvedValue({ error: null }) }
+        }
+        clientVerseFetchCount += 1
+        return verseQueryChain()
+      },
       auth: { getUser: vi.fn().mockResolvedValue({ data: { user: null } }) },
     },
   }
@@ -103,6 +108,7 @@ describe('ChapterPage', () => {
     loaderData = baseChapterData
     search = { select: [1, 2] }
     clientVerseTexts = []
+    clientVerseFetchCount = 0
     navigateSpy.mockClear()
     localStorage.clear()
     const { useSelectedUserStore } = await import('@/features/select-verse-view')
@@ -111,6 +117,8 @@ describe('ChapterPage', () => {
     useBookmarkStore.setState({ readingPosition: null, bookmarks: [] })
     const { useBilingualDisplayStore } = await import('@/entities/bilingual-display')
     useBilingualDisplayStore.setState({ enabled: false })
+    const { queryClient } = await import('@/shared/lib/queryClient')
+    queryClient.clear()
   })
 
   it('選択中でも「章に投稿」は節指定なしでシートを開く', async () => {
@@ -409,6 +417,29 @@ describe('ChapterPage', () => {
     render(<ChapterPage />)
     expect(screen.getByText('一節の日本語')).toBeInTheDocument()
     expect(await screen.findByText('Verse one in English')).toBeInTheDocument()
+  })
+
+  it('併記表示を ON→OFF→ON と切り替えても同じ章なら再取得しない（キャッシュされる）', async () => {
+    clientVerseTexts = [{ verse: 1, text_html: 'Verse one in English' }]
+    loaderData = {
+      ...baseChapterData,
+      verseTexts: [{ verse: 1, text_html: '一節の日本語' }],
+    }
+    const user = userEvent.setup()
+    render(<ChapterPage />)
+
+    await user.click(screen.getByRole('button', { name: '日英併記表示をオンにする' }))
+    await screen.findByText('Verse one in English')
+    const fetchCountAfterFirstOn = clientVerseFetchCount
+    expect(fetchCountAfterFirstOn).toBeGreaterThan(0)
+
+    await user.click(screen.getByRole('button', { name: '日英併記表示をオフにする' }))
+    expect(screen.queryByText('Verse one in English')).toBeNull()
+
+    await user.click(screen.getByRole('button', { name: '日英併記表示をオンにする' }))
+    await screen.findByText('Verse one in English')
+
+    expect(clientVerseFetchCount).toBe(fetchCountAfterFirstOn)
   })
 
   it('併記表示が無効なとき、第2言語の節本文は表示しない', () => {
