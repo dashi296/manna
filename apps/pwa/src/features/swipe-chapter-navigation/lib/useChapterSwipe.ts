@@ -15,6 +15,12 @@ type DragState = {
   locked: boolean
 }
 
+type WindowListeners = {
+  move: (e: PointerEvent) => void
+  up: (e: PointerEvent) => void
+  cancel: (e: PointerEvent) => void
+}
+
 export function useChapterSwipe(loc: ChapterRef, disabled: boolean) {
   const navigate = useNavigate()
   const containerRef = useRef<HTMLDivElement | null>(null)
@@ -22,6 +28,7 @@ export function useChapterSwipe(loc: ChapterRef, disabled: boolean) {
   const deltaRef = useRef(0)
   const timeoutRef = useRef<number | null>(null)
   const clickSuppressorRef = useRef<(() => void) | null>(null)
+  const windowListenersRef = useRef<WindowListeners | null>(null)
   const [deltaX, setDeltaX] = useState(0)
   const [animating, setAnimating] = useState(false)
 
@@ -60,10 +67,17 @@ export function useChapterSwipe(loc: ChapterRef, disabled: boolean) {
   // ポインタが出ると暗黙のキャプチャがなく、要素側のリスナーには届かなくなって
   // dragRef が残り続けてしまうため（setPointerCapture はCDP/一部環境で逆に
   // pointercancel を誘発することを確認したため使わない）。
+  // 実際にaddEventListenerへ渡した関数参照をrefに保存しておき、detach時は
+  // 常にそれを使う。onWindowPointerMove等はレンダーごとに新しい関数になるため、
+  // effectのcleanup（別レンダーで生成されたクロージャ）から直接参照すると
+  // 登録済みの関数と一致せずremoveEventListenerが不発になり得るため。
   const detachWindowListeners = () => {
-    window.removeEventListener('pointermove', onWindowPointerMove)
-    window.removeEventListener('pointerup', onWindowPointerUp)
-    window.removeEventListener('pointercancel', onWindowPointerCancel)
+    const listeners = windowListenersRef.current
+    if (!listeners) return
+    window.removeEventListener('pointermove', listeners.move)
+    window.removeEventListener('pointerup', listeners.up)
+    window.removeEventListener('pointercancel', listeners.cancel)
+    windowListenersRef.current = null
   }
 
   const onWindowPointerMove = (e: PointerEvent) => {
@@ -139,9 +153,15 @@ export function useChapterSwipe(loc: ChapterRef, disabled: boolean) {
     const width = containerRef.current?.clientWidth ?? 0
     if (width === 0) return
     dragRef.current = { pointerId: e.pointerId, startX: e.clientX, containerWidth: width, locked: false }
-    window.addEventListener('pointermove', onWindowPointerMove)
-    window.addEventListener('pointerup', onWindowPointerUp)
-    window.addEventListener('pointercancel', onWindowPointerCancel)
+    const listeners: WindowListeners = {
+      move: onWindowPointerMove,
+      up: onWindowPointerUp,
+      cancel: onWindowPointerCancel,
+    }
+    windowListenersRef.current = listeners
+    window.addEventListener('pointermove', listeners.move)
+    window.addEventListener('pointerup', listeners.up)
+    window.addEventListener('pointercancel', listeners.cancel)
   }
 
   return {

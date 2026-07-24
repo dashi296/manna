@@ -37,6 +37,44 @@ describe('SwipeableChapterView', () => {
     vi.useRealTimers()
   })
 
+  it('無関係な再レンダーを挟んでも、ドラッグ中のアンマウントでwindowリスナーが正しく解除される', () => {
+    const addSpy = vi.spyOn(window, 'addEventListener')
+    const removeSpy = vi.spyOn(window, 'removeEventListener')
+
+    const { container, rerender, unmount } = render(
+      <SwipeableChapterView loc={loc}>
+        <p>content</p>
+      </SwipeableChapterView>,
+    )
+    const el = setContainerWidth(container, 400)
+
+    // loc を変えない無関係な再レンダーを挟む（親コンポーネントの都合による
+    // 再レンダーを模す。onWindowPointerMove等のクロージャがこの時点で
+    // 新しく作り直される）。
+    rerender(
+      <SwipeableChapterView loc={loc}>
+        <p>content changed</p>
+      </SwipeableChapterView>,
+    )
+
+    fireEvent.pointerDown(el, { pointerId: 1, clientX: 200 })
+
+    const addedPointerListenerCalls = addSpy.mock.calls.filter(
+      ([type]) => type === 'pointermove' || type === 'pointerup' || type === 'pointercancel',
+    )
+    expect(addedPointerListenerCalls).toHaveLength(3)
+
+    // pointerup/cancelが届く前にアンマウント（ドラッグ中の破棄を模す）
+    unmount()
+
+    for (const [type, handler] of addedPointerListenerCalls) {
+      expect(removeSpy).toHaveBeenCalledWith(type, handler)
+    }
+
+    addSpy.mockRestore()
+    removeSpy.mockRestore()
+  })
+
   it('要素の外にポインタが出てもwindowで検知してドラッグを継続・確定できる（マウスは暗黙キャプチャがないため）', () => {
     const { container } = render(
       <SwipeableChapterView loc={loc}>
