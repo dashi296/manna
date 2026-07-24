@@ -134,3 +134,62 @@ describe('VerseRow showNumber', () => {
     })
   })
 })
+
+describe('VerseRow bilingual', () => {
+  it('textHtmlSecondary 指定時は lang 属性付きで第2言語テキストを表示する', async () => {
+    const { container } = renderInRouter(
+      <VerseRow
+        {...baseProps}
+        mode="read"
+        selected={false}
+        onSelect={vi.fn()}
+        textHtmlSecondary="Home to the Lord is one way"
+        secondaryLang="en"
+      />,
+    )
+    await waitFor(() => {
+      expect(screen.getByText('Home to the Lord is one way')).toBeInTheDocument()
+    })
+    expect(container.querySelector('[lang="en"]')).not.toBeNull()
+  })
+
+  it('textHtmlSecondary が無ければ第2言語ブロックを描画しない', async () => {
+    const { container } = renderInRouter(
+      <VerseRow {...baseProps} mode="read" selected={false} onSelect={vi.fn()} />,
+    )
+    await waitFor(() => {
+      expect(screen.getByText('19')).toBeInTheDocument()
+    })
+    expect(container.querySelector('[lang]')).toBeNull()
+  })
+
+  it('mode="read" のリンクは既存の検索パラメータ（bilingual等）を引き継ぐ', async () => {
+    const rootRoute = createRootRoute({
+      component: () => <Outlet />,
+      notFoundComponent: () => <div>404</div>,
+    })
+    const chapterRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/scriptures/$collection/$book/$chapter',
+      validateSearch: (search: Record<string, unknown>) => ({
+        bilingual: search.bilingual === true ? true : undefined,
+      }),
+      component: () => (
+        <VerseRow {...baseProps} mode="read" selected={false} onSelect={vi.fn()} />
+      ),
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([chapterRoute]),
+      history: createMemoryHistory({
+        initialEntries: ['/scriptures/bofm/mosiah/3?bilingual=true'],
+      }),
+    })
+    render(<RouterProvider router={router} />)
+    await waitFor(() => {
+      expect(screen.getByRole('link')).toHaveAttribute(
+        'href',
+        expect.stringContaining('bilingual'),
+      )
+    })
+  })
+})

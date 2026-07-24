@@ -3,6 +3,7 @@ import { Link } from '@tanstack/react-router'
 import { Check } from 'lucide-react'
 import { SanitizedVerseHtml, UserAvatar } from '@/shared/ui'
 import type { AvatarStackItem } from '@/shared/ui'
+import { cn } from '@/shared/lib/utils'
 
 const ROW_TRANSITION = 'background-color 200ms, border-color 200ms'
 const ROW_SELECTED_STYLE: CSSProperties = {
@@ -22,6 +23,8 @@ type Props = {
   chapter: number
   verse: number
   textHtml?: string
+  textHtmlSecondary?: string
+  secondaryLang?: string
   mode: 'read' | 'select'
   selected: boolean
   onSelect: (verse: number) => void
@@ -36,6 +39,8 @@ export function VerseRow({
   chapter,
   verse,
   textHtml,
+  textHtmlSecondary,
+  secondaryLang,
   mode,
   selected,
   onSelect,
@@ -75,11 +80,21 @@ export function VerseRow({
             </span>
           )}
           {textHtml && (
-            <SanitizedVerseHtml
-              html={textHtml}
-              className={showNumber ? 'ml-2 text-sm' : 'text-sm'}
-              style={{ color: 'var(--sea-ink)' }}
-            />
+            <div className={textHtmlSecondary ? 'flex flex-col gap-1 lg:flex-row lg:gap-4' : undefined}>
+              <SanitizedVerseHtml
+                html={textHtml}
+                className={cn(showNumber ? 'ml-2 text-sm' : 'text-sm', textHtmlSecondary && 'lg:flex-1')}
+                style={{ color: 'var(--sea-ink)' }}
+              />
+              {textHtmlSecondary && (
+                <SanitizedVerseHtml
+                  html={textHtmlSecondary}
+                  className={cn('text-sm lg:flex-1', showNumber && 'ml-2 lg:ml-0')}
+                  style={{ color: 'var(--sea-ink-soft)' }}
+                  lang={secondaryLang}
+                />
+              )}
+            </div>
           )}
         </div>
       </div>
@@ -107,7 +122,7 @@ export function VerseRow({
       <Link
         to="/scriptures/$collection/$book/$chapter"
         params={{ collection, book, chapter: String(chapter) }}
-        search={{ verses: [verse] }}
+        search={(prev) => ({ ...prev, verses: [verse] })}
         className="block"
       >
         {inner}
