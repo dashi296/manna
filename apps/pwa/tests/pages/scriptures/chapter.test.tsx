@@ -11,12 +11,15 @@ const queryClient = createQueryClient()
 
 // useSecondaryVerseTexts が useQuery を使うため QueryClientProvider が必要。
 // 呼び出し側の render(<ChapterPage />) はそのままで自動的にラップされる。
+const withQueryClient = (ui: React.ReactElement) => (
+  <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>
+)
+
 function render(ui: React.ReactElement) {
-  const utils = rtlRender(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>)
+  const utils = rtlRender(withQueryClient(ui))
   return {
     ...utils,
-    rerender: (nextUi: React.ReactElement) =>
-      utils.rerender(<QueryClientProvider client={queryClient}>{nextUi}</QueryClientProvider>),
+    rerender: (nextUi: React.ReactElement) => utils.rerender(withQueryClient(nextUi)),
   }
 }
 
