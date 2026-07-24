@@ -50,6 +50,23 @@ export function VerseRow({
 }: Props) {
   const containerStyle = selected ? ROW_SELECTED_STYLE : ROW_UNSELECTED_STYLE
 
+  const numberLabel = showNumber && (
+    <span
+      className="text-xs font-medium"
+      style={{ color: 'var(--sea-ink-soft)' }}
+    >
+      {verse}
+    </span>
+  )
+
+  const primaryText = textHtml && (
+    <SanitizedVerseHtml
+      html={textHtml}
+      className={showNumber ? 'ml-2 text-sm' : 'text-sm'}
+      style={{ color: 'var(--sea-ink)' }}
+    />
+  )
+
   const inner = (
     <div className="flex items-start gap-2 px-4 py-3">
       {mode === 'select' && (
@@ -71,21 +88,12 @@ export function VerseRow({
         style={{ color: 'var(--sea-ink)' }}
       >
         <div className="flex-1 min-w-0">
-          {showNumber && (
-            <span
-              className="text-xs font-medium"
-              style={{ color: 'var(--sea-ink-soft)' }}
-            >
-              {verse}
-            </span>
-          )}
-          {textHtml && (textHtmlSecondary ? (
+          {textHtml && textHtmlSecondary ? (
             <div className="flex flex-col gap-1 lg:flex-row lg:gap-4">
-              <SanitizedVerseHtml
-                html={textHtml}
-                className={cn(showNumber ? 'ml-2 text-sm' : 'text-sm', 'lg:flex-1')}
-                style={{ color: 'var(--sea-ink)' }}
-              />
+              <div className="lg:flex-1">
+                {numberLabel}
+                {primaryText}
+              </div>
               <SanitizedVerseHtml
                 html={textHtmlSecondary}
                 className={cn('text-sm lg:flex-1', showNumber && 'ml-2 lg:ml-0')}
@@ -94,12 +102,11 @@ export function VerseRow({
               />
             </div>
           ) : (
-            <SanitizedVerseHtml
-              html={textHtml}
-              className={showNumber ? 'ml-2 text-sm' : 'text-sm'}
-              style={{ color: 'var(--sea-ink)' }}
-            />
-          ))}
+            <>
+              {numberLabel}
+              {primaryText}
+            </>
+          )}
         </div>
       </div>
     </div>

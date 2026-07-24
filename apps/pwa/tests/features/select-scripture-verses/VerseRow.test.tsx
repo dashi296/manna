@@ -153,6 +153,24 @@ describe('VerseRow bilingual', () => {
     expect(container.querySelector('[lang="en"]')).not.toBeNull()
   })
 
+  it('textHtmlSecondary があっても節番号と日本語本文は同じ行に並ぶ', async () => {
+    renderInRouter(
+      <VerseRow
+        {...baseProps}
+        mode="read"
+        selected={false}
+        onSelect={vi.fn()}
+        textHtmlSecondary="Home to the Lord is one way"
+        secondaryLang="en"
+      />,
+    )
+    await waitFor(() => {
+      expect(screen.getByText('19')).toBeInTheDocument()
+    })
+    const numberSpan = screen.getByText('19')
+    expect(numberSpan.nextElementSibling?.tagName).toBe('SPAN')
+  })
+
   it('textHtmlSecondary が無ければ第2言語ブロックを描画しない', async () => {
     const { container } = renderInRouter(
       <VerseRow {...baseProps} mode="read" selected={false} onSelect={vi.fn()} />,
