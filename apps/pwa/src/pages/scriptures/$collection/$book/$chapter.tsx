@@ -73,7 +73,7 @@ async function queryVerseTexts(
 
 // 併記表示（entities/bilingual-display）はクライアントのみの状態なので、SSR ローダーは
 // 常に日本語のみ取得する。ON のときだけブラウザから第2言語をこの関数で追加取得する。
-async function queryClientVerseTexts(
+export async function queryClientVerseTexts(
   { collection, book, chapter }: ChapterRef,
   verses?: number[],
 ): Promise<VerseTextRow[]> {
@@ -88,7 +88,10 @@ async function queryClientVerseTexts(
   if (verses?.length) {
     query = query.in('verse', verses)
   }
-  const { data } = await query
+  const { data, error } = await query
+  // エラーを空配列として握りつぶすと React Query が「取得成功」とみなし
+  // staleTime: Infinity のキャッシュに乗ってしまう（通信復旧後も再取得されない）。
+  if (error) throw error
   return (data ?? []) as VerseTextRow[]
 }
 
