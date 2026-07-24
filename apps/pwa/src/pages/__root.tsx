@@ -66,7 +66,6 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       </head>
       <body className="font-sans antialiased">
         {children}
-        {isDev && <DevTools />}
         <Scripts />
       </body>
     </html>
@@ -93,6 +92,7 @@ function RootLayout() {
     return (
       <QueryClientProvider client={queryClient}>
         <Outlet />
+        {isDev && <DevTools queryClient={queryClient} />}
       </QueryClientProvider>
     )
   }
@@ -113,6 +113,7 @@ function RootLayout() {
           </SidebarInset>
         </SidebarProvider>
       </TooltipProvider>
+      {isDev && <DevTools queryClient={queryClient} />}
     </QueryClientProvider>
   )
 }
