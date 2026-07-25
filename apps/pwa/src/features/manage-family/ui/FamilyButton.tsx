@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { familyPairFilter, type FamilyStatus } from '@/entities/family'
+import { filterFamilyPair, type FamilyStatus } from '@/entities/family'
 import { Button } from '@/shared/ui/button'
 import { supabase } from '@/shared/lib/supabase'
 import { useSupabaseAction } from '@/shared/lib/useSupabaseAction'
@@ -25,7 +25,11 @@ export function FamilyButton({ targetUserId, currentUserId, initialStatus }: Pro
   )
 
   const remove = () => run(
-    () => supabase.from('family_relationships').delete().or(familyPairFilter(currentUserId, targetUserId)),
+    () => filterFamilyPair(
+      supabase.from('family_relationships').delete(),
+      currentUserId,
+      targetUserId,
+    ),
     () => setStatus('none'),
   )
 
