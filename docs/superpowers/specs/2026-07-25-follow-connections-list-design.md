@@ -81,11 +81,15 @@ CREATE INDEX IF NOT EXISTS follows_follower_created_idx
 
 既存の `familyPairFilter` も id を補間しているが、あちらの値は `auth.getUser()` と route param 由来であり、自由入力であるカーソルとは性質が異なる。
 
+検証には**厳密な ISO 8601 の正規表現**を使う。`Date.parse` は `Jan 1, 2026` のような非 ISO 形式も受け付けてしまい、カンマを含んだまま通過するため用をなさない。また `toISOString()` で正規化する方法も使えない — JS の `Date` はミリ秒精度しか持たず、Postgres の timestamptz がマイクロ秒を持つ場合に精度が落ちて keyset 条件が一致しなくなる。
+
 ```ts
 type Cursor = { createdAt: string; otherId: string }
 
 const PAGE_SIZE = 20
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+// PostgREST が返す timestamptz。小数秒は桁数可変、末尾は 'Z' か '+09:00' 形式のオフセット。
+const ISO_TS_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/
 
 const fetchConnections = createServerFn({ method: 'POST' })
   .inputValidator((data: {
@@ -96,7 +100,7 @@ const fetchConnections = createServerFn({ method: 'POST' })
     if (data.cursor) {
       const { createdAt, otherId } = data.cursor
       if (!UUID_RE.test(otherId)) throw new Error('invalid cursor')
-      if (Number.isNaN(Date.parse(createdAt))) throw new Error('invalid cursor')
+      if (!ISO_TS_RE.test(createdAt)) throw new Error('invalid cursor')
     }
     return data
   })
