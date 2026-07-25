@@ -4,13 +4,14 @@ import { createServerFn } from '@tanstack/react-start'
 import { FollowButton } from '@/features/follow-user'
 import { EmptyState, PageHeader, TabBar, UserAvatar } from '@/shared/ui'
 import { Button } from '@/shared/ui/button'
+import { type CircleUserRow } from '@/entities/user'
 import { resolveUserIdentity } from '@/shared/lib/constants'
 import { createSupabaseServer } from '@/shared/lib/auth'
 import { isValidCursor, type Cursor } from './-cursor'
 
 type Tab = 'followers' | 'following'
-type ConnectionUser = { id: string; display_name: string | null; avatar_url: string | null }
-export type ConnectionRowData = { user: ConnectionUser; isFollowingByMe: boolean }
+type ConnectionRowData = { user: CircleUserRow; isFollowingByMe: boolean }
+type Paged = { rows: ConnectionRowData[]; cursor: Cursor | null }
 
 const PAGE_SIZE = 20
 
@@ -167,8 +168,8 @@ function ConnectionsPage() {
   const loaderData = Route.useLoaderData()
   const { userId, tab, rows, currentUserId, nextCursor } = loaderData
   const navigate = useNavigate()
-  const [extraRows, setExtraRows] = useState<ConnectionRowData[]>([])
-  const [cursor, setCursor] = useState<Cursor | null>(nextCursor)
+  // 追加読み込み分は行とカーソルが常に一緒に動くので、1つの state にまとめる
+  const [paged, setPaged] = useState<Paged>({ rows: [], cursor: nextCursor })
   const [loadingMore, setLoadingMore] = useState(false)
   const [pagedFrom, setPagedFrom] = useState(loaderData)
   const loaderDataRef = useRef(loaderData)
@@ -180,13 +181,13 @@ function ConnectionsPage() {
   // key が重複するため（useEffect ではコミット後まで反映が遅れる）。
   if (pagedFrom !== loaderData) {
     setPagedFrom(loaderData)
-    setExtraRows([])
-    setCursor(nextCursor)
+    setPaged({ rows: [], cursor: nextCursor })
     // 進行中の取得は新しい一覧には関係ないので、待たずに次のページを引けるようにする
     setLoadingMore(false)
   }
 
   const loadMore = async () => {
+    const cursor = paged.cursor
     if (!cursor || loadingMore) return
     setLoadingMore(true)
     const requestedFrom = loaderData
@@ -197,8 +198,7 @@ function ConnectionsPage() {
       if (!next) return
       // 取得中に loader データが入れ替わっていたら、古い結果は新しい一覧に混ぜない
       if (requestedFrom !== loaderDataRef.current) return
-      setExtraRows((prev) => [...prev, ...next.rows])
-      setCursor(next.nextCursor)
+      setPaged((prev) => ({ rows: [...prev.rows, ...next.rows], cursor: next.nextCursor }))
     } catch {
       // 失敗時は追記せず、ボタンを押せる状態に戻すだけにする
     } finally {
@@ -208,7 +208,7 @@ function ConnectionsPage() {
     }
   }
 
-  const allRows = [...rows, ...extraRows]
+  const allRows = [...rows, ...paged.rows]
 
   return (
     <div>
@@ -237,7 +237,7 @@ function ConnectionsPage() {
           {allRows.map((row) => (
             <ConnectionRow key={row.user.id} row={row} currentUserId={currentUserId} />
           ))}
-          {cursor && (
+          {paged.cursor && (
             <div className="p-4 text-center">
               <Button onClick={loadMore} disabled={loadingMore} variant="outline" size="sm">
                 もっと見る

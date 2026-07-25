@@ -88,7 +88,7 @@ describe('ConnectionsPage', () => {
     loaderData.mockReturnValue({
       ...base,
       rows: [row('u1', '山田花子')],
-      nextCursor: { createdAt: '2026-07-25T10:00:00+00:00', otherId: 'u1' },
+      nextCursor: cursorAt('u1'),
     })
     mockFetchConnections.mockResolvedValue({
       ...base,
@@ -97,7 +97,7 @@ describe('ConnectionsPage', () => {
     })
     await renderPage()
 
-    await userEvent.click(screen.getByRole('button', { name: 'もっと見る' }))
+    await userEvent.click(loadMoreButton())
 
     expect(await screen.findByText('佐藤太郎')).toBeInTheDocument()
     expect(screen.getByText('山田花子')).toBeInTheDocument()
@@ -108,15 +108,14 @@ describe('ConnectionsPage', () => {
     loaderData.mockReturnValue({
       ...base,
       rows: [row('u1', '山田花子')],
-      nextCursor: { createdAt: '2026-07-25T10:00:00+00:00', otherId: 'u1' },
+      nextCursor: cursorAt('u1'),
     })
     mockFetchConnections.mockRejectedValue(new Error('boom'))
     await renderPage()
 
-    const loadMoreButton = screen.getByRole('button', { name: 'もっと見る' })
-    await userEvent.click(loadMoreButton)
+    await userEvent.click(loadMoreButton())
 
-    expect(await screen.findByRole('button', { name: 'もっと見る' })).not.toBeDisabled()
+    expect(loadMoreButton()).not.toBeDisabled()
     expect(screen.getByText('山田花子')).toBeInTheDocument()
     expect(screen.getAllByText('山田花子')).toHaveLength(1)
   })
@@ -125,18 +124,14 @@ describe('ConnectionsPage', () => {
     loaderData.mockReturnValue({
       ...base,
       rows: [row('u1', '山田花子')],
-      nextCursor: { createdAt: '2026-07-25T10:00:00+00:00', otherId: 'u1' },
+      nextCursor: cursorAt('u1'),
     })
 
-    let resolveFetch: (value: unknown) => void = () => {}
-    mockFetchConnections.mockReturnValue(
-      new Promise((resolve) => {
-        resolveFetch = resolve
-      }),
-    )
+    const pending = deferred()
+    mockFetchConnections.mockReturnValue(pending.promise)
 
     const { rerender, ConnectionsPage } = await renderPage()
-    await userEvent.click(screen.getByRole('button', { name: 'もっと見る' }))
+    await userEvent.click(loadMoreButton())
 
     // 取得の解決前にタブが切り替わる
     loaderData.mockReturnValue({
@@ -152,7 +147,7 @@ describe('ConnectionsPage', () => {
     // 解決後の setState まで act で流し切ってから確認する（否定アサーションは
     // microtask 実行前だと素通りしてしまうため）
     await act(async () => {
-      resolveFetch({ ...base, rows: [row('u2', '佐藤太郎')], nextCursor: null })
+      pending.resolve({ ...base, rows: [row('u2', '佐藤太郎')], nextCursor: null })
     })
 
     expect(screen.queryByText('佐藤太郎')).not.toBeInTheDocument()
@@ -164,7 +159,7 @@ describe('ConnectionsPage', () => {
     loaderData.mockReturnValue({
       ...base,
       rows: [row('u1', '山田花子')],
-      nextCursor: { createdAt: '2026-07-25T10:00:00+00:00', otherId: 'u1' },
+      nextCursor: cursorAt('u1'),
     })
     mockFetchConnections.mockResolvedValue({
       ...base,
@@ -173,7 +168,7 @@ describe('ConnectionsPage', () => {
     })
 
     const { rerender, ConnectionsPage } = await renderPage()
-    await userEvent.click(screen.getByRole('button', { name: 'もっと見る' }))
+    await userEvent.click(loadMoreButton())
     expect(await screen.findByText('佐藤太郎')).toBeInTheDocument()
 
     // タブは同じまま、フォロー関係が変わって loader が再実行される。
