@@ -1,7 +1,9 @@
+import { useEffect, useState } from 'react'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { FollowButton } from '@/features/follow-user'
 import { EmptyState, PageHeader, TabBar, UserAvatar } from '@/shared/ui'
+import { Button } from '@/shared/ui/button'
 import { resolveUserIdentity } from '@/shared/lib/constants'
 import { createSupabaseServer } from '@/shared/lib/auth'
 import { isValidCursor, type Cursor } from './cursor'
@@ -134,8 +136,33 @@ function ConnectionRow({
 }
 
 function ConnectionsPage() {
-  const { userId, tab, rows, currentUserId } = Route.useLoaderData()
+  const { userId, tab, rows, currentUserId, nextCursor } = Route.useLoaderData()
   const navigate = useNavigate()
+  const [extraRows, setExtraRows] = useState<ConnectionRowData[]>([])
+  const [cursor, setCursor] = useState<Cursor | null>(nextCursor)
+  const [loadingMore, setLoadingMore] = useState(false)
+
+  // タブ切り替えで loader が再実行されたら、前のタブの追加読み込み分を捨てる
+  useEffect(() => {
+    setExtraRows([])
+    setCursor(nextCursor)
+  }, [tab, nextCursor])
+
+  const loadMore = async () => {
+    if (!cursor || loadingMore) return
+    setLoadingMore(true)
+    try {
+      const next = await fetchConnections({ data: { userId, tab, cursor } })
+      setExtraRows((prev) => [...prev, ...next.rows])
+      setCursor(next.nextCursor)
+    } catch {
+      // 失敗時は追記せず、ボタンを押せる状態に戻すだけにする
+    } finally {
+      setLoadingMore(false)
+    }
+  }
+
+  const allRows = [...rows, ...extraRows]
 
   return (
     <div>
@@ -155,15 +182,22 @@ function ConnectionsPage() {
           })
         }
       />
-      {rows.length === 0 ? (
+      {allRows.length === 0 ? (
         <EmptyState>
           {tab === 'followers' ? 'まだフォロワーがいません' : 'まだ誰もフォローしていません'}
         </EmptyState>
       ) : (
         <div>
-          {rows.map((row) => (
+          {allRows.map((row) => (
             <ConnectionRow key={row.user.id} row={row} currentUserId={currentUserId} />
           ))}
+          {cursor && (
+            <div className="p-4 text-center">
+              <Button onClick={loadMore} disabled={loadingMore} variant="outline" size="sm">
+                もっと見る
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </div>

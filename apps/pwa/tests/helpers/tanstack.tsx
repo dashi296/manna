@@ -34,13 +34,12 @@ export const routeComponent = (mod: { Route: unknown }) =>
 
 // getServerSession (@/shared/lib/auth) は .inputValidator() を挟まず
 // .handler() を直接呼ぶため、両方のチェーンをスタブする必要がある。
-export function startMock() {
+export function startMock(impl?: (...args: never[]) => unknown) {
+  const handler = () => impl ?? vi.fn()
   return {
     createServerFn: () => ({
-      handler: () => vi.fn(),
-      inputValidator: () => ({
-        handler: () => vi.fn(),
-      }),
+      handler,
+      inputValidator: () => ({ handler }),
     }),
   }
 }

@@ -1,14 +1,18 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { routeComponent } from '../../helpers/tanstack'
 
 const loaderData = vi.fn()
+const mockFetchConnections = vi.fn()
 
 vi.mock('@tanstack/react-router', async () =>
   (await import('../../helpers/tanstack')).routerMock(() => loaderData()),
 )
 
-vi.mock('@tanstack/react-start', async () => (await import('../../helpers/tanstack')).startMock())
+vi.mock('@tanstack/react-start', async () =>
+  (await import('../../helpers/tanstack')).startMock(mockFetchConnections),
+)
 
 vi.mock('@/shared/lib/supabase', () => ({
   supabase: { from: () => ({ insert: vi.fn(), delete: vi.fn() }) },
@@ -33,6 +37,10 @@ const renderPage = async () => {
 }
 
 describe('ConnectionsPage', () => {
+  beforeEach(() => {
+    mockFetchConnections.mockReset()
+  })
+
   it('フォロワータブでユーザー一覧を表示する', async () => {
     loaderData.mockReturnValue({ ...base, rows: [row('u1', '山田花子'), row('u2', '佐藤太郎')] })
     await renderPage()
@@ -56,5 +64,31 @@ describe('ConnectionsPage', () => {
     loaderData.mockReturnValue({ ...base, rows: [] })
     await renderPage()
     expect(screen.getByText('まだフォロワーがいません')).toBeInTheDocument()
+  })
+
+  it('nextCursor があるときだけ「もっと見る」を表示する', async () => {
+    loaderData.mockReturnValue({ ...base, rows: [row('u1', '山田花子')], nextCursor: null })
+    await renderPage()
+    expect(screen.queryByRole('button', { name: 'もっと見る' })).not.toBeInTheDocument()
+  })
+
+  it('「もっと見る」で次のページを末尾に追記する', async () => {
+    loaderData.mockReturnValue({
+      ...base,
+      rows: [row('u1', '山田花子')],
+      nextCursor: { createdAt: '2026-07-25T10:00:00+00:00', otherId: 'u1' },
+    })
+    mockFetchConnections.mockResolvedValue({
+      ...base,
+      rows: [row('u2', '佐藤太郎')],
+      nextCursor: null,
+    })
+    await renderPage()
+
+    await userEvent.click(screen.getByRole('button', { name: 'もっと見る' }))
+
+    expect(await screen.findByText('佐藤太郎')).toBeInTheDocument()
+    expect(screen.getByText('山田花子')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'もっと見る' })).not.toBeInTheDocument()
   })
 })
