@@ -65,23 +65,24 @@ export const fetchConnections = createServerFn({ method: 'POST' })
     const page = ((followRows ?? []) as Record<string, string>[]).slice(0, PAGE_SIZE)
     const otherIds = page.map((r) => r[otherIdColumn])
 
-    // フォロー行が1件でもあれば FK により対象ユーザーは存在する。0件のときだけ、
-    // 存在しないプロフィールと本当に0件とを区別する（loader が 404 にする）
-    if (!cursor && page.length === 0) {
-      const { data: owner, error: ownerError } = await serverSupabase
-        .from('users')
-        .select('id')
-        .eq('id', userId)
-        .maybeSingle()
-      if (ownerError) throw ownerError
-      if (!owner) return null
+    if (page.length === 0) {
+      // フォロー行が1件でもあれば FK により対象ユーザーは存在する。0件のときだけ、
+      // 存在しないプロフィールと本当に0件とを区別する（loader が 404 にする）
+      if (!cursor) {
+        const { data: owner, error: ownerError } = await serverSupabase
+          .from('users')
+          .select('id')
+          .eq('id', userId)
+          .maybeSingle()
+        if (ownerError) throw ownerError
+        if (!owner) return null
+      }
+      return { userId, tab, currentUserId: currentUser?.id ?? null, rows: [], nextCursor: null }
     }
 
     const [usersRes, myFollowsRes] = await Promise.all([
-      otherIds.length
-        ? serverSupabase.from('users').select('id, display_name, avatar_url').in('id', otherIds)
-        : null,
-      currentUser && otherIds.length
+      serverSupabase.from('users').select('id, display_name, avatar_url').in('id', otherIds),
+      currentUser
         ? serverSupabase
             .from('follows')
             .select('following_id')
@@ -90,10 +91,10 @@ export const fetchConnections = createServerFn({ method: 'POST' })
         : null,
     ])
 
-    if (usersRes?.error) throw usersRes.error
+    if (usersRes.error) throw usersRes.error
     if (myFollowsRes?.error) throw myFollowsRes.error
 
-    const usersById = new Map((usersRes?.data ?? []).map((u) => [u.id, u]))
+    const usersById = new Map(usersRes.data.map((u) => [u.id, u]))
     const followingSet = new Set((myFollowsRes?.data ?? []).map((f) => f.following_id))
     const last = page[page.length - 1]
 

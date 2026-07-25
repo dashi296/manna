@@ -34,7 +34,7 @@ export function routerMock(
       // ここは String() で結合するため配列は "?verses=19" のようになる。
       const searchEntries = search ? Object.entries(search) : []
       const query = searchEntries.length > 0
-        ? `?${searchEntries.map(([k, v]) => `${k}=${encodeURIComponent(String(v))}`).join('&')}`
+        ? `?${new URLSearchParams(searchEntries.map(([k, v]) => [k, String(v)]))}`
         : ''
       const href = path ? `${path}${query}` : path
       return (
