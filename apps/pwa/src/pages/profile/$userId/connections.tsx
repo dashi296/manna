@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { createFileRoute, Link, notFound, useNavigate } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
+import type { PostgrestError } from '@supabase/supabase-js'
 import { FollowButton } from '@/features/follow-user'
 import { EmptyState, PageHeader, TabBar, UserAvatar } from '@/shared/ui'
 import { Button } from '@/shared/ui/button'
@@ -15,10 +16,15 @@ type Paged = { rows: ConnectionRowData[]; cursor: Cursor | null }
 
 const PAGE_SIZE = 20
 
-const TABS: { id: Tab; label: string }[] = [
-  { id: 'followers', label: 'フォロワー' },
-  { id: 'following', label: 'フォロー中' },
-]
+const TAB_LABELS: Record<Tab, string> = { followers: 'フォロワー', following: 'フォロー中' }
+const TABS = (Object.keys(TAB_LABELS) as Tab[]).map((id) => ({ id, label: TAB_LABELS[id] }))
+
+// Supabase はクエリ失敗時も reject せず { data: null, error } を返すため、
+// error を見ないと障害が「0件」として表示されてしまう
+function unwrap<T>(res: { data: T; error: null } | { data: null; error: PostgrestError }): T {
+  if (res.error) throw res.error
+  return res.data
+}
 
 export const fetchConnections = createServerFn({ method: 'POST' })
   .inputValidator((data: { userId: string; tab: Tab; cursor: Cursor | null }) => {
@@ -51,30 +57,20 @@ export const fetchConnections = createServerFn({ method: 'POST' })
       )
     }
 
-    // Supabase はクエリ失敗時も reject せず { data: null, error } を返すため、
-    // error を見ないと障害が「0件」として表示されてしまう
-    const [
-      { data: followRows, error: followError },
-      {
-        data: { user: currentUser },
-      },
-    ] = await Promise.all([query, userPromise])
-    if (followError) throw followError
+    const [followRes, { data: { user: currentUser } }] = await Promise.all([query, userPromise])
 
-    const hasMore = (followRows ?? []).length > PAGE_SIZE
-    const page = ((followRows ?? []) as Record<string, string>[]).slice(0, PAGE_SIZE)
+    const followRows = unwrap(followRes) as Record<string, string>[]
+    const hasMore = followRows.length > PAGE_SIZE
+    const page = followRows.slice(0, PAGE_SIZE)
     const otherIds = page.map((r) => r[otherIdColumn])
 
     if (page.length === 0) {
       // フォロー行が1件でもあれば FK により対象ユーザーは存在する。0件のときだけ、
       // 存在しないプロフィールと本当に0件とを区別する（loader が 404 にする）
       if (!cursor) {
-        const { data: owner, error: ownerError } = await serverSupabase
-          .from('users')
-          .select('id')
-          .eq('id', userId)
-          .maybeSingle()
-        if (ownerError) throw ownerError
+        const owner = unwrap(
+          await serverSupabase.from('users').select('id').eq('id', userId).maybeSingle(),
+        )
         if (!owner) return null
       }
       return { userId, tab, currentUserId: currentUser?.id ?? null, rows: [], nextCursor: null }
@@ -91,11 +87,10 @@ export const fetchConnections = createServerFn({ method: 'POST' })
         : null,
     ])
 
-    if (usersRes.error) throw usersRes.error
-    if (myFollowsRes?.error) throw myFollowsRes.error
-
-    const usersById = new Map(usersRes.data.map((u) => [u.id, u]))
-    const followingSet = new Set((myFollowsRes?.data ?? []).map((f) => f.following_id))
+    const usersById = new Map(unwrap(usersRes).map((u) => [u.id, u]))
+    const followingSet = new Set(
+      (myFollowsRes ? unwrap(myFollowsRes) : []).map((f) => f.following_id),
+    )
     const last = page[page.length - 1]
 
     return {
@@ -214,7 +209,7 @@ function ConnectionsPage() {
   return (
     <div>
       <PageHeader
-        title={tab === 'followers' ? 'フォロワー' : 'フォロー中'}
+        title={TAB_LABELS[tab]}
         backTo="/profile/$userId"
         backLabel="プロフィール"
       />
