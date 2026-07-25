@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, Link, notFound, useNavigate } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { FollowButton } from '@/features/follow-user'
 import { EmptyState, PageHeader, TabBar, UserAvatar } from '@/shared/ui'
@@ -30,6 +30,9 @@ export const fetchConnections = createServerFn({ method: 'POST' })
     const otherIdColumn = tab === 'followers' ? 'follower_id' : 'following_id'
     const ownIdColumn = tab === 'followers' ? 'following_id' : 'follower_id'
 
+    // フォロー行の取得結果に依存しないので、待たずに先に走らせる
+    const userPromise = serverSupabase.auth.getUser()
+
     let query = serverSupabase
       .from('follows')
       .select(`created_at, ${otherIdColumn}`)
@@ -49,16 +52,29 @@ export const fetchConnections = createServerFn({ method: 'POST' })
 
     // Supabase はクエリ失敗時も reject せず { data: null, error } を返すため、
     // error を見ないと障害が「0件」として表示されてしまう
-    const { data: followRows, error: followError } = await query
+    const [
+      { data: followRows, error: followError },
+      {
+        data: { user: currentUser },
+      },
+    ] = await Promise.all([query, userPromise])
     if (followError) throw followError
 
     const hasMore = (followRows ?? []).length > PAGE_SIZE
     const page = ((followRows ?? []) as Record<string, string>[]).slice(0, PAGE_SIZE)
     const otherIds = page.map((r) => r[otherIdColumn])
 
-    const {
-      data: { user: currentUser },
-    } = await serverSupabase.auth.getUser()
+    // フォロー行が1件でもあれば FK により対象ユーザーは存在する。0件のときだけ、
+    // 存在しないプロフィールと本当に0件とを区別する（loader が 404 にする）
+    if (!cursor && page.length === 0) {
+      const { data: owner, error: ownerError } = await serverSupabase
+        .from('users')
+        .select('id')
+        .eq('id', userId)
+        .maybeSingle()
+      if (ownerError) throw ownerError
+      if (!owner) return null
+    }
 
     const [usersRes, myFollowsRes] = await Promise.all([
       otherIds.length
@@ -100,8 +116,13 @@ export const Route = createFileRoute('/profile/$userId/connections')({
     tab: search.tab === 'following' ? 'following' : 'followers',
   }),
   loaderDeps: ({ search }) => ({ tab: search.tab }),
-  loader: ({ params, deps }) =>
-    fetchConnections({ data: { userId: params.userId, tab: deps.tab, cursor: null } }),
+  loader: async ({ params, deps }) => {
+    const data = await fetchConnections({
+      data: { userId: params.userId, tab: deps.tab, cursor: null },
+    })
+    if (!data) throw notFound()
+    return data
+  },
   component: ConnectionsPage,
 })
 
@@ -170,7 +191,10 @@ function ConnectionsPage() {
     setLoadingMore(true)
     const requestedFrom = loaderData
     try {
+      // カーソル付きの取得では null は返らない（null は1ページ目で対象ユーザーが
+      // 存在しなかった場合だけ）が、型の上では起こりうるので弾く
       const next = await fetchConnections({ data: { userId, tab, cursor } })
+      if (!next) return
       // 取得中に loader データが入れ替わっていたら、古い結果は新しい一覧に混ぜない
       if (requestedFrom !== loaderDataRef.current) return
       setExtraRows((prev) => [...prev, ...next.rows])
