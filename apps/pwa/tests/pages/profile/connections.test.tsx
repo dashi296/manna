@@ -36,6 +36,18 @@ const renderPage = async () => {
   return { ...render(<ConnectionsPage />), ConnectionsPage }
 }
 
+const deferred = () => {
+  let resolve: (value: unknown) => void = () => {}
+  const promise = new Promise((r) => {
+    resolve = r
+  })
+  return { promise, resolve: (value: unknown) => resolve(value) }
+}
+
+const cursorAt = (otherId: string) => ({ createdAt: '2026-07-25T10:00:00+00:00', otherId })
+
+const loadMoreButton = () => screen.getByRole('button', { name: 'もっと見る' })
+
 describe('ConnectionsPage', () => {
   beforeEach(() => {
     mockFetchConnections.mockReset()
@@ -175,5 +187,64 @@ describe('ConnectionsPage', () => {
 
     expect(screen.getAllByText('佐藤太郎')).toHaveLength(1)
     expect(screen.getAllByText('山田花子')).toHaveLength(1)
+  })
+
+  it('取得中に loader データが入れ替わったら「もっと見る」を再び押せる状態にする', async () => {
+    loaderData.mockReturnValue({
+      ...base,
+      rows: [row('u1', '山田花子')],
+      nextCursor: cursorAt('u1'),
+    })
+    const first = deferred()
+    mockFetchConnections.mockReturnValue(first.promise)
+
+    const { rerender, ConnectionsPage } = await renderPage()
+    await userEvent.click(loadMoreButton())
+    expect(loadMoreButton()).toBeDisabled()
+
+    // 取得が終わらないうちに loader が新しいデータを返す
+    loaderData.mockReturnValue({
+      ...base,
+      tab: 'following',
+      rows: [row('u9', '新一郎')],
+      nextCursor: cursorAt('u9'),
+    })
+    rerender(<ConnectionsPage />)
+
+    // 新しい一覧のページングが、前の通信の完了待ちで固まってはいけない
+    expect(loadMoreButton()).not.toBeDisabled()
+  })
+
+  it('古いリクエストの完了で新しいリクエストの読み込み中状態を解除しない', async () => {
+    loaderData.mockReturnValue({
+      ...base,
+      rows: [row('u1', '山田花子')],
+      nextCursor: cursorAt('u1'),
+    })
+    const first = deferred()
+    const second = deferred()
+    mockFetchConnections.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise)
+
+    const { rerender, ConnectionsPage } = await renderPage()
+    await userEvent.click(loadMoreButton())
+
+    loaderData.mockReturnValue({
+      ...base,
+      tab: 'following',
+      rows: [row('u9', '新一郎')],
+      nextCursor: cursorAt('u9'),
+    })
+    rerender(<ConnectionsPage />)
+
+    await userEvent.click(loadMoreButton())
+    expect(loadMoreButton()).toBeDisabled()
+
+    await act(async () => {
+      first.resolve({ ...base, rows: [row('u2', '佐藤太郎')], nextCursor: null })
+    })
+
+    // 2件目の取得はまだ続いているので、押せる状態に戻してはいけない
+    expect(loadMoreButton()).toBeDisabled()
+    expect(screen.queryByText('佐藤太郎')).not.toBeInTheDocument()
   })
 })

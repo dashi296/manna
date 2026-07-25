@@ -161,6 +161,8 @@ function ConnectionsPage() {
     setPagedFrom(loaderData)
     setExtraRows([])
     setCursor(nextCursor)
+    // 進行中の取得は新しい一覧には関係ないので、待たずに次のページを引けるようにする
+    setLoadingMore(false)
   }
 
   const loadMore = async () => {
@@ -176,7 +178,9 @@ function ConnectionsPage() {
     } catch {
       // 失敗時は追記せず、ボタンを押せる状態に戻すだけにする
     } finally {
-      setLoadingMore(false)
+      // 世代が変わっていれば、この取得はもう現在の一覧のものではない。
+      // ここで解除すると、新しい一覧で進行中の取得の状態を奪ってしまう
+      if (requestedFrom === loaderDataRef.current) setLoadingMore(false)
     }
   }
 
