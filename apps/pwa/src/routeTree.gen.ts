@@ -18,6 +18,7 @@ import { Route as ProfileIndexRouteImport } from './pages/profile/index'
 import { Route as ScripturesIndexRouteImport } from './pages/scriptures/index'
 import { Route as ApiAuthCallbackRouteImport } from './pages/api/auth/callback'
 import { Route as ProfileUserIdIndexRouteImport } from './pages/profile/$userId/index'
+import { Route as ProfileUserIdConnectionsRouteImport } from './pages/profile/$userId/connections'
 import { Route as ScripturesCollectionIndexRouteImport } from './pages/scriptures/$collection/index'
 import { Route as ScripturesCollectionBookIndexRouteImport } from './pages/scriptures/$collection/$book/index'
 import { Route as ScripturesCollectionBookChapterRouteImport } from './pages/scriptures/$collection/$book/$chapter'
@@ -67,6 +68,12 @@ const ProfileUserIdIndexRoute = ProfileUserIdIndexRouteImport.update({
   path: '/profile/$userId/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProfileUserIdConnectionsRoute =
+  ProfileUserIdConnectionsRouteImport.update({
+    id: '/profile/$userId/connections',
+    path: '/profile/$userId/connections',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ScripturesCollectionIndexRoute =
   ScripturesCollectionIndexRouteImport.update({
     id: '/scriptures/$collection/',
@@ -95,6 +102,7 @@ export interface FileRoutesByFullPath {
   '/profile/': typeof ProfileIndexRoute
   '/scriptures/': typeof ScripturesIndexRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
+  '/profile/$userId/connections': typeof ProfileUserIdConnectionsRoute
   '/profile/$userId/': typeof ProfileUserIdIndexRoute
   '/scriptures/$collection/': typeof ScripturesCollectionIndexRoute
   '/scriptures/$collection/$book/$chapter': typeof ScripturesCollectionBookChapterRoute
@@ -109,6 +117,7 @@ export interface FileRoutesByTo {
   '/profile': typeof ProfileIndexRoute
   '/scriptures': typeof ScripturesIndexRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
+  '/profile/$userId/connections': typeof ProfileUserIdConnectionsRoute
   '/profile/$userId': typeof ProfileUserIdIndexRoute
   '/scriptures/$collection': typeof ScripturesCollectionIndexRoute
   '/scriptures/$collection/$book/$chapter': typeof ScripturesCollectionBookChapterRoute
@@ -124,6 +133,7 @@ export interface FileRoutesById {
   '/profile/': typeof ProfileIndexRoute
   '/scriptures/': typeof ScripturesIndexRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
+  '/profile/$userId/connections': typeof ProfileUserIdConnectionsRoute
   '/profile/$userId/': typeof ProfileUserIdIndexRoute
   '/scriptures/$collection/': typeof ScripturesCollectionIndexRoute
   '/scriptures/$collection/$book/$chapter': typeof ScripturesCollectionBookChapterRoute
@@ -140,6 +150,7 @@ export interface FileRouteTypes {
     | '/profile/'
     | '/scriptures/'
     | '/api/auth/callback'
+    | '/profile/$userId/connections'
     | '/profile/$userId/'
     | '/scriptures/$collection/'
     | '/scriptures/$collection/$book/$chapter'
@@ -154,6 +165,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/scriptures'
     | '/api/auth/callback'
+    | '/profile/$userId/connections'
     | '/profile/$userId'
     | '/scriptures/$collection'
     | '/scriptures/$collection/$book/$chapter'
@@ -168,6 +180,7 @@ export interface FileRouteTypes {
     | '/profile/'
     | '/scriptures/'
     | '/api/auth/callback'
+    | '/profile/$userId/connections'
     | '/profile/$userId/'
     | '/scriptures/$collection/'
     | '/scriptures/$collection/$book/$chapter'
@@ -183,6 +196,7 @@ export interface RootRouteChildren {
   ProfileIndexRoute: typeof ProfileIndexRoute
   ScripturesIndexRoute: typeof ScripturesIndexRoute
   ApiAuthCallbackRoute: typeof ApiAuthCallbackRoute
+  ProfileUserIdConnectionsRoute: typeof ProfileUserIdConnectionsRoute
   ProfileUserIdIndexRoute: typeof ProfileUserIdIndexRoute
   ScripturesCollectionIndexRoute: typeof ScripturesCollectionIndexRoute
   ScripturesCollectionBookChapterRoute: typeof ScripturesCollectionBookChapterRoute
@@ -254,6 +268,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProfileUserIdIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/profile/$userId/connections': {
+      id: '/profile/$userId/connections'
+      path: '/profile/$userId/connections'
+      fullPath: '/profile/$userId/connections'
+      preLoaderRoute: typeof ProfileUserIdConnectionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/scriptures/$collection/': {
       id: '/scriptures/$collection/'
       path: '/scriptures/$collection'
@@ -287,6 +308,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProfileIndexRoute: ProfileIndexRoute,
   ScripturesIndexRoute: ScripturesIndexRoute,
   ApiAuthCallbackRoute: ApiAuthCallbackRoute,
+  ProfileUserIdConnectionsRoute: ProfileUserIdConnectionsRoute,
   ProfileUserIdIndexRoute: ProfileUserIdIndexRoute,
   ScripturesCollectionIndexRoute: ScripturesCollectionIndexRoute,
   ScripturesCollectionBookChapterRoute: ScripturesCollectionBookChapterRoute,

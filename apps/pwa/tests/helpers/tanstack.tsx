@@ -5,6 +5,7 @@ import { vi } from 'vitest'
 export function routerMock(
   useLoaderData: () => unknown = () => ({}),
   getPathname: () => string = () => '/',
+  navigate: (opts: unknown) => void = () => {},
 ) {
   return {
     createFileRoute: () => (config: Record<string, unknown>) => ({
@@ -24,6 +25,7 @@ export function routerMock(
     notFound: () => new Error('not found'),
     redirect: (opts: { to: string; params?: Record<string, string> }) => opts,
     useRouterState: () => ({ location: { pathname: getPathname() } }),
+    useNavigate: () => navigate,
   }
 }
 
