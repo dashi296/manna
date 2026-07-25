@@ -163,14 +163,14 @@ const fetchConnections = createServerFn({ method: 'POST' })
 - `PAGE_SIZE = 20`（投稿一覧 `limit(20)` に合わせる）
 - 取得行数を `PAGE_SIZE + 1` にして余分な1件の有無で `hasMore` を判定し、次カーソルには `PAGE_SIZE` 件目の `(created_at, otherId)` を使う。offset ベースと異なり、一覧閲覧中に新規フォローが発生してもページがズレない
 - 自分自身の行は `isFollowingByMe` を使わず、UI側でボタンを非表示にする（`follows` は `CHECK (follower_id != following_id)` により自己フォロー自体が存在しない）
-- 戻り値に `tab` を含める。コンポーネントは **`Route.useSearch()` ではなく `loaderData.tab`** からアクティブタブを読む。既存のテストヘルパー `tests/helpers/tanstack.tsx` の `routerMock` は `createFileRoute` が `{...config, useLoaderData}` を返すだけで `useSearch` / `useNavigate` を提供していないため、`useSearch` に依存すると `routerMock` の拡張が必要になる。`loaderData` 経由にすれば `routerMock` は変更せずに済む（別途 `startMock` の拡張は必要。「テスト」セクションを参照）
+- 戻り値に `tab` を含める。コンポーネントは **`Route.useSearch()` ではなく `loaderData.tab`** からアクティブタブを読む。既存のテストヘルパー `tests/helpers/tanstack.tsx` の `routerMock` は `createFileRoute` が `{...config, useLoaderData}` を返すだけで `useSearch` / `useNavigate` を提供していないため、`loaderData` 経由にすることで `useSearch` の追加は不要になる（`TabBar` のために `useNavigate` は別途追加する。「テスト」セクションを参照）
 
 ## UI / コンポーネント
 
 `pages/profile/$userId/connections.tsx` にページローカルなコンポーネントとして実装する（他から再利用されるまでは独立スライスを作らない）。
 
 - `PageHeader`（既存共通コンポーネント）: タイトルは「フォロワー」/「フォロー中」、`backTo="/profile/$userId"`。`PageHeader` は `params` を渡さず現在の params を引き継ぐ実装なので、ルートパターンをそのまま文字列で渡す（既存の `backTo="/scriptures/$collection"` と同じ使い方）
-- タブ切り替えUI: 2ボタン、`Button` プリミティブ（既存 `FollowButton`/`FamilyButton` と同じ）を使い、アクティブなタブ（`loaderData.tab`）をスタイルで表現。切り替えは `<Link search={{ tab }}>` で search param を変えるだけとし、データ再取得は `loaderDeps` 経由の loader 再実行に任せる（`useNavigate` は使わない）
+- タブ切り替えUI: 既存の共有コンポーネント `TabBar`（フィードページで使用中）を再利用し、`active={loaderData.tab}` を渡す。`onChange` では `navigate({ search: { tab } })` で search param を変えるだけとし、データ再取得は `loaderDeps` 経由の loader 再実行に任せる。`TabBar` はコールバック方式のため `useNavigate` が必要になり、`routerMock` に `useNavigate` の追加が要る
 - `ConnectionRow`（ページ内ローカルコンポーネント）:
   - `UserAvatar` + `resolveUserIdentity`（いずれも既存）で表示名を表示
   - 行全体を `<Link to="/profile/$userId" params={{ userId: row.user.id }}>` でその人のプロフィールへ遷移させる
@@ -194,7 +194,7 @@ const fetchConnections = createServerFn({ method: 'POST' })
 
 `apps/pwa/tests/pages/connections.test.tsx` を新規追加し（既存の `tests/pages/feed.test.tsx` と同じ配置）、以下を失敗テストから実装する。
 
-アクティブタブを `loaderData.tab` から読む設計にしているため、`routerMock` は変更不要（タブ切り替えは `useLoaderData` のモック値を差し替えて検証する）。
+アクティブタブは `loaderData.tab` から読むため、タブ切り替えの検証は `useLoaderData` のモック値を差し替えて行う。ただし `TabBar` の `onChange` で `useNavigate` を使うため、`routerMock` に `useNavigate: () => navigate` の追加が必要。
 
 一方で **`startMock()` の拡張が必要**になる。現在の実装は `.handler()` が呼ばれるたびに新しい `vi.fn()` を返すため、テスト側からその実体を掴めず、「もっと見る」で呼ばれる `fetchConnections` の戻り値を制御できない。既存テストでサーバー関数の戻り値を制御しているものは無く（`mockResolvedValue` を使っているのは `FollowButton.test.tsx` などの supabase クライアント側のモックのみ）、既存のページテストはサーバー関数が `loader` の中でしか呼ばれないため素通りしている。コンポーネントの操作でサーバー関数を呼ぶのは今回が初めてになる。
 
