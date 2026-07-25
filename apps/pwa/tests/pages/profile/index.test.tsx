@@ -31,7 +31,7 @@ describe('ProfilePage', () => {
     render(<ProfilePage />)
     expect(screen.getByRole('link', { name: /フォロワー/ })).toHaveAttribute(
       'href',
-      '/profile/u2/connections',
+      '/profile/u2/connections?tab=followers',
     )
   })
 
@@ -40,7 +40,7 @@ describe('ProfilePage', () => {
     render(<ProfilePage />)
     expect(screen.getByRole('link', { name: /フォロー中/ })).toHaveAttribute(
       'href',
-      '/profile/u2/connections',
+      '/profile/u2/connections?tab=following',
     )
   })
 })

@@ -12,10 +12,29 @@ export function routerMock(
       ...config,
       useLoaderData,
     }),
-    Link: ({ to, params, children, ...props }: { to?: string; params?: Record<string, string>; children?: React.ReactNode; [key: string]: unknown }) => {
-      const href = to && params
+    Link: ({
+      to,
+      params,
+      search,
+      children,
+      ...props
+    }: {
+      to?: string
+      params?: Record<string, string>
+      search?: Record<string, unknown>
+      children?: React.ReactNode
+      [key: string]: unknown
+    }) => {
+      const path = to && params
         ? Object.entries(params).reduce((acc, [k, v]) => acc.replace(`$${k}`, v), to)
         : to
+      // 空オブジェクトの search={{}}（PageHeader の戻るリンクなど）で href に
+      // 余計な "?" が付かないよう、キーがある場合のみクエリ文字列を付与する。
+      const searchEntries = search ? Object.entries(search) : []
+      const query = searchEntries.length > 0
+        ? `?${searchEntries.map(([k, v]) => `${k}=${encodeURIComponent(String(v))}`).join('&')}`
+        : ''
+      const href = path ? `${path}${query}` : path
       return (
         <a href={href} {...props}>
           {children}
