@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { routeComponent } from '../../helpers/tanstack'
 
@@ -33,7 +33,7 @@ const base = {
 
 const renderPage = async () => {
   const ConnectionsPage = routeComponent(await import('@/pages/profile/$userId/connections'))
-  render(<ConnectionsPage />)
+  return { ...render(<ConnectionsPage />), ConnectionsPage }
 }
 
 describe('ConnectionsPage', () => {
@@ -107,5 +107,44 @@ describe('ConnectionsPage', () => {
     expect(await screen.findByRole('button', { name: 'もっと見る' })).not.toBeDisabled()
     expect(screen.getByText('山田花子')).toBeInTheDocument()
     expect(screen.getAllByText('山田花子')).toHaveLength(1)
+  })
+
+  it('取得中にタブを切り替えたら、遅れて届いた前タブの結果を捨てる', async () => {
+    loaderData.mockReturnValue({
+      ...base,
+      rows: [row('u1', '山田花子')],
+      nextCursor: { createdAt: '2026-07-25T10:00:00+00:00', otherId: 'u1' },
+    })
+
+    let resolveFetch: (value: unknown) => void = () => {}
+    mockFetchConnections.mockReturnValue(
+      new Promise((resolve) => {
+        resolveFetch = resolve
+      }),
+    )
+
+    const { rerender, ConnectionsPage } = await renderPage()
+    await userEvent.click(screen.getByRole('button', { name: 'もっと見る' }))
+
+    // 取得の解決前にタブが切り替わる
+    loaderData.mockReturnValue({
+      ...base,
+      tab: 'following',
+      rows: [row('u3', '鈴木次郎')],
+      nextCursor: null,
+    })
+    rerender(<ConnectionsPage />)
+    expect(screen.getByText('鈴木次郎')).toBeInTheDocument()
+
+    // 前タブのリクエストが後から解決しても、その行は混入しない。
+    // 解決後の setState まで act で流し切ってから確認する（否定アサーションは
+    // microtask 実行前だと素通りしてしまうため）
+    await act(async () => {
+      resolveFetch({ ...base, rows: [row('u2', '佐藤太郎')], nextCursor: null })
+    })
+
+    expect(screen.queryByText('佐藤太郎')).not.toBeInTheDocument()
+    expect(screen.getByText('鈴木次郎')).toBeInTheDocument()
+    expect(screen.queryByText('山田花子')).not.toBeInTheDocument()
   })
 })

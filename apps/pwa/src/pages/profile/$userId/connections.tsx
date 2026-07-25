@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { FollowButton } from '@/features/follow-user'
@@ -47,7 +47,11 @@ export const fetchConnections = createServerFn({ method: 'POST' })
       )
     }
 
-    const { data: followRows } = await query
+    // Supabase はクエリ失敗時も reject せず { data: null, error } を返すため、
+    // error を見ないと障害が「0件」として表示されてしまう
+    const { data: followRows, error: followError } = await query
+    if (followError) throw followError
+
     const hasMore = (followRows ?? []).length > PAGE_SIZE
     const page = ((followRows ?? []) as Record<string, string>[]).slice(0, PAGE_SIZE)
     const otherIds = page.map((r) => r[otherIdColumn])
@@ -68,6 +72,9 @@ export const fetchConnections = createServerFn({ method: 'POST' })
             .in('following_id', otherIds)
         : null,
     ])
+
+    if (usersRes?.error) throw usersRes.error
+    if (myFollowsRes?.error) throw myFollowsRes.error
 
     const usersById = new Map((usersRes?.data ?? []).map((u) => [u.id, u]))
     const followingSet = new Set((myFollowsRes?.data ?? []).map((f) => f.following_id))
@@ -142,6 +149,8 @@ function ConnectionsPage() {
   const [cursor, setCursor] = useState<Cursor | null>(nextCursor)
   const [loadingMore, setLoadingMore] = useState(false)
   const [prevTab, setPrevTab] = useState(tab)
+  const currentTabRef = useRef(tab)
+  currentTabRef.current = tab
 
   // タブ切り替えで loader が再実行されたら、前のタブの追加読み込み分を捨てる。
   // レンダー中に調整することで、新タブの rows と前タブの extraRows が混ざって
@@ -155,8 +164,11 @@ function ConnectionsPage() {
   const loadMore = async () => {
     if (!cursor || loadingMore) return
     setLoadingMore(true)
+    const requestedTab = tab
     try {
-      const next = await fetchConnections({ data: { userId, tab, cursor } })
+      const next = await fetchConnections({ data: { userId, tab: requestedTab, cursor } })
+      // 取得中にタブが切り替わっていたら、前タブの結果を新しい一覧に混ぜない
+      if (requestedTab !== currentTabRef.current) return
       setExtraRows((prev) => [...prev, ...next.rows])
       setCursor(next.nextCursor)
     } catch {
