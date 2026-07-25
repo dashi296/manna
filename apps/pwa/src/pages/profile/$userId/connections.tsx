@@ -101,10 +101,7 @@ export const fetchConnections = createServerFn({ method: 'POST' })
         const user = usersById.get(r[otherIdColumn])
         return user ? [{ user, isFollowingByMe: followingSet.has(user.id) }] : []
       }),
-      nextCursor:
-        hasMore && last
-          ? { createdAt: last.created_at, otherId: last[otherIdColumn] }
-          : null,
+      nextCursor: hasMore ? { createdAt: last.created_at, otherId: last[otherIdColumn] } : null,
     }
   })
 
