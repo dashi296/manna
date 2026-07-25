@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { isValidCursor } from '@/pages/profile/$userId/cursor'
+import { isValidCursor } from '@/pages/profile/$userId/-cursor'
 
 const VALID_UUID = '11111111-2222-3333-4444-555555555555'
 

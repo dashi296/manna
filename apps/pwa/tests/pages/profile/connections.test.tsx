@@ -91,4 +91,21 @@ describe('ConnectionsPage', () => {
     expect(screen.getByText('山田花子')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'もっと見る' })).not.toBeInTheDocument()
   })
+
+  it('「もっと見る」が失敗しても行を追記せずボタンを再度押せる状態に戻す', async () => {
+    loaderData.mockReturnValue({
+      ...base,
+      rows: [row('u1', '山田花子')],
+      nextCursor: { createdAt: '2026-07-25T10:00:00+00:00', otherId: 'u1' },
+    })
+    mockFetchConnections.mockRejectedValue(new Error('boom'))
+    await renderPage()
+
+    const loadMoreButton = screen.getByRole('button', { name: 'もっと見る' })
+    await userEvent.click(loadMoreButton)
+
+    expect(await screen.findByRole('button', { name: 'もっと見る' })).not.toBeDisabled()
+    expect(screen.getByText('山田花子')).toBeInTheDocument()
+    expect(screen.getAllByText('山田花子')).toHaveLength(1)
+  })
 })

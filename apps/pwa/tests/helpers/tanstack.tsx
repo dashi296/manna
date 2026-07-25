@@ -30,6 +30,8 @@ export function routerMock(
         : to
       // 空オブジェクトの search={{}}（PageHeader の戻るリンクなど）で href に
       // 余計な "?" が付かないよう、キーがある場合のみクエリ文字列を付与する。
+      // 本番の TanStack Router は配列値を JSON化する（?verses=%5B19%5D）が、
+      // ここは String() で結合するため配列は "?verses=19" のようになる。
       const searchEntries = search ? Object.entries(search) : []
       const query = searchEntries.length > 0
         ? `?${searchEntries.map(([k, v]) => `${k}=${encodeURIComponent(String(v))}`).join('&')}`
@@ -53,6 +55,8 @@ export const routeComponent = (mod: { Route: unknown }) =>
 
 // getServerSession (@/shared/lib/auth) は .inputValidator() を挟まず
 // .handler() を直接呼ぶため、両方のチェーンをスタブする必要がある。
+// 対象モジュール内の createServerFn 呼び出しは全て同じ impl に束縛されるため、
+// 1モジュールに2つ以上の createServerFn がある場合はこのスタブでは区別できない。
 export function startMock(impl?: (...args: never[]) => unknown) {
   const handler = () => impl ?? vi.fn()
   return {

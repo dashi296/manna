@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { FollowButton } from '@/features/follow-user'
@@ -6,7 +6,7 @@ import { EmptyState, PageHeader, TabBar, UserAvatar } from '@/shared/ui'
 import { Button } from '@/shared/ui/button'
 import { resolveUserIdentity } from '@/shared/lib/constants'
 import { createSupabaseServer } from '@/shared/lib/auth'
-import { isValidCursor, type Cursor } from './cursor'
+import { isValidCursor, type Cursor } from './-cursor'
 
 type Tab = 'followers' | 'following'
 type ConnectionUser = { id: string; display_name: string | null; avatar_url: string | null }
@@ -141,12 +141,16 @@ function ConnectionsPage() {
   const [extraRows, setExtraRows] = useState<ConnectionRowData[]>([])
   const [cursor, setCursor] = useState<Cursor | null>(nextCursor)
   const [loadingMore, setLoadingMore] = useState(false)
+  const [prevTab, setPrevTab] = useState(tab)
 
-  // タブ切り替えで loader が再実行されたら、前のタブの追加読み込み分を捨てる
-  useEffect(() => {
+  // タブ切り替えで loader が再実行されたら、前のタブの追加読み込み分を捨てる。
+  // レンダー中に調整することで、新タブの rows と前タブの extraRows が混ざって
+  // 一瞬 key が重複する（useEffect だとコミット後まで反映が遅れる）のを防ぐ。
+  if (prevTab !== tab) {
+    setPrevTab(tab)
     setExtraRows([])
     setCursor(nextCursor)
-  }, [tab, nextCursor])
+  }
 
   const loadMore = async () => {
     if (!cursor || loadingMore) return
