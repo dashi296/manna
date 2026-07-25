@@ -75,7 +75,7 @@ const fetchProfileData = createServerFn({ method: 'POST' })
     }
   })
 
-export const Route = createFileRoute('/profile/$userId')({
+export const Route = createFileRoute('/profile/$userId/')({
   loader: async ({ params }) => {
     const data = await fetchProfileData({ data: { userId: params.userId } })
     if (!data) throw notFound()
