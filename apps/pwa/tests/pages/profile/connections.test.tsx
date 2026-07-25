@@ -147,4 +147,33 @@ describe('ConnectionsPage', () => {
     expect(screen.getByText('鈴木次郎')).toBeInTheDocument()
     expect(screen.queryByText('山田花子')).not.toBeInTheDocument()
   })
+
+  it('同じタブのまま loader が再実行されたら追加読み込み分を捨てる', async () => {
+    loaderData.mockReturnValue({
+      ...base,
+      rows: [row('u1', '山田花子')],
+      nextCursor: { createdAt: '2026-07-25T10:00:00+00:00', otherId: 'u1' },
+    })
+    mockFetchConnections.mockResolvedValue({
+      ...base,
+      rows: [row('u2', '佐藤太郎')],
+      nextCursor: null,
+    })
+
+    const { rerender, ConnectionsPage } = await renderPage()
+    await userEvent.click(screen.getByRole('button', { name: 'もっと見る' }))
+    expect(await screen.findByText('佐藤太郎')).toBeInTheDocument()
+
+    // タブは同じまま、フォロー関係が変わって loader が再実行される。
+    // 新しい1ページ目に既に佐藤太郎が含まれるため、古い追加分を残すと重複する
+    loaderData.mockReturnValue({
+      ...base,
+      rows: [row('u1', '山田花子'), row('u2', '佐藤太郎')],
+      nextCursor: null,
+    })
+    rerender(<ConnectionsPage />)
+
+    expect(screen.getAllByText('佐藤太郎')).toHaveLength(1)
+    expect(screen.getAllByText('山田花子')).toHaveLength(1)
+  })
 })

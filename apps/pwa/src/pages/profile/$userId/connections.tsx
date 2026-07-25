@@ -143,20 +143,22 @@ function ConnectionRow({
 }
 
 function ConnectionsPage() {
-  const { userId, tab, rows, currentUserId, nextCursor } = Route.useLoaderData()
+  const loaderData = Route.useLoaderData()
+  const { userId, tab, rows, currentUserId, nextCursor } = loaderData
   const navigate = useNavigate()
   const [extraRows, setExtraRows] = useState<ConnectionRowData[]>([])
   const [cursor, setCursor] = useState<Cursor | null>(nextCursor)
   const [loadingMore, setLoadingMore] = useState(false)
-  const [prevTab, setPrevTab] = useState(tab)
-  const currentTabRef = useRef(tab)
-  currentTabRef.current = tab
+  const [pagedFrom, setPagedFrom] = useState(loaderData)
+  const loaderDataRef = useRef(loaderData)
+  loaderDataRef.current = loaderData
 
-  // タブ切り替えで loader が再実行されたら、前のタブの追加読み込み分を捨てる。
-  // レンダー中に調整することで、新タブの rows と前タブの extraRows が混ざって
-  // 一瞬 key が重複する（useEffect だとコミット後まで反映が遅れる）のを防ぐ。
-  if (prevTab !== tab) {
-    setPrevTab(tab)
+  // loader が新しいデータを返したら追加読み込み分を捨てる。タブ切り替えだけでなく
+  // 同じタブの再読込も対象で、そうしないと新しい1ページ目に古い後続ページが繋がり
+  // 行が重複・欠落する。レンダー中に調整するのは、混ざった状態で一度でも描画されると
+  // key が重複するため（useEffect ではコミット後まで反映が遅れる）。
+  if (pagedFrom !== loaderData) {
+    setPagedFrom(loaderData)
     setExtraRows([])
     setCursor(nextCursor)
   }
@@ -164,11 +166,11 @@ function ConnectionsPage() {
   const loadMore = async () => {
     if (!cursor || loadingMore) return
     setLoadingMore(true)
-    const requestedTab = tab
+    const requestedFrom = loaderData
     try {
-      const next = await fetchConnections({ data: { userId, tab: requestedTab, cursor } })
-      // 取得中にタブが切り替わっていたら、前タブの結果を新しい一覧に混ぜない
-      if (requestedTab !== currentTabRef.current) return
+      const next = await fetchConnections({ data: { userId, tab, cursor } })
+      // 取得中に loader データが入れ替わっていたら、古い結果は新しい一覧に混ぜない
+      if (requestedFrom !== loaderDataRef.current) return
       setExtraRows((prev) => [...prev, ...next.rows])
       setCursor(next.nextCursor)
     } catch {
