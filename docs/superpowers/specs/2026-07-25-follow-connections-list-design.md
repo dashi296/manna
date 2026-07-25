@@ -13,31 +13,78 @@
 
 ## スコープ
 
-**含む**: フォロー中/フォロワー一覧ページの追加。
+**含む**: フォロー中/フォロワー一覧ページの追加、および一覧クエリを支えるインデックスの追加。
 
 **含まない（別issueで検討）**:
 - 家族一覧ページの新設
 - ユーザー検索/ディレクトリ（プライバシー考慮が必要なため別途設計する）
 
-## ルーティングとデータ取得
+## ルーティング
 
-- 新規ルート: `pages/profile/$userId/connections.tsx` → `/profile/$userId/connections`
-- タブは `?tab=followers|following` の search param で管理（TanStack Router の `validateSearch` で `'followers' | 'following'` に型を絞る）。デフォルトは `followers`
-- `profile/$userId.tsx` の「フォロワー」「フォロー中」の `<span>` 表示を `<Link to="/profile/$userId/connections" params={{ userId: profile.id }} search={{ tab: 'followers' }}>` / `search={{ tab: 'following' }}` に変更する
-- 認証ガードは既存の `AUTH_REQUIRED_PREFIXES`（`/profile` prefix）でカバーされるため追加対応は不要。ログインしていれば誰でも閲覧可能とする（`follows` テーブルは RLS 上 `follows_select_all` により既に全ユーザーに公開されており、フォロワー/フォロー中件数も現状誰でも見られるため、一覧を見せることによる新たなプライバシー上の後退はない）
+### 既存ルートのリネーム（必須）
 
-### サーバー関数 `fetchConnections`
+`pages/profile/$userId.tsx` を残したまま `pages/profile/$userId/connections.tsx` を追加すると、ルートジェネレータは connections を `$userId` の**子ルート**として生成する（`getParentRoute: () => ProfileUserIdRoute`）。`ProfilePage` には `<Outlet />` が無いため、`/profile/$userId/connections` を開いてもプロフィールページが描画されるだけで一覧は表示されない。
 
-`fetchProfileData`（同ファイル内の既存パターン）と同様に `createServerFn` で新設する。
+これを避けるため、**`pages/profile/$userId.tsx` を `pages/profile/$userId/index.tsx` にリネームする**。この構成ではジェネレータは両ルートをフラット（`getParentRoute: () => rootRouteImport`）に生成する。`profile/index.tsx` という既存の書き方とも揃う。
 
-`follows` テーブルは `follower_id` / `following_id` の2本の外部キーで `users` を参照しているため（`supabase/migrations/20260519000001_initial_schema.sql:34-40`）、PostgREST の埋め込みで曖昧にならないよう、タブごとに参照する列を分けて素朴に2クエリで組み立てる（`follows` 行の取得と、相手ユーザー情報の取得を分離する）。
+`FileRoutesByTo` 上は `'/profile/$userId': typeof ProfileUserIdIndexRoute` が維持されるため、既存の `notifications.tsx:71,77` の `to="/profile/$userId"` リンクは変更不要。
+
+### 新規ルート
+
+- `pages/profile/$userId/connections.tsx` → `/profile/$userId/connections`
+- タブは `?tab=followers|following` の search param で管理（`validateSearch` で `'followers' | 'following'` に型を絞る）。デフォルトは `followers`
+- **`loaderDeps` の宣言が必須**。TanStack Router では search param は `loaderDeps` を経由しないと loader に渡らない（既存例: `$chapter.tsx:216`）。
 
 ```ts
+validateSearch: (search: Record<string, unknown>): ConnectionsSearch => ({
+  tab: search.tab === 'following' ? 'following' : 'followers',
+}),
+loaderDeps: ({ search }) => ({ tab: search.tab }),
+loader: async ({ params, deps }) =>
+  fetchConnections({ data: { userId: params.userId, tab: deps.tab, cursor: null } }),
+```
+
+`loaderDeps` に `tab` を含めることで、**タブ切り替え時は loader が自動で再実行される**。クライアント側で再取得を書くと二重取得になるため書かない。
+
+- `profile/$userId/index.tsx` の「フォロワー」「フォロー中」の `<span>` 表示を `<Link to="/profile/$userId/connections" params={{ userId: profile.id }} search={{ tab: 'followers' }}>` / `search={{ tab: 'following' }}` に変更する
+- 認証ガードは既存の `AUTH_REQUIRED_PREFIXES`（`/profile` prefix）でカバーされるため追加対応は不要。ログインしていれば誰でも閲覧可能とする（`follows` テーブルは RLS 上 `follows_select_all` により既に全ユーザーに公開されており、フォロワー/フォロー中件数も現状誰でも見られるため、一覧を見せることによる新たなプライバシー上の後退はない）
+
+## DB マイグレーション
+
+`follows` の PK は `(follower_id, following_id)` のみで、`following_id` 単体のインデックスが存在しない。フォロワータブの `.eq('following_id', userId)` は PK の前方一致が効かず、また両タブとも `created_at` 降順で並べるため PK は ORDER BY にも使えない。`supabase/CLAUDE.md` の「RLS/フィルタで参照する列に必ずインデックスを貼る」方針に従い、両タブ用の複合インデックスを追加する。
+
+```sql
+-- フォロワータブ: WHERE following_id = ? ORDER BY created_at DESC, follower_id DESC
+CREATE INDEX IF NOT EXISTS follows_following_created_idx
+  ON public.follows (following_id, created_at DESC, follower_id DESC);
+
+-- フォロー中タブ: WHERE follower_id = ? ORDER BY created_at DESC, following_id DESC
+CREATE INDEX IF NOT EXISTS follows_follower_created_idx
+  ON public.follows (follower_id, created_at DESC, following_id DESC);
+```
+
+ファイル名は `YYYYMMDDHHmmss_add_follows_pagination_indexes.sql` の形式とする。
+
+## サーバー関数 `fetchConnections`
+
+`profile/$userId/index.tsx` の `fetchProfileData` と同じ `createServerFn` パターンで新設する。
+
+`follows` テーブルは `follower_id` / `following_id` の2本の外部キーで `users` を参照しているため（`supabase/migrations/20260519000001_initial_schema.sql:34-40`）、PostgREST の埋め込みで曖昧にならないよう、`follows` 行の取得と相手ユーザー情報の取得を分離して素朴に組み立てる。
+
+### カーソルの形
+
+`created_at` 単体をカーソルにすると、同値の行があった場合に `.lt('created_at', cursor)` が同値行をまとめて飛ばす。`created_at` の DEFAULT は `now()`（トランザクション時刻）なので、seed 等の一括 INSERT で同値になり得る。これを避けるため **`(created_at, 相手のユーザーID)` の複合カーソル**にする。`ownIdColumn` を固定値で絞り込んでいるため、`otherIdColumn` は同一 `created_at` 内で一意になり、タイブレーカーとして機能する。
+
+```ts
+type Cursor = { createdAt: string; otherId: string }
+
+const PAGE_SIZE = 20
+
 const fetchConnections = createServerFn({ method: 'POST' })
   .inputValidator((data: {
     userId: string
     tab: 'followers' | 'following'
-    cursor: string | null
+    cursor: Cursor | null
   }) => data)
   .handler(async (ctx) => {
     const { userId, tab, cursor } = ctx.data
@@ -50,9 +97,17 @@ const fetchConnections = createServerFn({ method: 'POST' })
       .select(`created_at, ${otherIdColumn}`)
       .eq(ownIdColumn, userId)
       .order('created_at', { ascending: false })
+      .order(otherIdColumn, { ascending: false })
       .limit(PAGE_SIZE + 1)
 
-    if (cursor) query = query.lt('created_at', cursor)
+    // (created_at, otherId) < (cursor.createdAt, cursor.otherId) の keyset 条件。
+    // timestamptz は ':' や '+' を含むため PostgREST のフィルタ値としてダブルクォートで囲む。
+    if (cursor) {
+      query = query.or(
+        `created_at.lt."${cursor.createdAt}",` +
+        `and(created_at.eq."${cursor.createdAt}",${otherIdColumn}.lt."${cursor.otherId}")`,
+      )
+    }
 
     const { data: followRows } = await query
     const hasMore = (followRows?.length ?? 0) > PAGE_SIZE
@@ -70,39 +125,43 @@ const fetchConnections = createServerFn({ method: 'POST' })
 
     const followingSet = new Set((myFollows ?? []).map((f) => f.following_id))
     const usersById = new Map((users ?? []).map((u) => [u.id, u]))
+    const last = page[page.length - 1]
 
     return {
-      rows: page.map((r) => ({
-        user: usersById.get(r[otherIdColumn] as string),
-        isFollowingByMe: followingSet.has(r[otherIdColumn] as string),
-      })),
-      nextCursor: hasMore ? page[page.length - 1].created_at : null,
+      rows: page.flatMap((r) => {
+        const user = usersById.get(r[otherIdColumn] as string)
+        return user ? [{ user, isFollowingByMe: followingSet.has(user.id) }] : []
+      }),
+      currentUserId: currentUser?.id ?? null,
+      nextCursor: hasMore && last
+        ? { createdAt: last.created_at, otherId: last[otherIdColumn] as string }
+        : null,
     }
   })
 ```
 
 - `PAGE_SIZE = 20`（投稿一覧 `limit(20)` に合わせる）
-- カーソルは keyset pagination。取得行数を `PAGE_SIZE + 1` にして余分な1件の有無で `hasMore` を判定し、次カーソルには最後の行の `created_at` を使う（offsetベースと異なり、一覧閲覧中に新規フォローが発生してもページがズレない）
-- 自分自身の行（`otherId === currentUser.id`）は `isFollowingByMe` を計算する必要はなく、UI側でボタンを非表示にする
+- 取得行数を `PAGE_SIZE + 1` にして余分な1件の有無で `hasMore` を判定し、次カーソルには `PAGE_SIZE` 件目の `(created_at, otherId)` を使う。offset ベースと異なり、一覧閲覧中に新規フォローが発生してもページがズレない
+- 自分自身の行は `isFollowingByMe` を使わず、UI側でボタンを非表示にする（`follows` は `CHECK (follower_id != following_id)` により自己フォロー自体が存在しない）
 
 ## UI / コンポーネント
 
 `pages/profile/$userId/connections.tsx` にページローカルなコンポーネントとして実装する（他から再利用されるまでは独立スライスを作らない）。
 
-- `PageHeader`（既存共通コンポーネント）: タイトルは「フォロワー」/「フォロー中」、`backTo` は元のプロフィールページ
-- タブ切り替えUI: 2ボタン、`Button` プリミティブ（既存 `FollowButton`/`FamilyButton` と同じ）を使い、アクティブなタブをスタイルで表現。切り替え時は一覧の state（`rows`・`cursor`・`hasMore`）をリセットし、初期ページを再取得する
+- `PageHeader`（既存共通コンポーネント）: タイトルは「フォロワー」/「フォロー中」、`backTo="/profile/$userId"`。`PageHeader` は `params` を渡さず現在の params を引き継ぐ実装なので、ルートパターンをそのまま文字列で渡す（既存の `backTo="/scriptures/$collection"` と同じ使い方）
+- タブ切り替えUI: 2ボタン、`Button` プリミティブ（既存 `FollowButton`/`FamilyButton` と同じ）を使い、アクティブなタブをスタイルで表現。切り替えは `<Link search={{ tab }}>` もしくは `navigate({ search })` で search param を変えるだけとし、データ再取得は `loaderDeps` 経由の loader 再実行に任せる
 - `ConnectionRow`（ページ内ローカルコンポーネント）:
   - `UserAvatar` + `resolveUserIdentity`（いずれも既存）で表示名を表示
   - 行全体を `<Link to="/profile/$userId" params={{ userId: row.user.id }}>` でその人のプロフィールへ遷移させる
   - 行の右端に既存 `FollowButton` を配置。**行のユーザーが自分自身の場合はボタンを非表示にする**（自己フォローUIを出さない）
-- 一覧末尾に「もっと見る」ボタンを配置し、`nextCursor` が存在する時のみ表示。押下で `fetchConnections` を追加のカーソル付きで呼び出し、結果を既存 `rows` の末尾に追記する
-- 0件時は既存の `EmptyState` を使用し、タブに応じて文言を出し分ける（例: 「まだフォロワーがいません」/「まだ誰もフォローしていません」）
+- 一覧末尾に「もっと見る」ボタンを配置し、`nextCursor` が存在する時のみ表示。押下で `fetchConnections` を次カーソル付きで呼び出し、結果を既存 `rows` の末尾に追記する
+- 0件時は既存の `EmptyState`（`children` のみを取る）を使用し、タブに応じて文言を出し分ける（例: 「まだフォロワーがいません」/「まだ誰もフォローしていません」）
 
 ### 状態管理
 
-- ページコンポーネントは `useState` で `rows` / `cursor` / `hasMore` / `loadingMore` を保持する
-- 初回データは `Route.loader` 経由で取得し `Route.useLoaderData()` から得る。タブ切り替えは `search.tab` の変化を検知して state をリセットし、`fetchConnections` をクライアントから呼び直す
-- 「もっと見る」時はクライアントから直接 `fetchConnections` を呼び出し、`rows` に追記する（ページ全体の再取得は行わない）
+- 初回データは loader から `Route.useLoaderData()` で受け取る
+- 「もっと見る」で追記した分だけを `useState` で保持し（`extraRows` / `cursor` / `loadingMore`）、表示は `loaderData.rows` + `extraRows` を連結する
+- `loaderData` が変化したとき（タブ切り替え時）は `extraRows` と `cursor` をリセットする
 - `FollowButton` は既存実装のまま、自身の楽観的更新のみ行う（一覧全体の再取得は不要）
 
 ## エラーハンドリング
@@ -112,10 +171,12 @@ const fetchConnections = createServerFn({ method: 'POST' })
 
 ## テスト（TDD）
 
-`tests/` 配下に新規テストファイルを追加し、以下を失敗テストから実装する。
+`apps/pwa/tests/pages/connections.test.tsx` を新規追加し（既存の `tests/pages/feed.test.tsx` と同じ配置）、以下を失敗テストから実装する。
 
 1. `followers` タブでユーザー一覧が表示される
 2. `following` タブに切り替えると表示が切り替わる
 3. 自分自身の行には `FollowButton` が表示されない
-4. 「もっと見る」ボタン押下で追加行が末尾に表示される（`hasMore` が false になればボタンが非表示になる）
+4. 「もっと見る」ボタン押下で追加行が末尾に表示される（`nextCursor` が null になればボタンが非表示になる）
 5. 0件時に `EmptyState` が表示される
+
+リネームによる既存ルートの回帰確認として、`/profile/$userId` が従来どおり描画されることも確認する。
