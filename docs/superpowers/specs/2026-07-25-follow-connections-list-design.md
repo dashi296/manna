@@ -163,7 +163,7 @@ const fetchConnections = createServerFn({ method: 'POST' })
 - `PAGE_SIZE = 20`（投稿一覧 `limit(20)` に合わせる）
 - 取得行数を `PAGE_SIZE + 1` にして余分な1件の有無で `hasMore` を判定し、次カーソルには `PAGE_SIZE` 件目の `(created_at, otherId)` を使う。offset ベースと異なり、一覧閲覧中に新規フォローが発生してもページがズレない
 - 自分自身の行は `isFollowingByMe` を使わず、UI側でボタンを非表示にする（`follows` は `CHECK (follower_id != following_id)` により自己フォロー自体が存在しない）
-- 戻り値に `tab` を含める。コンポーネントは **`Route.useSearch()` ではなく `loaderData.tab`** からアクティブタブを読む。既存のテストヘルパー `tests/helpers/tanstack.tsx` の `routerMock` は `createFileRoute` が `{...config, useLoaderData}` を返すだけで `useSearch` / `useNavigate` を提供していないため、`useSearch` に依存するとヘルパーの拡張が必要になる。`loaderData` 経由にすればヘルパーを変更せずにテストできる
+- 戻り値に `tab` を含める。コンポーネントは **`Route.useSearch()` ではなく `loaderData.tab`** からアクティブタブを読む。既存のテストヘルパー `tests/helpers/tanstack.tsx` の `routerMock` は `createFileRoute` が `{...config, useLoaderData}` を返すだけで `useSearch` / `useNavigate` を提供していないため、`useSearch` に依存すると `routerMock` の拡張が必要になる。`loaderData` 経由にすれば `routerMock` は変更せずに済む（別途 `startMock` の拡張は必要。「テスト」セクションを参照）
 
 ## UI / コンポーネント
 
@@ -182,7 +182,7 @@ const fetchConnections = createServerFn({ method: 'POST' })
 
 - 初回データは loader から `Route.useLoaderData()` で受け取る
 - 「もっと見る」で追記した分だけを `useState` で保持し（`extraRows` / `cursor` / `loadingMore`）、表示は `loaderData.rows` + `extraRows` を連結する
-- `loaderData` が変化したとき（タブ切り替え時）は `extraRows` と `cursor` をリセットする
+- `cursor` の初期値は `loaderData.nextCursor`。`loaderData` が変化したとき（タブ切り替え時）は `extraRows` を空配列に、`cursor` を **新しい `loaderData.nextCursor` に** 戻す（`null` に戻すと「もっと見る」が消えてしまう）
 - `FollowButton` は既存実装のまま、自身の楽観的更新のみ行う（一覧全体の再取得は不要）
 
 ## エラーハンドリング
@@ -194,7 +194,25 @@ const fetchConnections = createServerFn({ method: 'POST' })
 
 `apps/pwa/tests/pages/connections.test.tsx` を新規追加し（既存の `tests/pages/feed.test.tsx` と同じ配置）、以下を失敗テストから実装する。
 
-アクティブタブを `loaderData.tab` から読む設計にしているため、テストヘルパー（`tests/helpers/tanstack.tsx`）は変更不要。タブ切り替えは `useLoaderData` のモック値を差し替えて検証する。
+アクティブタブを `loaderData.tab` から読む設計にしているため、`routerMock` は変更不要（タブ切り替えは `useLoaderData` のモック値を差し替えて検証する）。
+
+一方で **`startMock()` の拡張が必要**になる。現在の実装は `.handler()` が呼ばれるたびに新しい `vi.fn()` を返すため、テスト側からその実体を掴めず、「もっと見る」で呼ばれる `fetchConnections` の戻り値を制御できない。既存テストでサーバー関数の戻り値を制御しているものは無く（`mockResolvedValue` を使っているのは `FollowButton.test.tsx` などの supabase クライアント側のモックのみ）、既存のページテストはサーバー関数が `loader` の中でしか呼ばれないため素通りしている。コンポーネントの操作でサーバー関数を呼ぶのは今回が初めてになる。
+
+`startMock()` に任意引数を足し、渡された場合はその mock を返すようにする（引数なしの既存呼び出しはそのまま動く）。
+
+```ts
+export function startMock(impl?: ReturnType<typeof vi.fn>) {
+  const handler = () => impl ?? vi.fn()
+  return {
+    createServerFn: () => ({
+      handler,
+      inputValidator: () => ({ handler }),
+    }),
+  }
+}
+```
+
+テスト側では `vi.fn().mockResolvedValue({ rows, tab, currentUserId, nextCursor })` を渡し、「もっと見る」押下後の追記を検証する。
 
 1. `followers` タブでユーザー一覧が表示される
 2. `tab: 'following'` の loader データではフォロー中の一覧が表示される
