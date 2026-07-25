@@ -20,8 +20,27 @@ describe('ProfilePage', () => {
   it('表示名とフォロワー数/フォロー中数を表示する', async () => {
     const ProfilePage = routeComponent(await import('@/pages/profile/$userId/index'))
     render(<ProfilePage />)
-    expect(screen.getAllByText('テスト太郎').length).toBeGreaterThan(0)
+    expect(screen.getByRole('heading', { level: 1, name: 'テスト太郎' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 2, name: 'テスト太郎' })).toBeInTheDocument()
     expect(screen.getByText('3')).toBeInTheDocument()
     expect(screen.getByText('5')).toBeInTheDocument()
+  })
+
+  it('フォロワー数から一覧ページへのリンクを張る', async () => {
+    const ProfilePage = routeComponent(await import('@/pages/profile/$userId/index'))
+    render(<ProfilePage />)
+    expect(screen.getByRole('link', { name: /フォロワー/ })).toHaveAttribute(
+      'href',
+      '/profile/u2/connections',
+    )
+  })
+
+  it('フォロー中数から一覧ページへのリンクを張る', async () => {
+    const ProfilePage = routeComponent(await import('@/pages/profile/$userId/index'))
+    render(<ProfilePage />)
+    expect(screen.getByRole('link', { name: /フォロー中/ })).toHaveAttribute(
+      'href',
+      '/profile/u2/connections',
+    )
   })
 })
