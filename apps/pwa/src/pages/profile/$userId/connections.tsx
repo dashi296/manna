@@ -5,11 +5,10 @@ import type { PostgrestError } from '@supabase/supabase-js'
 import { FollowButton } from '@/features/follow-user'
 import { EmptyState, PageHeader, TabBar, UserAvatar } from '@/shared/ui'
 import { Button } from '@/shared/ui/button'
-import { type CircleUserRow } from '@/entities/user'
+import { connectionsKey, type CircleUserRow } from '@/entities/user'
 import { resolveUserIdentity } from '@/shared/lib/constants'
 import { createSupabaseServer } from '@/shared/lib/auth'
 import { isValidCursor, type Cursor } from '@/shared/lib/cursor'
-import { connectionsKey } from '@/shared/lib/queryKeys'
 
 type Tab = 'followers' | 'following'
 type ConnectionRowData = { user: CircleUserRow; isFollowingByMe: boolean }
@@ -122,8 +121,8 @@ export const Route = createFileRoute('/profile/$userId/connections')({
   }),
   loaderDeps: ({ search }) => ({ tab: search.tab }),
   // 1ページ目は SSR で埋めてクライアントへ引き継ぐ（ローディングのちらつきを避ける）。
-  // ensureInfiniteQueryData ではなく fetchInfiniteQuery を使い staleTime を 0 にするのは、
-  // 別画面でフォロー／解除してから戻ったときに古い行が出ないよう毎回取り直すため。
+  // 自分の操作による陳腐化は invalidateRelationQueries が拾うので、ensureInfiniteQueryData
+  // ではなく fetchInfiniteQuery + staleTime 0 にするのは他人の変更も毎回取り直すため。
   // pages: 1 で追加読み込み分は捨てる（全ページ再取得は遷移のたびに N 回叩くことになる）
   loader: async ({ params, deps, context }) => {
     const options = connectionsQueryOptions(params.userId, deps.tab)

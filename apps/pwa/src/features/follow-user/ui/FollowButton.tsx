@@ -4,6 +4,7 @@ import { useToggleFollow } from '../model/useToggleFollow'
 type Props = {
   targetUserId: string
   currentUserId: string
+  // invalidateRelationQueries が落とせるクエリ由来の値を渡すこと
   isFollowing: boolean
 }
 
@@ -16,7 +17,7 @@ export function FollowButton({ targetUserId, currentUserId, isFollowing }: Props
 
   return (
     <Button
-      onClick={() => mutate(!isFollowing)}
+      onClick={() => mutate(!following)}
       disabled={isPending}
       variant={following ? 'outline' : 'default'}
       size="sm"

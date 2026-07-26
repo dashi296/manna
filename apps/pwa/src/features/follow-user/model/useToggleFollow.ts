@@ -1,5 +1,5 @@
 import { supabase } from '@/shared/lib/supabase'
-import { useRelationMutation } from '@/shared/lib/useRelationMutation'
+import { useRelationMutation } from '@/entities/user'
 
 type Args = { currentUserId: string; targetUserId: string; isFollowing: boolean }
 

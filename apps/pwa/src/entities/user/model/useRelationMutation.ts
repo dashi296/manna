@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { invalidateRelationQueries } from '@/shared/lib/queryKeys'
+import { invalidateRelationQueries } from './relationQueries'
 
 type Options<V, T> = {
   current: T
@@ -29,6 +29,6 @@ export function useRelationMutation<V, T>({ current, optimistic, run, errorMessa
   return {
     mutate,
     isPending,
-    shown: isPending && variables !== undefined ? optimistic(variables) : current,
+    shown: isPending ? optimistic(variables) : current,
   }
 }

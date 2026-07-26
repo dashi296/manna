@@ -9,7 +9,7 @@ import { SignOutButton } from '@/features/sign-out'
 import { EmptyState, PageHeader, UserAvatar } from '@/shared/ui'
 import { resolveUserIdentity } from '@/shared/lib/constants'
 import { createSupabaseServer } from '@/shared/lib/auth'
-import { profileKey } from '@/shared/lib/queryKeys'
+import { profileKey } from '@/entities/user'
 
 const fetchProfileData = createServerFn({ method: 'POST' })
   .inputValidator((data: { userId: string }) => data)
@@ -87,8 +87,9 @@ const profileQueryOptions = (userId: string) =>
   })
 
 export const Route = createFileRoute('/profile/$userId/')({
-  // SSR で埋めてクライアントへ引き継ぐ（ローディングのちらつきを避ける）。staleTime を 0 に
-  // するのは、別画面でフォロー／解除してから戻ったときに古い件数が出ないよう毎回取り直すため
+  // SSR で埋めてクライアントへ引き継ぐ（ローディングのちらつきを避ける）。
+  // 自分の操作による陳腐化は invalidateRelationQueries が拾うので、staleTime を 0 にするのは
+  // loader だった頃と同じく他人の変更も訪問のたびに取り直すため
   loader: async ({ params, context }) => {
     const data = await context.queryClient.fetchQuery({
       ...profileQueryOptions(params.userId),

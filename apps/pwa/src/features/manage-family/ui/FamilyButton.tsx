@@ -5,6 +5,7 @@ import { useFamilyAction } from '../model/useFamilyAction'
 type Props = {
   targetUserId: string
   currentUserId: string
+  // invalidateRelationQueries が落とせるクエリ由来の値を渡すこと
   status: FamilyStatus
 }
 

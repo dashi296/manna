@@ -11,11 +11,10 @@ const { mockToastError } = vi.hoisted(() => ({ mockToastError: vi.fn() }))
 vi.mock('sonner', () => ({ toast: { error: mockToastError } }))
 
 let insertResult: Promise<{ error: unknown }> = Promise.resolve({ error: null })
-let deleteError: unknown = null
 
 const mockInsert = vi.fn(() => insertResult)
 const mockDeleteEq = vi.fn()
-const mockDelete = vi.fn(() => createSupabaseQueryChain(() => ({ error: deleteError }), mockDeleteEq))
+const mockDelete = vi.fn(() => createSupabaseQueryChain(() => ({ error: null }), mockDeleteEq))
 
 vi.mock('@/shared/lib/supabase', () => ({
   supabase: {
@@ -44,7 +43,6 @@ const renderButton = (isFollowing: boolean) => {
 describe('FollowButton', () => {
   beforeEach(() => {
     insertResult = Promise.resolve({ error: null })
-    deleteError = null
     vi.clearAllMocks()
   })
 

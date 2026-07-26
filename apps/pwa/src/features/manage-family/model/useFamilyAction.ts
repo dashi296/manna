@@ -1,6 +1,6 @@
 import { filterFamilyPair, type FamilyStatus } from '@/entities/family'
 import { supabase } from '@/shared/lib/supabase'
-import { useRelationMutation } from '@/shared/lib/useRelationMutation'
+import { useRelationMutation } from '@/entities/user'
 
 export type FamilyAction = 'request' | 'accept' | 'remove'
 
