@@ -6,11 +6,15 @@ export function routerMock(
   useLoaderData: () => unknown = () => ({}),
   getPathname: () => string = () => '/',
   navigate: (opts: unknown) => void = () => {},
+  // loader ではなく params/search からデータを組み立てるページ用。渡さなければ空を返す
+  routeHooks: { useParams?: () => unknown; useSearch?: () => unknown } = {},
 ) {
   return {
     createFileRoute: () => (config: Record<string, unknown>) => ({
       ...config,
       useLoaderData,
+      useParams: routeHooks.useParams ?? (() => ({})),
+      useSearch: routeHooks.useSearch ?? (() => ({})),
     }),
     Link: ({
       to,

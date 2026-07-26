@@ -1,6 +1,6 @@
-import { useRef, useState } from 'react'
 import { createFileRoute, Link, notFound, useNavigate } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
+import { infiniteQueryOptions, useInfiniteQuery } from '@tanstack/react-query'
 import type { PostgrestError } from '@supabase/supabase-js'
 import { FollowButton } from '@/features/follow-user'
 import { EmptyState, PageHeader, TabBar, UserAvatar } from '@/shared/ui'
@@ -12,7 +12,6 @@ import { isValidCursor, type Cursor } from '@/shared/lib/cursor'
 
 type Tab = 'followers' | 'following'
 type ConnectionRowData = { user: CircleUserRow; isFollowingByMe: boolean }
-type Paged = { rows: ConnectionRowData[]; cursor: Cursor | null }
 
 const PAGE_SIZE = 20
 
@@ -105,17 +104,29 @@ export const fetchConnections = createServerFn({ method: 'POST' })
     }
   })
 
+// タブごとに別のクエリになるので、切り替えても前のタブのページが混ざることはない
+const connectionsQueryOptions = (userId: string, tab: Tab) =>
+  infiniteQueryOptions({
+    queryKey: ['connections', userId, tab],
+    queryFn: ({ pageParam }) => fetchConnections({ data: { userId, tab, cursor: pageParam } }),
+    initialPageParam: null as Cursor | null,
+    getNextPageParam: (last) => last?.nextCursor ?? null,
+    // 失敗したら黙って叩き直さず、「もっと見る」を押し直せる状態に戻す
+    retry: false,
+  })
+
 export const Route = createFileRoute('/profile/$userId/connections')({
   validateSearch: (search: Record<string, unknown>): { tab: Tab } => ({
     tab: search.tab === 'following' ? 'following' : 'followers',
   }),
   loaderDeps: ({ search }) => ({ tab: search.tab }),
-  loader: async ({ params, deps }) => {
-    const data = await fetchConnections({
-      data: { userId: params.userId, tab: deps.tab, cursor: null },
-    })
-    if (!data) throw notFound()
-    return data
+  // 1ページ目は SSR で埋めてクライアントへ引き継ぐ（ローディングのちらつきと再取得を避ける）
+  loader: async ({ params, deps, context }) => {
+    const data = await context.queryClient.ensureInfiniteQueryData(
+      connectionsQueryOptions(params.userId, deps.tab),
+    )
+    // 1ページ目が null なのは対象ユーザーが存在しないときだけ（server function 側の判定）
+    if (!data.pages[0]) throw notFound()
   },
   component: ConnectionsPage,
 })
@@ -158,50 +169,17 @@ function ConnectionRow({
 }
 
 function ConnectionsPage() {
-  const loaderData = Route.useLoaderData()
-  const { userId, tab, rows, currentUserId, nextCursor } = loaderData
+  const { userId } = Route.useParams()
+  const { tab } = Route.useSearch()
   const navigate = useNavigate()
-  // 追加読み込み分は行とカーソルが常に一緒に動くので、1つの state にまとめる
-  const [paged, setPaged] = useState<Paged>({ rows: [], cursor: nextCursor })
-  const [loadingMore, setLoadingMore] = useState(false)
-  const [pagedFrom, setPagedFrom] = useState(loaderData)
-  const loaderDataRef = useRef(loaderData)
-  loaderDataRef.current = loaderData
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery(
+    connectionsQueryOptions(userId, tab),
+  )
 
-  // loader が新しいデータを返したら追加読み込み分を捨てる。タブ切り替えだけでなく
-  // 同じタブの再読込も対象で、そうしないと新しい1ページ目に古い後続ページが繋がり
-  // 行が重複・欠落する。レンダー中に調整するのは、混ざった状態で一度でも描画されると
-  // key が重複するため（useEffect ではコミット後まで反映が遅れる）。
-  if (pagedFrom !== loaderData) {
-    setPagedFrom(loaderData)
-    setPaged({ rows: [], cursor: nextCursor })
-    // 進行中の取得は新しい一覧には関係ないので、待たずに次のページを引けるようにする
-    setLoadingMore(false)
-  }
-
-  const loadMore = async () => {
-    const cursor = paged.cursor
-    if (!cursor || loadingMore) return
-    setLoadingMore(true)
-    const requestedFrom = loaderData
-    try {
-      // カーソル付きの取得では null は返らない（null は1ページ目で対象ユーザーが
-      // 存在しなかった場合だけ）が、型の上では起こりうるので弾く
-      const next = await fetchConnections({ data: { userId, tab, cursor } })
-      if (!next) return
-      // 取得中に loader データが入れ替わっていたら、古い結果は新しい一覧に混ぜない
-      if (requestedFrom !== loaderDataRef.current) return
-      setPaged((prev) => ({ rows: [...prev.rows, ...next.rows], cursor: next.nextCursor }))
-    } catch {
-      // 失敗時は追記せず、ボタンを押せる状態に戻すだけにする
-    } finally {
-      // 世代が変わっていれば、この取得はもう現在の一覧のものではない。
-      // ここで解除すると、新しい一覧で進行中の取得の状態を奪ってしまう
-      if (requestedFrom === loaderDataRef.current) setLoadingMore(false)
-    }
-  }
-
-  const allRows = [...rows, ...paged.rows]
+  // null が入るのは対象ユーザーが存在しないときだけで、そのときは loader が 404 にしている
+  const pages = (data?.pages ?? []).filter((p) => p !== null)
+  const allRows = pages.flatMap((p) => p.rows)
+  const currentUserId = pages[0]?.currentUserId ?? null
 
   return (
     <div>
@@ -230,9 +208,14 @@ function ConnectionsPage() {
           {allRows.map((row) => (
             <ConnectionRow key={row.user.id} row={row} currentUserId={currentUserId} />
           ))}
-          {paged.cursor && (
+          {hasNextPage && (
             <div className="p-4 text-center">
-              <Button onClick={loadMore} disabled={loadingMore} variant="outline" size="sm">
+              <Button
+                onClick={() => fetchNextPage()}
+                disabled={isFetchingNextPage}
+                variant="outline"
+                size="sm"
+              >
                 もっと見る
               </Button>
             </div>
