@@ -4,15 +4,17 @@ import userEvent from '@testing-library/user-event'
 import { SignOutButton } from '@/features/sign-out'
 
 const mockSignOut = vi.fn()
-const mockRedirectToLogin = vi.fn()
+const mockNavigate = vi.fn()
 
 vi.mock('@/shared/lib/auth', () => ({
   signOut: () => mockSignOut(),
 }))
 
-vi.mock('@/features/sign-out/lib/redirectToLogin', () => ({
-  redirectToLogin: () => mockRedirectToLogin(),
-}))
+vi.mock('@tanstack/react-router', async () =>
+  (await import('../../helpers/tanstack')).routerMock(undefined, undefined, (opts) =>
+    mockNavigate(opts),
+  ),
+)
 
 const openSheet = async () => {
   await userEvent.click(screen.getByRole('button', { name: 'ログアウト' }))
@@ -22,7 +24,7 @@ const openSheet = async () => {
 describe('SignOutButton', () => {
   beforeEach(() => {
     mockSignOut.mockReset().mockResolvedValue(undefined)
-    mockRedirectToLogin.mockReset()
+    mockNavigate.mockReset()
   })
 
   it('押すと確認シートを開く', async () => {
@@ -41,7 +43,7 @@ describe('SignOutButton', () => {
     await userEvent.click(within(dialog).getByRole('button', { name: 'キャンセル' }))
 
     expect(mockSignOut).not.toHaveBeenCalled()
-    expect(mockRedirectToLogin).not.toHaveBeenCalled()
+    expect(mockNavigate).not.toHaveBeenCalled()
   })
 
   it('確認するとログアウトしてログイン画面へ送る', async () => {
@@ -51,7 +53,11 @@ describe('SignOutButton', () => {
     await userEvent.click(within(dialog).getByRole('button', { name: 'ログアウトする' }))
 
     expect(mockSignOut).toHaveBeenCalledTimes(1)
-    expect(mockRedirectToLogin).toHaveBeenCalledTimes(1)
+    expect(mockNavigate).toHaveBeenCalledWith({
+      to: '/login',
+      replace: true,
+      reloadDocument: true,
+    })
   })
 
   it('失敗したら遷移せず、もう一度押せる状態に戻す', async () => {
@@ -62,7 +68,7 @@ describe('SignOutButton', () => {
 
     await userEvent.click(confirm)
 
-    expect(mockRedirectToLogin).not.toHaveBeenCalled()
+    expect(mockNavigate).not.toHaveBeenCalled()
     expect(confirm).not.toBeDisabled()
   })
 })

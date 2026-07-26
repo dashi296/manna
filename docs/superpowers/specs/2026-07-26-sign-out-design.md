@@ -61,18 +61,22 @@ apps/pwa/src/features/sign-out/
 |---|---|
 | タイトル | ログアウトしますか？ |
 | 説明 | 再度 Google でサインインすればまた利用できます |
-| 実行ボタン | ログアウト（`variant="destructive"`） |
+| 実行ボタン | ログアウトする（`variant="destructive"`） |
 | 取消ボタン | キャンセル（`SheetClose` 経由、`variant="outline"`） |
+
+取消手段は「キャンセル」に一本化するため、`SheetContent` の既定の × ボタンは `showCloseButton={false}` で消す（`ComposeMenu` と同じ扱い）。
 
 ## 処理の流れ
 
-1. ボタン押下 → シートを開く
-2. シート内の「ログアウト」押下 → `signOut()` を呼ぶ
-3. 成功したら `window.location.href = '/login'`
+1. ボタン押下 → シートを開く（`SheetTrigger`）
+2. シート内の「ログアウトする」押下 → `signOut()` を呼ぶ
+3. 成功したら `navigate({ to: '/login', replace: true, reloadDocument: true })`
 
-### なぜ `useNavigate` ではなく全体リロードか
+### なぜクライアント遷移ではなく全体リロードか
 
-`signOut()` はクライアント側の Supabase セッションを消すが、SSR 側は cookie を読んで認証を判定する（`__root.tsx` の `beforeLoad` が `getServerSession()` を使う）。クライアントルーティングだけだと、サーバー側が古い cookie を見て認証済みと判定する可能性がある。全体リロードにすれば cookie が消えた状態で確実にやり直せる。
+`@supabase/ssr` の `createBrowserClient` はセッションを cookie に保存するため、`signOut()` の時点で cookie 自体は消える。それでもクライアント遷移だと、TanStack Router が持っている前のユーザーのローダーキャッシュがメモリに残ったまま次のセッションに持ち越される。`reloadDocument: true` を付けて全体リロードすれば、まっさらな状態からやり直せる。
+
+`window.location.replace` を直接呼ばず `useNavigate` を使うのは、ルートを型付きで参照するため。TanStack Router は `reloadDocument` + `replace` をそのまま `window.location.replace` にコンパイルするので、挙動は同じ（`router-core` の `router.js`）。
 
 ## エラー処理
 
@@ -88,10 +92,10 @@ apps/pwa/src/features/sign-out/
 
 1. ボタンを押すと確認シートが表示される
 2. 「キャンセル」でシートが閉じ、`signOut` が呼ばれない
-3. 「ログアウト」で `signOut` が呼ばれる
-4. `signOut` が失敗しても、ボタンを再度押せる状態に戻る
+3. 「ログアウトする」で `signOut` が呼ばれ、`/login` へ遷移する
+4. `signOut` が失敗しても遷移せず、ボタンを再度押せる状態に戻る
 
-`signOut` は `@/shared/lib/auth` を `vi.mock` して差し替える。遷移は `window.location.href` への代入なので、jsdom では実際の遷移が起きない。代入されたことを検証するかは実装時に判断する（jsdom が "Not implemented: navigation" を出す場合は、遷移部分を関数に切り出してモックする）。
+`signOut` は `@/shared/lib/auth` を `vi.mock` して差し替える。遷移は jsdom では実行できないため、`tests/helpers/tanstack.tsx` の `routerMock` が持つ `navigate` シーム（第3引数）でモックし、渡された引数を検証する。
 
 ### `apps/pwa/tests/pages/profile/index.test.tsx`（既存に追加）
 

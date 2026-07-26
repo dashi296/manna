@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { routeComponent } from '../../helpers/tanstack'
 
@@ -10,10 +10,6 @@ vi.mock('@tanstack/react-router', async () =>
 
 vi.mock('@tanstack/react-start', async () => (await import('../../helpers/tanstack')).startMock())
 
-vi.mock('@/shared/lib/supabase', () => ({
-  supabase: { from: () => ({ insert: vi.fn(), delete: vi.fn() }) },
-}))
-
 const base = {
   profile: { id: 'u2', display_name: 'テスト太郎', avatar_url: null, bio: null },
   posts: [],
@@ -24,14 +20,15 @@ const base = {
   followingCount: 5,
 }
 
-describe('ProfilePage', () => {
-  beforeEach(() => {
-    loaderData.mockReturnValue(base)
-  })
+const renderPage = async (overrides: Partial<typeof base> = {}) => {
+  loaderData.mockReturnValue({ ...base, ...overrides })
+  const ProfilePage = routeComponent(await import('@/pages/profile/$userId/index'))
+  return render(<ProfilePage />)
+}
 
+describe('ProfilePage', () => {
   it('表示名とフォロワー数/フォロー中数を表示する', async () => {
-    const ProfilePage = routeComponent(await import('@/pages/profile/$userId/index'))
-    render(<ProfilePage />)
+    await renderPage()
     expect(screen.getByRole('heading', { level: 1, name: 'テスト太郎' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { level: 2, name: 'テスト太郎' })).toBeInTheDocument()
     expect(screen.getByText('3')).toBeInTheDocument()
@@ -39,8 +36,7 @@ describe('ProfilePage', () => {
   })
 
   it('フォロワー数から一覧ページへのリンクを張る', async () => {
-    const ProfilePage = routeComponent(await import('@/pages/profile/$userId/index'))
-    render(<ProfilePage />)
+    await renderPage()
     expect(screen.getByRole('link', { name: /フォロワー/ })).toHaveAttribute(
       'href',
       '/profile/u2/connections?tab=followers',
@@ -48,8 +44,7 @@ describe('ProfilePage', () => {
   })
 
   it('フォロー中数から一覧ページへのリンクを張る', async () => {
-    const ProfilePage = routeComponent(await import('@/pages/profile/$userId/index'))
-    render(<ProfilePage />)
+    await renderPage()
     expect(screen.getByRole('link', { name: /フォロー中/ })).toHaveAttribute(
       'href',
       '/profile/u2/connections?tab=following',
@@ -57,16 +52,12 @@ describe('ProfilePage', () => {
   })
 
   it('自分のプロフィールではログアウトボタンを表示する', async () => {
-    loaderData.mockReturnValue({ ...base, currentUserId: 'u2' })
-    const ProfilePage = routeComponent(await import('@/pages/profile/$userId/index'))
-    render(<ProfilePage />)
+    await renderPage({ currentUserId: 'u2' })
     expect(screen.getByRole('button', { name: 'ログアウト' })).toBeInTheDocument()
   })
 
   it('他人のプロフィールにはログアウトボタンを表示しない', async () => {
-    loaderData.mockReturnValue({ ...base, currentUserId: 'me' })
-    const ProfilePage = routeComponent(await import('@/pages/profile/$userId/index'))
-    render(<ProfilePage />)
+    await renderPage({ currentUserId: 'me' })
     expect(screen.queryByRole('button', { name: 'ログアウト' })).toBeNull()
   })
 })
