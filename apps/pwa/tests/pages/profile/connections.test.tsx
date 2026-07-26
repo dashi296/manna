@@ -1,13 +1,21 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { routeComponent } from '../../helpers/tanstack'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { createQueryClient } from '@/shared/lib/queryClient'
+import { routeComponent, routeLoader } from '../../helpers/tanstack'
 
-const loaderData = vi.fn()
 const mockFetchConnections = vi.fn()
 
+// ページは loader ではなく params/search から queryKey を組み立てるため、
+// タブの切り替えは useSearch の戻り値を差し替えて再レンダーすることで再現する
+let currentTab: 'followers' | 'following' = 'followers'
+
 vi.mock('@tanstack/react-router', async () =>
-  (await import('../../helpers/tanstack')).routerMock(() => loaderData()),
+  (await import('../../helpers/tanstack')).routerMock(undefined, undefined, undefined, {
+    useParams: () => ({ userId: 'owner' }),
+    useSearch: () => ({ tab: currentTab }),
+  }),
 )
 
 vi.mock('@tanstack/react-start', async () =>
@@ -23,17 +31,29 @@ const row = (id: string, name: string, isFollowingByMe = false) => ({
   isFollowingByMe,
 })
 
-const base = {
+const page = (rows: ReturnType<typeof row>[], nextCursor: unknown = null) => ({
   userId: 'owner',
-  tab: 'followers' as const,
+  tab: currentTab,
   currentUserId: 'me',
-  rows: [] as ReturnType<typeof row>[],
-  nextCursor: null,
-}
+  rows,
+  nextCursor,
+})
+
+const cursorAt = (otherId: string) => ({ createdAt: '2026-07-25T10:00:00+00:00', otherId })
 
 const renderPage = async () => {
   const ConnectionsPage = routeComponent(await import('@/pages/profile/$userId/connections'))
-  return { ...render(<ConnectionsPage />), ConnectionsPage }
+  // キャッシュがテスト間で漏れないよう、毎回新しい QueryClient を使う
+  const client = createQueryClient()
+  // 要素を毎回作り直す。同じ参照を rerender に渡すと React が再レンダーを省き、
+  // useSearch の戻り値を差し替えてもタブ切り替えが反映されない
+  const ui = () => (
+    <QueryClientProvider client={client}>
+      <ConnectionsPage />
+    </QueryClientProvider>
+  )
+  const utils = render(ui())
+  return { ...utils, client, rerenderPage: () => utils.rerender(ui()) }
 }
 
 const deferred = () => {
@@ -44,58 +64,54 @@ const deferred = () => {
   return { promise, resolve: (value: unknown) => resolve(value) }
 }
 
-const cursorAt = (otherId: string) => ({ createdAt: '2026-07-25T10:00:00+00:00', otherId })
-
 const loadMoreButton = () => screen.getByRole('button', { name: 'もっと見る' })
 
 describe('ConnectionsPage', () => {
   beforeEach(() => {
+    currentTab = 'followers'
     mockFetchConnections.mockReset()
   })
 
   it('フォロワータブでユーザー一覧を表示する', async () => {
-    loaderData.mockReturnValue({ ...base, rows: [row('u1', '山田花子'), row('u2', '佐藤太郎')] })
+    mockFetchConnections.mockResolvedValue(page([row('u1', '山田花子'), row('u2', '佐藤太郎')]))
     await renderPage()
-    expect(screen.getByText('山田花子')).toBeInTheDocument()
+    expect(await screen.findByText('山田花子')).toBeInTheDocument()
     expect(screen.getByText('佐藤太郎')).toBeInTheDocument()
   })
 
   it('フォロー中タブのデータではフォロー中の一覧を表示する', async () => {
-    loaderData.mockReturnValue({ ...base, tab: 'following', rows: [row('u3', '鈴木次郎')] })
+    currentTab = 'following'
+    mockFetchConnections.mockResolvedValue(page([row('u3', '鈴木次郎')]))
     await renderPage()
-    expect(screen.getByText('鈴木次郎')).toBeInTheDocument()
+    expect(await screen.findByText('鈴木次郎')).toBeInTheDocument()
   })
 
   it('自分自身の行にはフォローボタンを表示しない', async () => {
-    loaderData.mockReturnValue({ ...base, rows: [row('me', '自分'), row('u1', '山田花子')] })
+    mockFetchConnections.mockResolvedValue(page([row('me', '自分'), row('u1', '山田花子')]))
     await renderPage()
+    expect(await screen.findByText('自分')).toBeInTheDocument()
     expect(screen.getAllByRole('button', { name: 'フォロー' })).toHaveLength(1)
   })
 
   it('0件のときは空状態を表示する', async () => {
-    loaderData.mockReturnValue({ ...base, rows: [] })
+    mockFetchConnections.mockResolvedValue(page([]))
     await renderPage()
-    expect(screen.getByText('まだフォロワーがいません')).toBeInTheDocument()
+    expect(await screen.findByText('まだフォロワーがいません')).toBeInTheDocument()
   })
 
-  it('nextCursor があるときだけ「もっと見る」を表示する', async () => {
-    loaderData.mockReturnValue({ ...base, rows: [row('u1', '山田花子')], nextCursor: null })
+  it('nextCursor がなければ「もっと見る」を表示しない', async () => {
+    mockFetchConnections.mockResolvedValue(page([row('u1', '山田花子')]))
     await renderPage()
+    expect(await screen.findByText('山田花子')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'もっと見る' })).not.toBeInTheDocument()
   })
 
   it('「もっと見る」で次のページを末尾に追記する', async () => {
-    loaderData.mockReturnValue({
-      ...base,
-      rows: [row('u1', '山田花子')],
-      nextCursor: cursorAt('u1'),
-    })
-    mockFetchConnections.mockResolvedValue({
-      ...base,
-      rows: [row('u2', '佐藤太郎')],
-      nextCursor: null,
-    })
+    mockFetchConnections
+      .mockResolvedValueOnce(page([row('u1', '山田花子')], cursorAt('u1')))
+      .mockResolvedValueOnce(page([row('u2', '佐藤太郎')]))
     await renderPage()
+    expect(await screen.findByText('山田花子')).toBeInTheDocument()
 
     await userEvent.click(loadMoreButton())
 
@@ -104,142 +120,93 @@ describe('ConnectionsPage', () => {
     expect(screen.queryByRole('button', { name: 'もっと見る' })).not.toBeInTheDocument()
   })
 
-  it('「もっと見る」が失敗しても行を追記せずボタンを再度押せる状態に戻す', async () => {
-    loaderData.mockReturnValue({
-      ...base,
-      rows: [row('u1', '山田花子')],
-      nextCursor: cursorAt('u1'),
-    })
-    mockFetchConnections.mockRejectedValue(new Error('boom'))
+  it('カーソルを渡して次のページを取得する', async () => {
+    const cursor = cursorAt('u1')
+    mockFetchConnections
+      .mockResolvedValueOnce(page([row('u1', '山田花子')], cursor))
+      .mockResolvedValueOnce(page([row('u2', '佐藤太郎')]))
     await renderPage()
+    expect(await screen.findByText('山田花子')).toBeInTheDocument()
+
+    await userEvent.click(loadMoreButton())
+    await screen.findByText('佐藤太郎')
+
+    expect(mockFetchConnections).toHaveBeenNthCalledWith(1, {
+      data: { userId: 'owner', tab: 'followers', cursor: null },
+    })
+    expect(mockFetchConnections).toHaveBeenNthCalledWith(2, {
+      data: { userId: 'owner', tab: 'followers', cursor },
+    })
+  })
+
+  it('「もっと見る」が失敗しても行を追記せずボタンを再度押せる状態に戻す', async () => {
+    mockFetchConnections
+      .mockResolvedValueOnce(page([row('u1', '山田花子')], cursorAt('u1')))
+      .mockRejectedValueOnce(new Error('boom'))
+    await renderPage()
+    expect(await screen.findByText('山田花子')).toBeInTheDocument()
 
     await userEvent.click(loadMoreButton())
 
     expect(loadMoreButton()).not.toBeDisabled()
-    expect(screen.getByText('山田花子')).toBeInTheDocument()
     expect(screen.getAllByText('山田花子')).toHaveLength(1)
   })
 
-  it('取得中にタブを切り替えたら、遅れて届いた前タブの結果を捨てる', async () => {
-    loaderData.mockReturnValue({
-      ...base,
-      rows: [row('u1', '山田花子')],
-      nextCursor: cursorAt('u1'),
+  // loader は「再訪のたびに1ページ目を取り直す」ためにあるので、進行中の追加取得に
+  // 相乗りして取り直しを飛ばしてしまわないことを固定する
+  it('「もっと見る」の取得中に再訪しても、その完了を待たずに1ページ目を取り直す', async () => {
+    const pending = deferred()
+    mockFetchConnections
+      .mockResolvedValueOnce(page([row('u1', '山田花子')], cursorAt('u1')))
+      .mockReturnValueOnce(pending.promise)
+      .mockResolvedValueOnce(page([row('u9', '新しい人')]))
+    const { client } = await renderPage()
+    expect(await screen.findByText('山田花子')).toBeInTheDocument()
+    await userEvent.click(loadMoreButton())
+
+    const loader = routeLoader(await import('@/pages/profile/$userId/connections'))
+    const outcome = await Promise.race([
+      loader({
+        params: { userId: 'owner' },
+        deps: { tab: 'followers' },
+        context: { queryClient: client },
+      }).then(() => 'resolved'),
+      new Promise((r) => setTimeout(() => r('pending'), 100)),
+    ])
+
+    expect(outcome).toBe('resolved')
+    expect(mockFetchConnections).toHaveBeenCalledTimes(3)
+    expect(mockFetchConnections).toHaveBeenLastCalledWith({
+      data: { userId: 'owner', tab: 'followers', cursor: null },
     })
 
-    const pending = deferred()
-    mockFetchConnections.mockReturnValue(pending.promise)
+    pending.resolve(page([row('u2', '佐藤太郎')]))
+  })
 
-    const { rerender, ConnectionsPage } = await renderPage()
+  it('取得中にタブを切り替えたら、遅れて届いた前タブの結果を混ぜない', async () => {
+    const pending = deferred()
+    mockFetchConnections
+      .mockResolvedValueOnce(page([row('u1', '山田花子')], cursorAt('u1')))
+      .mockReturnValueOnce(pending.promise)
+    const { rerenderPage } = await renderPage()
+    expect(await screen.findByText('山田花子')).toBeInTheDocument()
     await userEvent.click(loadMoreButton())
 
     // 取得の解決前にタブが切り替わる
-    loaderData.mockReturnValue({
-      ...base,
-      tab: 'following',
-      rows: [row('u3', '鈴木次郎')],
-      nextCursor: null,
-    })
-    rerender(<ConnectionsPage />)
-    expect(screen.getByText('鈴木次郎')).toBeInTheDocument()
+    currentTab = 'following'
+    mockFetchConnections.mockResolvedValue(page([row('u3', '鈴木次郎')]))
+    rerenderPage()
+    expect(await screen.findByText('鈴木次郎')).toBeInTheDocument()
 
     // 前タブのリクエストが後から解決しても、その行は混入しない。
-    // 解決後の setState まで act で流し切ってから確認する（否定アサーションは
+    // 解決後の再レンダーまで act で流し切ってから確認する（否定アサーションは
     // microtask 実行前だと素通りしてしまうため）
     await act(async () => {
-      pending.resolve({ ...base, rows: [row('u2', '佐藤太郎')], nextCursor: null })
+      pending.resolve(page([row('u2', '佐藤太郎')]))
     })
 
     expect(screen.queryByText('佐藤太郎')).not.toBeInTheDocument()
-    expect(screen.getByText('鈴木次郎')).toBeInTheDocument()
     expect(screen.queryByText('山田花子')).not.toBeInTheDocument()
-  })
-
-  it('同じタブのまま loader が再実行されたら追加読み込み分を捨てる', async () => {
-    loaderData.mockReturnValue({
-      ...base,
-      rows: [row('u1', '山田花子')],
-      nextCursor: cursorAt('u1'),
-    })
-    mockFetchConnections.mockResolvedValue({
-      ...base,
-      rows: [row('u2', '佐藤太郎')],
-      nextCursor: null,
-    })
-
-    const { rerender, ConnectionsPage } = await renderPage()
-    await userEvent.click(loadMoreButton())
-    expect(await screen.findByText('佐藤太郎')).toBeInTheDocument()
-
-    // タブは同じまま、フォロー関係が変わって loader が再実行される。
-    // 新しい1ページ目に既に佐藤太郎が含まれるため、古い追加分を残すと重複する
-    loaderData.mockReturnValue({
-      ...base,
-      rows: [row('u1', '山田花子'), row('u2', '佐藤太郎')],
-      nextCursor: null,
-    })
-    rerender(<ConnectionsPage />)
-
-    expect(screen.getAllByText('佐藤太郎')).toHaveLength(1)
-    expect(screen.getAllByText('山田花子')).toHaveLength(1)
-  })
-
-  it('取得中に loader データが入れ替わったら「もっと見る」を再び押せる状態にする', async () => {
-    loaderData.mockReturnValue({
-      ...base,
-      rows: [row('u1', '山田花子')],
-      nextCursor: cursorAt('u1'),
-    })
-    const first = deferred()
-    mockFetchConnections.mockReturnValue(first.promise)
-
-    const { rerender, ConnectionsPage } = await renderPage()
-    await userEvent.click(loadMoreButton())
-    expect(loadMoreButton()).toBeDisabled()
-
-    // 取得が終わらないうちに loader が新しいデータを返す
-    loaderData.mockReturnValue({
-      ...base,
-      tab: 'following',
-      rows: [row('u9', '新一郎')],
-      nextCursor: cursorAt('u9'),
-    })
-    rerender(<ConnectionsPage />)
-
-    // 新しい一覧のページングが、前の通信の完了待ちで固まってはいけない
-    expect(loadMoreButton()).not.toBeDisabled()
-  })
-
-  it('古いリクエストの完了で新しいリクエストの読み込み中状態を解除しない', async () => {
-    loaderData.mockReturnValue({
-      ...base,
-      rows: [row('u1', '山田花子')],
-      nextCursor: cursorAt('u1'),
-    })
-    const first = deferred()
-    const second = deferred()
-    mockFetchConnections.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise)
-
-    const { rerender, ConnectionsPage } = await renderPage()
-    await userEvent.click(loadMoreButton())
-
-    loaderData.mockReturnValue({
-      ...base,
-      tab: 'following',
-      rows: [row('u9', '新一郎')],
-      nextCursor: cursorAt('u9'),
-    })
-    rerender(<ConnectionsPage />)
-
-    await userEvent.click(loadMoreButton())
-    expect(loadMoreButton()).toBeDisabled()
-
-    await act(async () => {
-      first.resolve({ ...base, rows: [row('u2', '佐藤太郎')], nextCursor: null })
-    })
-
-    // 2件目の取得はまだ続いているので、押せる状態に戻してはいけない
-    expect(loadMoreButton()).toBeDisabled()
-    expect(screen.queryByText('佐藤太郎')).not.toBeInTheDocument()
+    expect(screen.getByText('鈴木次郎')).toBeInTheDocument()
   })
 })

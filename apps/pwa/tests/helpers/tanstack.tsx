@@ -6,11 +6,15 @@ export function routerMock(
   useLoaderData: () => unknown = () => ({}),
   getPathname: () => string = () => '/',
   navigate: (opts: unknown) => void = () => {},
+  // loader ではなく params/search からデータを組み立てるページ用。渡さなければ空を返す
+  routeHooks: { useParams?: () => unknown; useSearch?: () => unknown } = {},
 ) {
   return {
     createFileRoute: () => (config: Record<string, unknown>) => ({
       ...config,
       useLoaderData,
+      useParams: routeHooks.useParams ?? (() => ({})),
+      useSearch: routeHooks.useSearch ?? (() => ({})),
     }),
     Link: ({
       to,
@@ -52,6 +56,17 @@ export function routerMock(
 
 export const routeComponent = (mod: { Route: unknown }) =>
   (mod.Route as { component: React.ComponentType }).component
+
+// routerMock の createFileRoute は config をそのまま展開して返すため、loader も生えている。
+// 本物の Route 型には現れないのでキャストが要る（routeComponent と同じ事情）
+export const routeLoader = (mod: { Route: unknown }) =>
+  (mod.Route as {
+    loader: (ctx: {
+      params: Record<string, string>
+      deps: Record<string, unknown>
+      context: Record<string, unknown>
+    }) => Promise<unknown>
+  }).loader
 
 // getServerSession (@/shared/lib/auth) は .inputValidator() を挟まず
 // .handler() を直接呼ぶため、両方のチェーンをスタブする必要がある。
