@@ -1,4 +1,4 @@
-import { type FamilyStatus } from '@/entities/family'
+import type { FamilyStatus } from '@/entities/family'
 import { Button } from '@/shared/ui/button'
 import { useFamilyAction } from '../model/useFamilyAction'
 
