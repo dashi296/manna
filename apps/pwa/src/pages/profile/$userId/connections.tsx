@@ -120,11 +120,16 @@ export const Route = createFileRoute('/profile/$userId/connections')({
     tab: search.tab === 'following' ? 'following' : 'followers',
   }),
   loaderDeps: ({ search }) => ({ tab: search.tab }),
-  // 1ページ目は SSR で埋めてクライアントへ引き継ぐ（ローディングのちらつきと再取得を避ける）
+  // 1ページ目は SSR で埋めてクライアントへ引き継ぐ（ローディングのちらつきを避ける）。
+  // ensureInfiniteQueryData ではなく fetchInfiniteQuery を使い staleTime を 0 にするのは、
+  // 別画面でフォロー／解除してから戻ったときに古い行が出ないよう毎回取り直すため。
+  // pages: 1 で追加読み込み分は捨てる（全ページ再取得は遷移のたびに N 回叩くことになる）
   loader: async ({ params, deps, context }) => {
-    const data = await context.queryClient.ensureInfiniteQueryData(
-      connectionsQueryOptions(params.userId, deps.tab),
-    )
+    const data = await context.queryClient.fetchInfiniteQuery({
+      ...connectionsQueryOptions(params.userId, deps.tab),
+      staleTime: 0,
+      pages: 1,
+    })
     // 1ページ目が null なのは対象ユーザーが存在しないときだけ（server function 側の判定）
     if (!data.pages[0]) throw notFound()
   },
