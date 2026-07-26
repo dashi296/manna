@@ -1,6 +1,7 @@
 import { createRouter as createTanStackRouter } from '@tanstack/react-router'
 import { setupRouterSsrQueryIntegration } from '@tanstack/react-router-ssr-query'
 import { createQueryClient } from './shared/lib/queryClient'
+import { NotFoundPage } from './widgets/not-found'
 import { routeTree } from './routeTree.gen'
 
 export function getRouter() {
@@ -13,6 +14,8 @@ export function getRouter() {
     defaultPreload: 'intent',
     // React Query 側にキャッシュの鮮度を任せるため、ルーターのプリロードキャッシュは無効化する
     defaultPreloadStaleTime: 0,
+    // loader が notFound() を投げるルートはいくつもあるが、受け皿がどこにも無かった
+    defaultNotFoundComponent: NotFoundPage,
   })
 
   // ルーターと QueryClient を繋ぐ。SSR 中に解決したクエリのデハイドレート／ストリーミングと、
