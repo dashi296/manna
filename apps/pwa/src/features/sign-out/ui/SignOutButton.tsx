@@ -21,6 +21,7 @@ export function SignOutButton() {
     setPending(true)
     try {
       await signOut()
+      // 全体リロードで画面ごと破棄されるため、pending を戻す必要はない
       redirectToLogin()
     } catch {
       // 失敗時はシートを開いたまま、もう一度押せる状態に戻すだけにする
