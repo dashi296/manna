@@ -1,7 +1,7 @@
 import { Link } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { NAV_ITEMS, isNavItemActive } from '@/shared/config/navigation'
-import { usePathname } from '@/shared/lib/usePathname'
+import { usePathname } from '@/shared/hooks/use-pathname'
 import { getSession } from '@/shared/lib/auth'
 import { LogoMark } from '@/shared/ui/LogoMark'
 import { UserAvatar } from '@/shared/ui/UserAvatar'

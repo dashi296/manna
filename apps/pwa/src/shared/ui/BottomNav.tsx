@@ -1,6 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import { NAV_ITEMS, isNavItemActive } from '@/shared/config/navigation'
-import { usePathname } from '@/shared/lib/usePathname'
+import { usePathname } from '@/shared/hooks/use-pathname'
 import { cn } from '@/shared/lib/utils'
 
 export function BottomNav() {
