@@ -1,10 +1,9 @@
-import { useEffect, useState } from 'react'
-import { HeadContent, Scripts, Outlet, createRootRoute, redirect, useRouterState } from '@tanstack/react-router'
-import { QueryClientProvider } from '@tanstack/react-query'
+import { useEffect } from 'react'
+import { HeadContent, Scripts, Outlet, createRootRouteWithContext, redirect, useRouterState } from '@tanstack/react-router'
+import type { QueryClient } from '@tanstack/react-query'
 import { getSession, getServerSession } from '@/shared/lib/auth'
 import { getCookieHeader } from '@/shared/lib/cookies'
 import { registerServiceWorker } from '@/shared/lib/pwa'
-import { createQueryClient } from '@/shared/lib/queryClient'
 import { AppSidebar } from '@/shared/ui/AppSidebar'
 import { BottomNav } from '@/shared/ui/BottomNav'
 import { DevTools } from '@/shared/ui/DevTools'
@@ -18,7 +17,7 @@ const isDev = import.meta.env.DEV
 const AUTH_REQUIRED_PREFIXES = ['/profile', '/notifications']
 const CHAPTER_PATH_RE = /^\/scriptures\/[^/]+\/[^/]+\/\d+$/
 
-export const Route = createRootRoute({
+export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   head: () => ({
     meta: [
       { charSet: 'utf-8' },
@@ -75,10 +74,6 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 function RootLayout() {
   const { location } = useRouterState()
   const { sidebarDefaultOpen } = Route.useLoaderData()
-  // リクエストごと（SSR）／マウントごと（ブラウザ）に1つ作る。モジュールスコープの
-  // シングルトンにすると、Cloudflare Workers の isolate 使い回しでユーザー間の
-  // キャッシュが混ざる（shared/lib/queryClient.ts 参照）。
-  const [queryClient] = useState(createQueryClient)
   const isAuthPage =
     location.pathname === '/login' || location.pathname.startsWith('/auth/')
   const isChapterPage = CHAPTER_PATH_RE.test(location.pathname)
@@ -88,8 +83,10 @@ function RootLayout() {
     registerServiceWorker()
   }, [])
 
+  // QueryClientProvider は setupRouterSsrQueryIntegration がルーターの Wrap として
+  // 張るため、ここでは張らない（src/router.tsx 参照）
   return (
-    <QueryClientProvider client={queryClient}>
+    <>
       {isAuthPage ? (
         <Outlet />
       ) : (
@@ -109,6 +106,6 @@ function RootLayout() {
         </TooltipProvider>
       )}
       {isDev && <DevTools />}
-    </QueryClientProvider>
+    </>
   )
 }
