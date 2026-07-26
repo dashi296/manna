@@ -57,6 +57,17 @@ export function routerMock(
 export const routeComponent = (mod: { Route: unknown }) =>
   (mod.Route as { component: React.ComponentType }).component
 
+// routerMock の createFileRoute は config をそのまま展開して返すため、loader も生えている。
+// 本物の Route 型には現れないのでキャストが要る（routeComponent と同じ事情）
+export const routeLoader = (mod: { Route: unknown }) =>
+  (mod.Route as {
+    loader: (ctx: {
+      params: Record<string, string>
+      deps: Record<string, unknown>
+      context: Record<string, unknown>
+    }) => Promise<unknown>
+  }).loader
+
 // getServerSession (@/shared/lib/auth) は .inputValidator() を挟まず
 // .handler() を直接呼ぶため、両方のチェーンをスタブする必要がある。
 // 対象モジュール内の createServerFn 呼び出しは全て同じ impl に束縛されるため、

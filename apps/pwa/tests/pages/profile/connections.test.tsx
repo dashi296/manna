@@ -3,7 +3,7 @@ import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { createQueryClient } from '@/shared/lib/queryClient'
-import { routeComponent } from '../../helpers/tanstack'
+import { routeComponent, routeLoader } from '../../helpers/tanstack'
 
 const mockFetchConnections = vi.fn()
 
@@ -53,7 +53,7 @@ const renderPage = async () => {
     </QueryClientProvider>
   )
   const utils = render(ui())
-  return { ...utils, rerenderPage: () => utils.rerender(ui()) }
+  return { ...utils, client, rerenderPage: () => utils.rerender(ui()) }
 }
 
 const deferred = () => {
@@ -150,6 +150,37 @@ describe('ConnectionsPage', () => {
 
     expect(loadMoreButton()).not.toBeDisabled()
     expect(screen.getAllByText('山田花子')).toHaveLength(1)
+  })
+
+  // loader は「再訪のたびに1ページ目を取り直す」ためにあるので、進行中の追加取得に
+  // 相乗りして取り直しを飛ばしてしまわないことを固定する
+  it('「もっと見る」の取得中に再訪しても、その完了を待たずに1ページ目を取り直す', async () => {
+    const pending = deferred()
+    mockFetchConnections
+      .mockResolvedValueOnce(page([row('u1', '山田花子')], cursorAt('u1')))
+      .mockReturnValueOnce(pending.promise)
+      .mockResolvedValueOnce(page([row('u9', '新しい人')]))
+    const { client } = await renderPage()
+    expect(await screen.findByText('山田花子')).toBeInTheDocument()
+    await userEvent.click(loadMoreButton())
+
+    const loader = routeLoader(await import('@/pages/profile/$userId/connections'))
+    const outcome = await Promise.race([
+      loader({
+        params: { userId: 'owner' },
+        deps: { tab: 'followers' },
+        context: { queryClient: client },
+      }).then(() => 'resolved'),
+      new Promise((r) => setTimeout(() => r('pending'), 100)),
+    ])
+
+    expect(outcome).toBe('resolved')
+    expect(mockFetchConnections).toHaveBeenCalledTimes(3)
+    expect(mockFetchConnections).toHaveBeenLastCalledWith({
+      data: { userId: 'owner', tab: 'followers', cursor: null },
+    })
+
+    pending.resolve(page([row('u2', '佐藤太郎')]))
   })
 
   it('取得中にタブを切り替えたら、遅れて届いた前タブの結果を混ぜない', async () => {

@@ -125,8 +125,13 @@ export const Route = createFileRoute('/profile/$userId/connections')({
   // 別画面でフォロー／解除してから戻ったときに古い行が出ないよう毎回取り直すため。
   // pages: 1 で追加読み込み分は捨てる（全ページ再取得は遷移のたびに N 回叩くことになる）
   loader: async ({ params, deps, context }) => {
+    const options = connectionsQueryOptions(params.userId, deps.tab)
+    // 「もっと見る」が飛んでいる最中に戻ってくると、fetchInfiniteQuery は進行中の Promise を
+    // そのまま返す（query.js の fetchStatus !== 'idle' 分岐）。取り直しが起きないうえ、
+    // 遷移がその取得の完了待ちになるため、先に打ち切る
+    await context.queryClient.cancelQueries({ queryKey: options.queryKey })
     const data = await context.queryClient.fetchInfiniteQuery({
-      ...connectionsQueryOptions(params.userId, deps.tab),
+      ...options,
       staleTime: 0,
       pages: 1,
     })
