@@ -1,10 +1,10 @@
 import { QueryClient } from '@tanstack/react-query'
 
-// リクエストごと（SSR）／マウントごと（ブラウザ）に呼び出し側で `useState(createQueryClient)`
-// のように使うこと。モジュールスコープの単一インスタンスにすると、Cloudflare Workers の
-// isolate はリクエストをまたいで再利用されるため、SSR時に別ユーザーのキャッシュが
-// 混ざってしまう。ブラウザでは RootLayout が1度しかマウントされないため、結果的に
-// タブ内で1つのインスタンスが使い回される（望ましい挙動）。
+// 呼び出しごとに新しく作ること。Cloudflare Workers の isolate はリクエストをまたいで
+// 再利用されるため、使い回すと SSR で別ユーザーのキャッシュが混ざる。
 export function createQueryClient() {
-  return new QueryClient()
+  return new QueryClient({
+    // loader から SSR でプリフェッチしたときに、ハイドレート直後の再取得を避けるための既定値
+    defaultOptions: { queries: { staleTime: 60 * 1000 } },
+  })
 }
