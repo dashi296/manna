@@ -16,7 +16,8 @@ export async function signInWithGoogle() {
 
 export async function signOut() {
   const { supabase } = await import('./supabase')
-  const { error } = await supabase.auth.signOut()
+  // 既定は scope: 'global' で全端末の refresh token が失効するため、この端末だけに限定する
+  const { error } = await supabase.auth.signOut({ scope: 'local' })
   if (error) throw error
 }
 
