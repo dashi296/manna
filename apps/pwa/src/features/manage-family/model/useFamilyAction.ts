@@ -2,7 +2,7 @@ import { filterFamilyPair, type FamilyStatus } from '@/entities/family'
 import { supabase } from '@/shared/lib/supabase'
 import { useRelationMutation } from '@/entities/user'
 
-export type FamilyAction = 'request' | 'accept' | 'remove'
+type FamilyAction = 'request' | 'accept' | 'remove'
 
 const NEXT_STATUS: Record<FamilyAction, FamilyStatus> = {
   request: 'pending_sent',

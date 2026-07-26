@@ -73,11 +73,11 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 }
 
 function RootLayout() {
-  const { location } = useRouterState()
+  // セレクタ無しだと pending/idle の遷移でもシェル全体が再レンダーされる
+  const pathname = useRouterState({ select: (s) => s.location.pathname })
   const { sidebarDefaultOpen } = Route.useLoaderData()
-  const isAuthPage =
-    location.pathname === '/login' || location.pathname.startsWith('/auth/')
-  const isChapterPage = CHAPTER_PATH_RE.test(location.pathname)
+  const isAuthPage = pathname === '/login' || pathname.startsWith('/auth/')
+  const isChapterPage = CHAPTER_PATH_RE.test(pathname)
   const containerClass = isChapterPage ? 'lg:max-w-4xl mx-auto' : 'max-w-md mx-auto'
 
   useEffect(() => {

@@ -87,9 +87,8 @@ const profileQueryOptions = (userId: string) =>
   })
 
 export const Route = createFileRoute('/profile/$userId/')({
-  // SSR で埋めてクライアントへ引き継ぐ（ローディングのちらつきを避ける）。
-  // 自分の操作による陳腐化は invalidateRelationQueries が拾うので、staleTime を 0 にするのは
-  // loader だった頃と同じく他人の変更も訪問のたびに取り直すため
+  // SSR で埋めてクライアントへ引き継ぐ（ローディングのちらつきを避ける）。staleTime を 0 に
+  // するのは、loader だった頃と同じく他人の変更も訪問のたびに拾うため
   loader: async ({ params, context }) => {
     const data = await context.queryClient.fetchQuery({
       ...profileQueryOptions(params.userId),

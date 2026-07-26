@@ -8,7 +8,7 @@ import { deferred } from '../../helpers/deferred'
 
 const { mockToastError } = vi.hoisted(() => ({ mockToastError: vi.fn() }))
 
-vi.mock('sonner', () => ({ toast: { error: mockToastError } }))
+vi.mock('@/shared/ui/sonner', () => ({ toast: { error: mockToastError } }))
 
 let insertResult: Promise<{ error: unknown }> = Promise.resolve({ error: null })
 

@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { toast } from 'sonner'
+import { toast } from '@/shared/ui/sonner'
 import { invalidateRelationQueries } from './relationQueries'
 
 type Options<V, T> = {

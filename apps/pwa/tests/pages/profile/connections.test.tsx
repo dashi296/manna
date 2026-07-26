@@ -44,8 +44,7 @@ const cursorAt = (otherId: string) => ({ createdAt: '2026-07-25T10:00:00+00:00',
 const renderPage = async () => {
   const ConnectionsPage = routeComponent(await import('@/pages/profile/$userId/connections'))
   // useSearch の戻り値を差し替えてタブ切り替えを再現するため、rerender を持ち回る
-  const utils = renderWithQueryClient(() => <ConnectionsPage />)
-  return { ...utils, rerenderPage: utils.rerenderWithQueryClient }
+  return renderWithQueryClient(() => <ConnectionsPage />)
 }
 
 const loadMoreButton = () => screen.getByRole('button', { name: 'もっと見る' })
@@ -172,14 +171,14 @@ describe('ConnectionsPage', () => {
     mockFetchConnections
       .mockResolvedValueOnce(page([row('u1', '山田花子')], cursorAt('u1')))
       .mockReturnValueOnce(pending.promise)
-    const { rerenderPage } = await renderPage()
+    const { rerenderWithQueryClient } = await renderPage()
     expect(await screen.findByText('山田花子')).toBeInTheDocument()
     await userEvent.click(loadMoreButton())
 
     // 取得の解決前にタブが切り替わる
     currentTab = 'following'
     mockFetchConnections.mockResolvedValue(page([row('u3', '鈴木次郎')]))
-    rerenderPage()
+    rerenderWithQueryClient()
     expect(await screen.findByText('鈴木次郎')).toBeInTheDocument()
 
     // 前タブのリクエストが後から解決しても、その行は混入しない。
