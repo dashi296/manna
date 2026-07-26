@@ -59,27 +59,35 @@ describe('getCircleUserIds', () => {
     expect(result.users).toHaveLength(4)
   })
 
-  it('follows/family が null でも self だけ返す', async () => {
+  it('follows の取得が失敗したら投げる（0件として扱わない）', async () => {
     const supabase = {
       from: vi.fn((table: string) => {
         if (table === 'follows') {
-          return { select: () => ({ eq: () => Promise.resolve({ data: null }) }) }
-        }
-        if (table === 'family_relationships') {
           return {
-            select: () => ({ eq: () => ({ or: () => Promise.resolve({ data: null }) }) }),
+            select: () => ({
+              eq: () => Promise.resolve({ data: null, error: { message: 'boom' } }),
+            }),
           }
         }
         return {
           select: () => ({
-            in: () =>
-              Promise.resolve({
-                data: [{ id: 'me', display_name: '私', avatar_url: null }],
-              }),
+            eq: () => ({ or: () => Promise.resolve({ data: [] }) }),
+            in: () => Promise.resolve({ data: [] }),
           }),
         }
       }),
     }
+    await expect(
+      getCircleUserIds(supabase as unknown as Parameters<typeof getCircleUserIds>[0], 'me'),
+    ).rejects.toMatchObject({ message: 'boom' })
+  })
+
+  it('関係が0件なら self だけ返す', async () => {
+    const supabase = makeSupabase({
+      follows: [],
+      family: [],
+      users: [{ id: 'me', display_name: '私', avatar_url: null }],
+    })
     const result = await getCircleUserIds(
       supabase as unknown as Parameters<typeof getCircleUserIds>[0],
       'me',

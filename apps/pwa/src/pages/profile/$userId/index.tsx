@@ -1,15 +1,20 @@
 import { createFileRoute, Link, notFound } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
-import { queryOptions, useQuery } from '@tanstack/react-query'
+import { infiniteQueryOptions, queryOptions, useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { PostCard, POST_SELECT, type PostWithUser } from '@/entities/post'
 import { filterFamilyPair, resolveFamilyStatus } from '@/entities/family'
 import { FollowButton } from '@/features/follow-user'
 import { FamilyButton } from '@/features/manage-family'
 import { SignOutButton } from '@/features/sign-out'
 import { EmptyState, PageHeader, UserAvatar } from '@/shared/ui'
+import { Button } from '@/shared/ui/button'
 import { resolveUserIdentity } from '@/shared/lib/constants'
 import { createSupabaseServer } from '@/shared/lib/auth'
+import { isValidCursor, type Cursor } from '@/shared/lib/cursor'
+import { unwrap } from '@/shared/lib/unwrap'
 import { profileKey } from '@/entities/user'
+
+const PAGE_SIZE = 20
 
 const fetchProfileData = createServerFn({ method: 'POST' })
   .inputValidator((data: { userId: string }) => data)
@@ -41,19 +46,13 @@ const fetchProfileData = createServerFn({ method: 'POST' })
       {
         data: { user: currentUser },
       },
-      { data: posts },
-      { count: followerCount },
-      { count: followingCount },
+      followerRes,
+      followingRes,
       relations,
     ] = await Promise.all([
+      // 行が0件でも error になるため unwrap は使わない。null のまま loader が 404 にする
       serverSupabase.from('users').select('*').eq('id', userId).single(),
       userPromise,
-      serverSupabase
-        .from('posts')
-        .select(POST_SELECT)
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(20),
       serverSupabase
         .from('follows')
         .select('*', { count: 'exact', head: true })
@@ -66,15 +65,53 @@ const fetchProfileData = createServerFn({ method: 'POST' })
     ])
 
     if (!profile) return null
+    if (followerRes.error) throw followerRes.error
+    if (followingRes.error) throw followingRes.error
 
     return {
       profile,
-      posts: (posts ?? []) as PostWithUser[],
       currentUserId: currentUser?.id ?? null,
       isFollowing: relations?.isFollowing ?? false,
       familyStatus: resolveFamilyStatus(relations?.familyData, currentUser?.id ?? ''),
-      followerCount: followerCount ?? 0,
-      followingCount: followingCount ?? 0,
+      followerCount: followerRes.count ?? 0,
+      followingCount: followingRes.count ?? 0,
+    }
+  })
+
+const fetchUserPosts = createServerFn({ method: 'POST' })
+  .inputValidator((data: { userId: string; cursor: Cursor | null }) => {
+    if (data.cursor && !isValidCursor(data.cursor)) throw new Error('invalid cursor')
+    return data
+  })
+  .handler(async (ctx) => {
+    const { userId, cursor } = ctx.data
+    const serverSupabase = await createSupabaseServer()
+
+    let query = serverSupabase
+      .from('posts')
+      .select(POST_SELECT)
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false })
+      .limit(PAGE_SIZE + 1)
+
+    // (created_at, id) < カーソル の keyset 条件。PostgREST は '.' と ',' を区切りに
+    // 使うため、小数秒を含む timestamptz はダブルクォートで囲む
+    if (cursor) {
+      query = query.or(
+        `created_at.lt."${cursor.createdAt}",` +
+          `and(created_at.eq."${cursor.createdAt}",id.lt."${cursor.id}")`,
+      )
+    }
+
+    const rows = unwrap(await query) as PostWithUser[]
+    const hasMore = rows.length > PAGE_SIZE
+    const posts = rows.slice(0, PAGE_SIZE)
+    const last = posts[posts.length - 1]
+
+    return {
+      posts,
+      nextCursor: hasMore ? { createdAt: last.created_at, id: last.id } : null,
     }
   })
 
@@ -86,14 +123,30 @@ const profileQueryOptions = (userId: string) =>
     queryFn: () => fetchProfileData({ data: { userId } }),
   })
 
+// 投稿は関係の変更で古くならないので、無効化対象の ['profile'] とはキーを分ける
+const userPostsQueryOptions = (userId: string) =>
+  infiniteQueryOptions({
+    queryKey: ['user-posts', userId],
+    queryFn: ({ pageParam }) => fetchUserPosts({ data: { userId, cursor: pageParam } }),
+    initialPageParam: null as Cursor | null,
+    getNextPageParam: (last) => last.nextCursor,
+    // 失敗したら黙って叩き直さず、「もっと見る」を押し直せる状態に戻す
+    retry: false,
+  })
+
 export const Route = createFileRoute('/profile/$userId/')({
   // SSR で埋めてクライアントへ引き継ぐ（ローディングのちらつきを避ける）。staleTime を 0 に
   // するのは、loader だった頃と同じく他人の変更も訪問のたびに拾うため
   loader: async ({ params, context }) => {
-    const data = await context.queryClient.fetchQuery({
-      ...profileQueryOptions(params.userId),
-      staleTime: 0,
-    })
+    const postsOptions = userPostsQueryOptions(params.userId)
+    await context.queryClient.cancelQueries({ queryKey: postsOptions.queryKey })
+    const [data] = await Promise.all([
+      context.queryClient.fetchQuery({
+        ...profileQueryOptions(params.userId),
+        staleTime: 0,
+      }),
+      context.queryClient.fetchInfiniteQuery({ ...postsOptions, staleTime: 0, pages: 1 }),
+    ])
     if (!data) throw notFound()
   },
   component: ProfilePage,
@@ -102,12 +155,19 @@ export const Route = createFileRoute('/profile/$userId/')({
 function ProfilePage() {
   const { userId } = Route.useParams()
   const { data } = useQuery(profileQueryOptions(userId))
+  const {
+    data: postPages,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery(userPostsQueryOptions(userId))
+
+  const posts = (postPages?.pages ?? []).flatMap((p) => p.posts)
 
   // null になるのは対象ユーザーが存在しないときだけで、loader が 404 にしている
   if (!data) return null
 
-  const { profile, posts, currentUserId, isFollowing, familyStatus, followerCount, followingCount } =
-    data
+  const { profile, currentUserId, isFollowing, familyStatus, followerCount, followingCount } = data
 
   const { displayName, avatarUrl } = resolveUserIdentity(profile)
 
@@ -169,7 +229,23 @@ function ProfilePage() {
         {posts.length === 0 ? (
           <EmptyState>投稿はまだありません</EmptyState>
         ) : (
-          posts.map((post) => <PostCard key={post.id} post={post} />)
+          <>
+            {posts.map((post) => (
+              <PostCard key={post.id} post={post} />
+            ))}
+            {hasNextPage && (
+              <div className="p-4 text-center">
+                <Button
+                  onClick={() => fetchNextPage()}
+                  disabled={isFetchingNextPage}
+                  variant="outline"
+                  size="sm"
+                >
+                  もっと見る
+                </Button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

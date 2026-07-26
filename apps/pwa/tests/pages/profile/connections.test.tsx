@@ -39,7 +39,7 @@ const page = (rows: ReturnType<typeof row>[], nextCursor: unknown = null) => ({
   nextCursor,
 })
 
-const cursorAt = (otherId: string) => ({ createdAt: '2026-07-25T10:00:00+00:00', otherId })
+const cursorAt = (id: string) => ({ createdAt: '2026-07-25T10:00:00+00:00', id })
 
 const renderPage = async () => {
   const ConnectionsPage = routeComponent(await import('@/pages/profile/$userId/connections'))

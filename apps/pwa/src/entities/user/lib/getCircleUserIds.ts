@@ -1,4 +1,5 @@
 import type { createSupabaseServer } from '@/shared/lib/auth'
+import { unwrap } from '@/shared/lib/unwrap'
 
 type SupabaseServer = Awaited<ReturnType<typeof createSupabaseServer>>
 
@@ -22,19 +23,16 @@ export async function getCircleUserIds(
   ])
 
   const ids = new Set<string>([userId])
-  ;(followsRes.data ?? []).forEach((f) =>
-    ids.add((f as { following_id: string }).following_id),
-  )
-  ;(familyRes.data ?? []).forEach((r) => {
+  unwrap(followsRes).forEach((f) => ids.add((f as { following_id: string }).following_id))
+  unwrap(familyRes).forEach((r) => {
     const row = r as { requester_id: string; addressee_id: string }
     ids.add(row.requester_id === userId ? row.addressee_id : row.requester_id)
   })
   const idList = [...ids]
 
-  const { data: users } = await supabase
-    .from('users')
-    .select('id, display_name, avatar_url')
-    .in('id', idList)
+  const users = unwrap(
+    await supabase.from('users').select('id, display_name, avatar_url').in('id', idList),
+  )
 
-  return { ids: idList, users: (users ?? []) as CircleUserRow[] }
+  return { ids: idList, users: users as CircleUserRow[] }
 }

@@ -1,7 +1,6 @@
 import { createFileRoute, Link, notFound, useNavigate } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { infiniteQueryOptions, useInfiniteQuery } from '@tanstack/react-query'
-import type { PostgrestError } from '@supabase/supabase-js'
 import { FollowButton } from '@/features/follow-user'
 import { EmptyState, PageHeader, TabBar, UserAvatar } from '@/shared/ui'
 import { Button } from '@/shared/ui/button'
@@ -9,6 +8,7 @@ import { connectionsKey, type CircleUserRow } from '@/entities/user'
 import { resolveUserIdentity } from '@/shared/lib/constants'
 import { createSupabaseServer } from '@/shared/lib/auth'
 import { isValidCursor, type Cursor } from '@/shared/lib/cursor'
+import { unwrap } from '@/shared/lib/unwrap'
 
 type Tab = 'followers' | 'following'
 type ConnectionRowData = { user: CircleUserRow; isFollowingByMe: boolean }
@@ -17,13 +17,6 @@ const PAGE_SIZE = 20
 
 const TAB_LABELS: Record<Tab, string> = { followers: 'フォロワー', following: 'フォロー中' }
 const TABS = (Object.keys(TAB_LABELS) as Tab[]).map((id) => ({ id, label: TAB_LABELS[id] }))
-
-// Supabase はクエリ失敗時も reject せず { data: null, error } を返すため、
-// error を見ないと障害が「0件」として表示されてしまう
-function unwrap<T>(res: { data: T; error: null } | { data: null; error: PostgrestError }): T {
-  if (res.error) throw res.error
-  return res.data
-}
 
 export const fetchConnections = createServerFn({ method: 'POST' })
   .inputValidator((data: { userId: string; tab: Tab; cursor: Cursor | null }) => {
@@ -47,12 +40,12 @@ export const fetchConnections = createServerFn({ method: 'POST' })
       .order(otherIdColumn, { ascending: false })
       .limit(PAGE_SIZE + 1)
 
-    // (created_at, otherId) < カーソル の keyset 条件。PostgREST は '.' と ',' を
+    // (created_at, 相手のid) < カーソル の keyset 条件。PostgREST は '.' と ',' を
     // 区切りに使うため、小数秒を含む timestamptz はダブルクォートで囲む。
     if (cursor) {
       query = query.or(
         `created_at.lt."${cursor.createdAt}",` +
-          `and(created_at.eq."${cursor.createdAt}",${otherIdColumn}.lt."${cursor.otherId}")`,
+          `and(created_at.eq."${cursor.createdAt}",${otherIdColumn}.lt."${cursor.id}")`,
       )
     }
 
@@ -100,7 +93,7 @@ export const fetchConnections = createServerFn({ method: 'POST' })
         const user = usersById.get(r[otherIdColumn])
         return user ? [{ user, isFollowingByMe: followingSet.has(user.id) }] : []
       }),
-      nextCursor: hasMore ? { createdAt: last.created_at, otherId: last[otherIdColumn] } : null,
+      nextCursor: hasMore ? { createdAt: last.created_at, id: last[otherIdColumn] } : null,
     }
   })
 
