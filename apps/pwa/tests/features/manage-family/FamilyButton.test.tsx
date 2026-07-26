@@ -97,13 +97,7 @@ describe('FamilyButton', () => {
     pending.resolve({ error: null })
   })
 
-  it('成功したらプロフィールとフォロー一覧のクエリを無効化する', async () => {
-    const { client } = renderButton('none')
-    const invalidate = vi.spyOn(client, 'invalidateQueries')
-    await userEvent.click(screen.getByRole('button', { name: 'ファミリーに追加' }))
-    await waitFor(() => expect(invalidate).toHaveBeenCalledWith({ queryKey: ['profile'] }))
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['connections'] })
-  })
+  // 成功後の無効化は FollowButton と同じ useRelationMutation の責務なので、そちらで固定する
 
   it('招待の作成に失敗したらトーストを出して表示を元に戻す', async () => {
     insertResult = Promise.resolve({ error: { message: 'duplicate key value' } })

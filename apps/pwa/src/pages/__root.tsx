@@ -1,9 +1,10 @@
 import { useEffect } from 'react'
-import { HeadContent, Scripts, Outlet, createRootRouteWithContext, redirect, useRouterState } from '@tanstack/react-router'
+import { HeadContent, Scripts, Outlet, createRootRouteWithContext, redirect } from '@tanstack/react-router'
 import type { QueryClient } from '@tanstack/react-query'
 import { getSession, getServerSession } from '@/shared/lib/auth'
 import { getCookieHeader } from '@/shared/lib/cookies'
 import { registerServiceWorker } from '@/shared/lib/pwa'
+import { usePathname } from '@/shared/lib/usePathname'
 import { AppSidebar } from '@/shared/ui/AppSidebar'
 import { BottomNav } from '@/shared/ui/BottomNav'
 import { DevTools } from '@/shared/ui/DevTools'
@@ -73,8 +74,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 }
 
 function RootLayout() {
-  // セレクタ無しだと pending/idle の遷移でもシェル全体が再レンダーされる
-  const pathname = useRouterState({ select: (s) => s.location.pathname })
+  const pathname = usePathname()
   const { sidebarDefaultOpen } = Route.useLoaderData()
   const isAuthPage = pathname === '/login' || pathname.startsWith('/auth/')
   const isChapterPage = CHAPTER_PATH_RE.test(pathname)

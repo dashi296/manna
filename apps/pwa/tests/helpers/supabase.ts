@@ -1,4 +1,4 @@
-type Response = { data?: unknown; error?: unknown }
+type Result = { data?: unknown; error?: unknown }
 
 // Supabase の PostgrestFilterBuilder を模した最小のチェーン可能モック。
 // select/eq/in/order/abortSignal は自身を返し続け、await（.then）した時点で
@@ -6,7 +6,7 @@ type Response = { data?: unknown; error?: unknown }
 // getResponse 内で可変の状態を参照すればよい。
 // 絞り込みの引数を検証したい場合は record にスパイを渡す（eq/in が呼ばれるたびに通る）。
 export function createSupabaseQueryChain(
-  getResponse: () => Response,
+  getResponse: () => Result,
   record: (column: string, value: unknown) => void = () => {},
 ) {
   const filter = (column: string, value: unknown) => {
@@ -19,7 +19,7 @@ export function createSupabaseQueryChain(
     in: filter,
     order: () => chain,
     abortSignal: () => chain,
-    then: (resolve: (result: Response) => void) => resolve(getResponse()),
+    then: (resolve: (result: Result) => void) => resolve(getResponse()),
   }
   return chain
 }

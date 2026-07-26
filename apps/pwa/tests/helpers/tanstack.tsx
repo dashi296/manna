@@ -49,7 +49,10 @@ export function routerMock(
     },
     notFound: () => new Error('not found'),
     redirect: (opts: { to: string; params?: Record<string, string> }) => opts,
-    useRouterState: () => ({ location: { pathname: getPathname() } }),
+    useRouterState: (opts?: { select?: (state: unknown) => unknown }) => {
+      const state = { location: { pathname: getPathname() } }
+      return opts?.select ? opts.select(state) : state
+    },
     useNavigate: () => navigate,
   }
 }

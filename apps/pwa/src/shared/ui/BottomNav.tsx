@@ -1,15 +1,16 @@
-import { Link, useRouterState } from '@tanstack/react-router'
+import { Link } from '@tanstack/react-router'
 import { NAV_ITEMS, isNavItemActive } from '@/shared/config/navigation'
+import { usePathname } from '@/shared/lib/usePathname'
 import { cn } from '@/shared/lib/utils'
 
 export function BottomNav() {
-  const { location } = useRouterState()
+  const pathname = usePathname()
 
   return (
     <nav className="lg:hidden fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md border-t border-line bg-[var(--header-bg)] backdrop-blur-sm pb-[var(--safe-area-bottom)]">
       <div className="flex">
         {NAV_ITEMS.map(({ to, label, shortLabel, Icon }) => {
-          const active = isNavItemActive(to, location.pathname)
+          const active = isNavItemActive(to, pathname)
           return (
             <Link
               key={to}
