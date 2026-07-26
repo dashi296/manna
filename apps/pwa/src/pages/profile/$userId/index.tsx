@@ -1,4 +1,4 @@
-import { createFileRoute, notFound } from '@tanstack/react-router'
+import { createFileRoute, Link, notFound } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { PostCard, POST_SELECT, type PostWithUser } from '@/entities/post'
 import { familyPairFilter, resolveFamilyStatus } from '@/entities/family'
@@ -75,7 +75,7 @@ const fetchProfileData = createServerFn({ method: 'POST' })
     }
   })
 
-export const Route = createFileRoute('/profile/$userId')({
+export const Route = createFileRoute('/profile/$userId/')({
   loader: async ({ params }) => {
     const data = await fetchProfileData({ data: { userId: params.userId } })
     if (!data) throw notFound()
@@ -106,12 +106,20 @@ function ProfilePage() {
               </p>
             )}
             <div className="flex gap-4 mt-2 text-sm" style={{ color: 'var(--sea-ink-soft)' }}>
-              <span>
+              <Link
+                to="/profile/$userId/connections"
+                params={{ userId: profile.id }}
+                search={{ tab: 'followers' }}
+              >
                 <strong style={{ color: 'var(--sea-ink)' }}>{followerCount}</strong> フォロワー
-              </span>
-              <span>
+              </Link>
+              <Link
+                to="/profile/$userId/connections"
+                params={{ userId: profile.id }}
+                search={{ tab: 'following' }}
+              >
                 <strong style={{ color: 'var(--sea-ink)' }}>{followingCount}</strong> フォロー中
-              </span>
+              </Link>
             </div>
           </div>
         </div>
