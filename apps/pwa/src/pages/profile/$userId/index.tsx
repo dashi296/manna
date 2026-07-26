@@ -1,7 +1,7 @@
 import { createFileRoute, Link, notFound } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { PostCard, POST_SELECT, type PostWithUser } from '@/entities/post'
-import { familyPairFilter, resolveFamilyStatus } from '@/entities/family'
+import { filterFamilyPair, resolveFamilyStatus } from '@/entities/family'
 import { FollowButton } from '@/features/follow-user'
 import { FamilyButton } from '@/features/manage-family'
 import { EmptyState, PageHeader, UserAvatar } from '@/shared/ui'
@@ -24,11 +24,11 @@ const fetchProfileData = createServerFn({ method: 'POST' })
           .eq('follower_id', user.id)
           .eq('following_id', userId)
           .maybeSingle(),
-        serverSupabase
-          .from('family_relationships')
-          .select('*')
-          .or(familyPairFilter(user.id, userId))
-          .maybeSingle(),
+        filterFamilyPair(
+          serverSupabase.from('family_relationships').select('*'),
+          user.id,
+          userId,
+        ).maybeSingle(),
       ])
       return { isFollowing: !!followData, familyData }
     })

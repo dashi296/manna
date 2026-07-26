@@ -1,2 +1,2 @@
 export type { FamilyStatus } from './model'
-export { familyPairFilter, resolveFamilyStatus } from './model'
+export { filterFamilyPair, resolveFamilyStatus } from './model'
