@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { act, render, screen } from '@testing-library/react'
+import { act, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { QueryClientProvider } from '@tanstack/react-query'
-import { createQueryClient } from '@/shared/lib/queryClient'
 import { routeComponent, routeLoader } from '../../helpers/tanstack'
+import { renderWithQueryClient } from '../../helpers/query'
+import { deferred } from '../../helpers/deferred'
 
 const mockFetchConnections = vi.fn()
 
@@ -43,25 +43,8 @@ const cursorAt = (otherId: string) => ({ createdAt: '2026-07-25T10:00:00+00:00',
 
 const renderPage = async () => {
   const ConnectionsPage = routeComponent(await import('@/pages/profile/$userId/connections'))
-  // キャッシュがテスト間で漏れないよう、毎回新しい QueryClient を使う
-  const client = createQueryClient()
-  // 要素を毎回作り直す。同じ参照を rerender に渡すと React が再レンダーを省き、
-  // useSearch の戻り値を差し替えてもタブ切り替えが反映されない
-  const ui = () => (
-    <QueryClientProvider client={client}>
-      <ConnectionsPage />
-    </QueryClientProvider>
-  )
-  const utils = render(ui())
-  return { ...utils, client, rerenderPage: () => utils.rerender(ui()) }
-}
-
-const deferred = () => {
-  let resolve: (value: unknown) => void = () => {}
-  const promise = new Promise((r) => {
-    resolve = r
-  })
-  return { promise, resolve: (value: unknown) => resolve(value) }
+  // useSearch の戻り値を差し替えてタブ切り替えを再現するため、rerender を持ち回る
+  return renderWithQueryClient(() => <ConnectionsPage />)
 }
 
 const loadMoreButton = () => screen.getByRole('button', { name: 'もっと見る' })
@@ -188,14 +171,14 @@ describe('ConnectionsPage', () => {
     mockFetchConnections
       .mockResolvedValueOnce(page([row('u1', '山田花子')], cursorAt('u1')))
       .mockReturnValueOnce(pending.promise)
-    const { rerenderPage } = await renderPage()
+    const { rerenderWithQueryClient } = await renderPage()
     expect(await screen.findByText('山田花子')).toBeInTheDocument()
     await userEvent.click(loadMoreButton())
 
     // 取得の解決前にタブが切り替わる
     currentTab = 'following'
     mockFetchConnections.mockResolvedValue(page([row('u3', '鈴木次郎')]))
-    rerenderPage()
+    rerenderWithQueryClient()
     expect(await screen.findByText('鈴木次郎')).toBeInTheDocument()
 
     // 前タブのリクエストが後から解決しても、その行は混入しない。

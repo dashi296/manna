@@ -1,8 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
-import { QueryClientProvider } from '@tanstack/react-query'
-import { createQueryClient } from '@/shared/lib/queryClient'
+import { screen, waitFor } from '@testing-library/react'
 import { NotFoundPage } from '@/widgets/not-found'
+import { renderWithQueryClient } from '../../helpers/query'
 
 const mockGetSession = vi.fn()
 
@@ -15,13 +14,7 @@ vi.mock('@tanstack/react-router', async () =>
   (await import('../../helpers/tanstack')).routerMock(),
 )
 
-// セッションはクエリキャッシュに載るため、テストごとに新しい QueryClient を使う
-const renderPage = () =>
-  render(
-    <QueryClientProvider client={createQueryClient()}>
-      <NotFoundPage />
-    </QueryClientProvider>,
-  )
+const renderPage = () => renderWithQueryClient(() => <NotFoundPage />)
 
 describe('NotFoundPage', () => {
   beforeEach(() => {

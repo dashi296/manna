@@ -1,34 +1,24 @@
-import { useState } from 'react'
 import { Button } from '@/shared/ui/button'
-import { supabase } from '@/shared/lib/supabase'
-import { useSupabaseAction } from '@/shared/lib/useSupabaseAction'
+import { useToggleFollow } from '../model/useToggleFollow'
 
 type Props = {
   targetUserId: string
   currentUserId: string
-  initialFollowing: boolean
+  // invalidateRelationQueries が落とせるクエリ由来の値を渡すこと
+  isFollowing: boolean
 }
 
-export function FollowButton({ targetUserId, currentUserId, initialFollowing }: Props) {
-  const [following, setFollowing] = useState(initialFollowing)
-  const { pending, run } = useSupabaseAction()
-
-  const toggle = () => run(
-    () => following
-      ? supabase.from('follows').delete()
-          .eq('follower_id', currentUserId)
-          .eq('following_id', targetUserId)
-      : supabase.from('follows').insert({
-          follower_id: currentUserId,
-          following_id: targetUserId,
-        }),
-    () => setFollowing(!following),
-  )
+export function FollowButton({ targetUserId, currentUserId, isFollowing }: Props) {
+  const { mutate, isPending, shown: following } = useToggleFollow({
+    currentUserId,
+    targetUserId,
+    isFollowing,
+  })
 
   return (
     <Button
-      onClick={toggle}
-      disabled={pending}
+      onClick={() => mutate(!following)}
+      disabled={isPending}
       variant={following ? 'outline' : 'default'}
       size="sm"
     >

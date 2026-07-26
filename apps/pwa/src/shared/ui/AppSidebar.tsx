@@ -1,6 +1,7 @@
-import { Link, useRouterState } from '@tanstack/react-router'
+import { Link } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { NAV_ITEMS, isNavItemActive } from '@/shared/config/navigation'
+import { usePathname } from '@/shared/hooks/use-pathname'
 import { getSession } from '@/shared/lib/auth'
 import { LogoMark } from '@/shared/ui/LogoMark'
 import { UserAvatar } from '@/shared/ui/UserAvatar'
@@ -21,7 +22,7 @@ import {
 type UserInfo = { displayName: string | null; avatarUrl: string | null } | null
 
 export function AppSidebar() {
-  const { location } = useRouterState()
+  const pathname = usePathname()
   const [userInfo, setUserInfo] = useState<UserInfo>(null)
 
   useEffect(() => {
@@ -56,7 +57,7 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {NAV_ITEMS.map(({ to, label, Icon }) => {
-                const active = isNavItemActive(to, location.pathname)
+                const active = isNavItemActive(to, pathname)
                 return (
                   <SidebarMenuItem key={to}>
                     <SidebarMenuButton

@@ -1,14 +1,16 @@
 import { useEffect } from 'react'
-import { HeadContent, Scripts, Outlet, createRootRouteWithContext, redirect, useRouterState } from '@tanstack/react-router'
+import { HeadContent, Scripts, Outlet, createRootRouteWithContext, redirect } from '@tanstack/react-router'
 import type { QueryClient } from '@tanstack/react-query'
 import { getSession, getServerSession } from '@/shared/lib/auth'
 import { getCookieHeader } from '@/shared/lib/cookies'
 import { registerServiceWorker } from '@/shared/lib/pwa'
+import { usePathname } from '@/shared/hooks/use-pathname'
 import { AppSidebar } from '@/shared/ui/AppSidebar'
 import { BottomNav } from '@/shared/ui/BottomNav'
 import { DevTools } from '@/shared/ui/DevTools'
 import { InstallPwaBanner } from '@/shared/ui/InstallPwaBanner'
 import { sidebarStateFromCookieHeader, SidebarInset, SidebarProvider } from '@/shared/ui/sidebar'
+import { Toaster } from '@/shared/ui/sonner'
 import { TooltipProvider } from '@/shared/ui/tooltip'
 import appCss from '@/styles.css?url'
 
@@ -72,11 +74,10 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 }
 
 function RootLayout() {
-  const { location } = useRouterState()
+  const pathname = usePathname()
   const { sidebarDefaultOpen } = Route.useLoaderData()
-  const isAuthPage =
-    location.pathname === '/login' || location.pathname.startsWith('/auth/')
-  const isChapterPage = CHAPTER_PATH_RE.test(location.pathname)
+  const isAuthPage = pathname === '/login' || pathname.startsWith('/auth/')
+  const isChapterPage = CHAPTER_PATH_RE.test(pathname)
   const containerClass = isChapterPage ? 'lg:max-w-4xl mx-auto' : 'max-w-md mx-auto'
 
   useEffect(() => {
@@ -103,6 +104,8 @@ function RootLayout() {
           </SidebarProvider>
         </TooltipProvider>
       )}
+      {/* BottomNav が下部を占めるため上寄せ */}
+      <Toaster position="top-center" />
       {isDev && <DevTools />}
     </>
   )

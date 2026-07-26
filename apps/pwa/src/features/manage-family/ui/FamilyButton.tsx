@@ -1,47 +1,26 @@
-import { useState } from 'react'
-import { filterFamilyPair, type FamilyStatus } from '@/entities/family'
+import type { FamilyStatus } from '@/entities/family'
 import { Button } from '@/shared/ui/button'
-import { supabase } from '@/shared/lib/supabase'
-import { useSupabaseAction } from '@/shared/lib/useSupabaseAction'
+import { useFamilyAction } from '../model/useFamilyAction'
 
 type Props = {
   targetUserId: string
   currentUserId: string
-  initialStatus: FamilyStatus
+  // invalidateRelationQueries が落とせるクエリ由来の値を渡すこと
+  status: FamilyStatus
 }
 
-export function FamilyButton({ targetUserId, currentUserId, initialStatus }: Props) {
-  const [status, setStatus] = useState(initialStatus)
-  const { pending, run } = useSupabaseAction()
+export function FamilyButton({ targetUserId, currentUserId, status }: Props) {
+  const { mutate, isPending, shown } = useFamilyAction({ currentUserId, targetUserId, status })
 
-  const sendRequest = () => run(
-    () => supabase.from('family_relationships').insert({ requester_id: currentUserId, addressee_id: targetUserId }),
-    () => setStatus('pending_sent'),
-  )
-
-  const accept = () => run(
-    () => supabase.from('family_relationships').update({ status: 'accepted' }).eq('requester_id', targetUserId).eq('addressee_id', currentUserId),
-    () => setStatus('accepted'),
-  )
-
-  const remove = () => run(
-    () => filterFamilyPair(
-      supabase.from('family_relationships').delete(),
-      currentUserId,
-      targetUserId,
-    ),
-    () => setStatus('none'),
-  )
-
-  if (status === 'accepted') {
+  if (shown === 'accepted') {
     return (
-      <Button onClick={remove} disabled={pending} variant="outline" size="sm">
+      <Button onClick={() => mutate('remove')} disabled={isPending} variant="outline" size="sm">
         ファミリー
       </Button>
     )
   }
 
-  if (status === 'pending_sent') {
+  if (shown === 'pending_sent') {
     return (
       <Button disabled variant="outline" size="sm">
         招待送信済み
@@ -49,16 +28,16 @@ export function FamilyButton({ targetUserId, currentUserId, initialStatus }: Pro
     )
   }
 
-  if (status === 'pending_received') {
+  if (shown === 'pending_received') {
     return (
-      <Button onClick={accept} disabled={pending} size="sm">
+      <Button onClick={() => mutate('accept')} disabled={isPending} size="sm">
         招待を承認
       </Button>
     )
   }
 
   return (
-    <Button onClick={sendRequest} disabled={pending} variant="outline" size="sm">
+    <Button onClick={() => mutate('request')} disabled={isPending} variant="outline" size="sm">
       ファミリーに追加
     </Button>
   )

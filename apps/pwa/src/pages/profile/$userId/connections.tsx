@@ -5,7 +5,7 @@ import type { PostgrestError } from '@supabase/supabase-js'
 import { FollowButton } from '@/features/follow-user'
 import { EmptyState, PageHeader, TabBar, UserAvatar } from '@/shared/ui'
 import { Button } from '@/shared/ui/button'
-import { type CircleUserRow } from '@/entities/user'
+import { connectionsKey, type CircleUserRow } from '@/entities/user'
 import { resolveUserIdentity } from '@/shared/lib/constants'
 import { createSupabaseServer } from '@/shared/lib/auth'
 import { isValidCursor, type Cursor } from '@/shared/lib/cursor'
@@ -107,7 +107,7 @@ export const fetchConnections = createServerFn({ method: 'POST' })
 // タブごとに別のクエリになるので、切り替えても前のタブのページが混ざることはない
 const connectionsQueryOptions = (userId: string, tab: Tab) =>
   infiniteQueryOptions({
-    queryKey: ['connections', userId, tab],
+    queryKey: connectionsKey(userId, tab),
     queryFn: ({ pageParam }) => fetchConnections({ data: { userId, tab, cursor: pageParam } }),
     initialPageParam: null as Cursor | null,
     getNextPageParam: (last) => last?.nextCursor ?? null,
@@ -121,8 +121,8 @@ export const Route = createFileRoute('/profile/$userId/connections')({
   }),
   loaderDeps: ({ search }) => ({ tab: search.tab }),
   // 1ページ目は SSR で埋めてクライアントへ引き継ぐ（ローディングのちらつきを避ける）。
-  // ensureInfiniteQueryData ではなく fetchInfiniteQuery を使い staleTime を 0 にするのは、
-  // 別画面でフォロー／解除してから戻ったときに古い行が出ないよう毎回取り直すため。
+  // 自分の操作による陳腐化は invalidateRelationQueries が拾うので、ensureInfiniteQueryData
+  // ではなく fetchInfiniteQuery + staleTime 0 にするのは他人の変更も毎回取り直すため。
   // pages: 1 で追加読み込み分は捨てる（全ページ再取得は遷移のたびに N 回叩くことになる）
   loader: async ({ params, deps, context }) => {
     const options = connectionsQueryOptions(params.userId, deps.tab)
@@ -171,7 +171,7 @@ function ConnectionRow({
         <FollowButton
           targetUserId={row.user.id}
           currentUserId={currentUserId}
-          initialFollowing={row.isFollowingByMe}
+          isFollowing={row.isFollowingByMe}
         />
       )}
     </div>

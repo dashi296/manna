@@ -1,5 +1,11 @@
 "use client"
 
+// shadcn/ui Sonner の vendored コード。upstream との意図的な差分:
+// - next-themes の useTheme を外して theme="system" を直接渡す（このアプリに ThemeProvider は
+//   無く、テーマは prefers-color-scheme だけで決まる。next-themes は依存からも削除済み）
+// - dir="ltr" を明示（省くと sonner が既定値の算出で毎レンダー getComputedStyle を叩く）
+// - toast を再 export（アプリ内でこのライブラリに触る窓口をここ1箇所にするため）
+
 import {
   CircleCheck,
   Info,
@@ -7,17 +13,15 @@ import {
   OctagonX,
   TriangleAlert,
 } from "lucide-react"
-import { useTheme } from "next-themes"
 import { Toaster as Sonner } from "sonner"
 
 type ToasterProps = React.ComponentProps<typeof Sonner>
 
 const Toaster = ({ ...props }: ToasterProps) => {
-  const { theme = "system" } = useTheme()
-
   return (
     <Sonner
-      theme={theme as ToasterProps["theme"]}
+      theme="system"
+      dir="ltr"
       className="toaster group"
       icons={{
         success: <CircleCheck className="h-4 w-4" />,
@@ -43,3 +47,4 @@ const Toaster = ({ ...props }: ToasterProps) => {
 }
 
 export { Toaster }
+export { toast } from "sonner"
