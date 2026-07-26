@@ -4,6 +4,7 @@ import { PostCard, POST_SELECT, type PostWithUser } from '@/entities/post'
 import { filterFamilyPair, resolveFamilyStatus } from '@/entities/family'
 import { FollowButton } from '@/features/follow-user'
 import { FamilyButton } from '@/features/manage-family'
+import { SignOutButton } from '@/features/sign-out'
 import { EmptyState, PageHeader, UserAvatar } from '@/shared/ui'
 import { resolveUserIdentity } from '@/shared/lib/constants'
 import { createSupabaseServer } from '@/shared/lib/auth'
@@ -135,6 +136,11 @@ function ProfilePage() {
               currentUserId={currentUserId}
               initialStatus={familyStatus}
             />
+          </div>
+        )}
+        {currentUserId === profile.id && (
+          <div className="flex gap-2 mt-3">
+            <SignOutButton />
           </div>
         )}
       </div>
