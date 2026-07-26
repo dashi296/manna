@@ -3,6 +3,7 @@ import { act, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { routeComponent, routeLoader } from '../../helpers/tanstack'
 import { renderWithQueryClient } from '../../helpers/query'
+import { deferred } from '../../helpers/deferred'
 
 const mockFetchConnections = vi.fn()
 
@@ -45,14 +46,6 @@ const renderPage = async () => {
   // useSearch の戻り値を差し替えてタブ切り替えを再現するため、rerender を持ち回る
   const utils = renderWithQueryClient(() => <ConnectionsPage />)
   return { ...utils, rerenderPage: utils.rerenderWithQueryClient }
-}
-
-const deferred = () => {
-  let resolve: (value: unknown) => void = () => {}
-  const promise = new Promise((r) => {
-    resolve = r
-  })
-  return { promise, resolve: (value: unknown) => resolve(value) }
 }
 
 const loadMoreButton = () => screen.getByRole('button', { name: 'もっと見る' })

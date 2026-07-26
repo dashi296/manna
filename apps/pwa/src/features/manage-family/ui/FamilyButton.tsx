@@ -1,6 +1,6 @@
 import { type FamilyStatus } from '@/entities/family'
 import { Button } from '@/shared/ui/button'
-import { NEXT_STATUS, useFamilyAction } from '../model/useFamilyAction'
+import { useFamilyAction } from '../model/useFamilyAction'
 
 type Props = {
   targetUserId: string
@@ -9,10 +9,7 @@ type Props = {
 }
 
 export function FamilyButton({ targetUserId, currentUserId, status }: Props) {
-  const { mutate, isPending, variables } = useFamilyAction(currentUserId, targetUserId)
-
-  // 送信中は押した結果を先に見せる。確定後は無効化された prop 側が正になる
-  const shown = isPending && variables !== undefined ? NEXT_STATUS[variables] : status
+  const { mutate, isPending, shown } = useFamilyAction({ currentUserId, targetUserId, status })
 
   if (shown === 'accepted') {
     return (

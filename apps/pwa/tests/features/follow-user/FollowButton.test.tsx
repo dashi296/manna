@@ -3,26 +3,19 @@ import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { FollowButton } from '@/features/follow-user'
 import { renderWithQueryClient } from '../../helpers/query'
+import { createSupabaseQueryChain } from '../../helpers/supabase'
+import { deferred } from '../../helpers/deferred'
 
 const { mockToastError } = vi.hoisted(() => ({ mockToastError: vi.fn() }))
 
 vi.mock('sonner', () => ({ toast: { error: mockToastError } }))
 
 let insertResult: Promise<{ error: unknown }> = Promise.resolve({ error: null })
-let deleteResult: Promise<{ error: unknown }> = Promise.resolve({ error: null })
+let deleteError: unknown = null
 
 const mockInsert = vi.fn(() => insertResult)
 const mockDeleteEq = vi.fn()
-// .delete().eq().eq() を await するので、eq を繋げられて自身が await 可能な形にする
-const deleteChain = {
-  eq: (column: string, value: string) => {
-    mockDeleteEq(column, value)
-    return deleteChain
-  },
-  then: (onOk: (v: { error: unknown }) => unknown, onErr?: (e: unknown) => unknown) =>
-    deleteResult.then(onOk, onErr),
-}
-const mockDelete = vi.fn(() => deleteChain)
+const mockDelete = vi.fn(() => createSupabaseQueryChain(() => ({ error: deleteError }), mockDeleteEq))
 
 vi.mock('@/shared/lib/supabase', () => ({
   supabase: {
@@ -33,15 +26,7 @@ vi.mock('@/shared/lib/supabase', () => ({
   },
 }))
 
-const deferred = () => {
-  let resolve: (value: { error: unknown }) => void = () => {}
-  const promise = new Promise<{ error: unknown }>((r) => {
-    resolve = r
-  })
-  return { promise, resolve }
-}
-
-const renderButton = (isFollowing = false) => {
+const renderButton = (isFollowing: boolean) => {
   let following = isFollowing
   const utils = renderWithQueryClient(() => (
     <FollowButton targetUserId="u2" currentUserId="u1" isFollowing={following} />
@@ -59,11 +44,8 @@ const renderButton = (isFollowing = false) => {
 describe('FollowButton', () => {
   beforeEach(() => {
     insertResult = Promise.resolve({ error: null })
-    deleteResult = Promise.resolve({ error: null })
-    mockInsert.mockClear()
-    mockDelete.mockClear()
-    mockDeleteEq.mockClear()
-    mockToastError.mockClear()
+    deleteError = null
+    vi.clearAllMocks()
   })
 
   it('未フォロー時に「フォロー」ボタンを表示する', () => {
@@ -93,7 +75,7 @@ describe('FollowButton', () => {
   })
 
   it('送信中は押した結果を先に表示し、ボタンを無効化する', async () => {
-    const pending = deferred()
+    const pending = deferred<{ error: unknown }>()
     insertResult = pending.promise
     renderButton(false)
     await userEvent.click(screen.getByRole('button', { name: 'フォロー' }))

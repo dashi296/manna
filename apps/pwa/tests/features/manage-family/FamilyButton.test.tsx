@@ -4,40 +4,22 @@ import userEvent from '@testing-library/user-event'
 import { FamilyButton } from '@/features/manage-family'
 import type { FamilyStatus } from '@/entities/family'
 import { renderWithQueryClient } from '../../helpers/query'
+import { createSupabaseQueryChain } from '../../helpers/supabase'
+import { deferred } from '../../helpers/deferred'
 
 const { mockToastError } = vi.hoisted(() => ({ mockToastError: vi.fn() }))
 
 vi.mock('sonner', () => ({ toast: { error: mockToastError } }))
 
-type Result = { error: unknown }
-
-let insertResult: Promise<Result> = Promise.resolve({ error: null })
-let updateResult: Promise<Result> = Promise.resolve({ error: null })
-let deleteResult: Promise<Result> = Promise.resolve({ error: null })
+let insertResult: Promise<{ error: unknown }> = Promise.resolve({ error: null })
+let updateError: unknown = null
+let deleteError: unknown = null
 
 const mockInsert = vi.fn(() => insertResult)
-const mockUpdate = vi.fn(() => chainOn(() => updateResult))
-const mockDelete = vi.fn(() => chainOn(() => deleteResult))
-
-// .eq() / .in() を繋げられて、そのまま await できる形。filterFamilyPair が .in() を
-// 2 回呼ぶため、チェーンの戻りは常に自分自身にする
-function chainOn(result: () => Promise<Result>) {
-  const calls: [string, unknown][] = []
-  const chain = {
-    calls,
-    eq: (column: string, value: unknown) => {
-      calls.push([column, value])
-      return chain
-    },
-    in: (column: string, values: unknown) => {
-      calls.push([column, values])
-      return chain
-    },
-    then: (onOk: (v: Result) => unknown, onErr?: (e: unknown) => unknown) =>
-      result().then(onOk, onErr),
-  }
-  return chain
-}
+const mockUpdateEq = vi.fn()
+const mockDeleteIn = vi.fn()
+const mockUpdate = vi.fn(() => createSupabaseQueryChain(() => ({ error: updateError }), mockUpdateEq))
+const mockDelete = vi.fn(() => createSupabaseQueryChain(() => ({ error: deleteError }), mockDeleteIn))
 
 vi.mock('@/shared/lib/supabase', () => ({
   supabase: {
@@ -49,29 +31,17 @@ vi.mock('@/shared/lib/supabase', () => ({
   },
 }))
 
-const renderButton = (status: FamilyStatus) => {
-  let current = status
-  const utils = renderWithQueryClient(() => (
-    <FamilyButton targetUserId="u2" currentUserId="u1" status={current} />
+const renderButton = (status: FamilyStatus) =>
+  renderWithQueryClient(() => (
+    <FamilyButton targetUserId="u2" currentUserId="u1" status={status} />
   ))
-  return {
-    ...utils,
-    refetchAs: (next: FamilyStatus) => {
-      current = next
-      utils.rerenderWithQueryClient()
-    },
-  }
-}
 
 describe('FamilyButton', () => {
   beforeEach(() => {
     insertResult = Promise.resolve({ error: null })
-    updateResult = Promise.resolve({ error: null })
-    deleteResult = Promise.resolve({ error: null })
-    mockInsert.mockClear()
-    mockUpdate.mockClear()
-    mockDelete.mockClear()
-    mockToastError.mockClear()
+    updateError = null
+    deleteError = null
+    vi.clearAllMocks()
   })
 
   it('関係が無いときは「ファミリーに追加」を表示する', () => {
@@ -106,31 +76,25 @@ describe('FamilyButton', () => {
     renderButton('pending_received')
     await userEvent.click(screen.getByRole('button', { name: '招待を承認' }))
     await waitFor(() => expect(mockUpdate).toHaveBeenCalledWith({ status: 'accepted' }))
-    expect(mockUpdate.mock.results[0].value.calls).toEqual([
-      ['requester_id', 'u2'],
-      ['addressee_id', 'u1'],
-    ])
+    expect(mockUpdateEq).toHaveBeenCalledWith('requester_id', 'u2')
+    expect(mockUpdateEq).toHaveBeenCalledWith('addressee_id', 'u1')
   })
 
   it('「ファミリー」で両方向の行を削除する', async () => {
     renderButton('accepted')
     await userEvent.click(screen.getByRole('button', { name: 'ファミリー' }))
     await waitFor(() => expect(mockDelete).toHaveBeenCalled())
-    expect(mockDelete.mock.results[0].value.calls).toEqual([
-      ['requester_id', ['u1', 'u2']],
-      ['addressee_id', ['u1', 'u2']],
-    ])
+    expect(mockDeleteIn).toHaveBeenCalledWith('requester_id', ['u1', 'u2'])
+    expect(mockDeleteIn).toHaveBeenCalledWith('addressee_id', ['u1', 'u2'])
   })
 
   it('送信中は押した結果を先に表示する', async () => {
-    let resolve: (value: Result) => void = () => {}
-    insertResult = new Promise((r) => {
-      resolve = r
-    })
+    const pending = deferred<{ error: unknown }>()
+    insertResult = pending.promise
     renderButton('none')
     await userEvent.click(screen.getByRole('button', { name: 'ファミリーに追加' }))
     expect(await screen.findByRole('button', { name: '招待送信済み' })).toBeInTheDocument()
-    resolve({ error: null })
+    pending.resolve({ error: null })
   })
 
   it('成功したらプロフィールとフォロー一覧のクエリを無効化する', async () => {
@@ -152,16 +116,14 @@ describe('FamilyButton', () => {
   })
 
   it('承認に失敗したら操作に応じたトーストを出す', async () => {
-    updateResult = Promise.resolve({ error: { message: 'rls' } })
+    updateError = { message: 'rls' }
     renderButton('pending_received')
     await userEvent.click(screen.getByRole('button', { name: '招待を承認' }))
-    await waitFor(() =>
-      expect(mockToastError).toHaveBeenCalledWith('招待を承認できませんでした'),
-    )
+    await waitFor(() => expect(mockToastError).toHaveBeenCalledWith('招待を承認できませんでした'))
   })
 
   it('解除に失敗したら操作に応じたトーストを出す', async () => {
-    deleteResult = Promise.resolve({ error: { message: 'rls' } })
+    deleteError = { message: 'rls' }
     renderButton('accepted')
     await userEvent.click(screen.getByRole('button', { name: 'ファミリー' }))
     await waitFor(() =>

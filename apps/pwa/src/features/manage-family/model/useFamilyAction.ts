@@ -1,12 +1,10 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { toast } from 'sonner'
 import { filterFamilyPair, type FamilyStatus } from '@/entities/family'
 import { supabase } from '@/shared/lib/supabase'
-import { invalidateRelationQueries } from '@/shared/lib/invalidateRelationQueries'
+import { useRelationMutation } from '@/shared/lib/useRelationMutation'
 
 export type FamilyAction = 'request' | 'accept' | 'remove'
 
-export const NEXT_STATUS: Record<FamilyAction, FamilyStatus> = {
+const NEXT_STATUS: Record<FamilyAction, FamilyStatus> = {
   request: 'pending_sent',
   accept: 'accepted',
   remove: 'none',
@@ -18,19 +16,14 @@ const ERROR_MESSAGE: Record<FamilyAction, string> = {
   remove: 'ファミリーから外せませんでした',
 }
 
-export function useFamilyAction(currentUserId: string, targetUserId: string) {
-  const queryClient = useQueryClient()
+type Args = { currentUserId: string; targetUserId: string; status: FamilyStatus }
 
-  return useMutation({
-    mutationFn: async (action: FamilyAction) => {
-      const { error } = await runAction(action, currentUserId, targetUserId)
-      // Supabase は失敗時も reject せず { error } を返すため、投げ直さないと成功扱いになる
-      if (error) throw error
-    },
-    // Promise を返すと再取得の完了まで isPending が立ったままになり、楽観表示から
-    // 実データへ切り替わる瞬間に表示が戻らない
-    onSuccess: () => invalidateRelationQueries(queryClient),
-    onError: (_error, action) => toast.error(ERROR_MESSAGE[action]),
+export function useFamilyAction({ currentUserId, targetUserId, status }: Args) {
+  return useRelationMutation<FamilyAction, FamilyStatus>({
+    current: status,
+    optimistic: (action) => NEXT_STATUS[action],
+    run: (action) => runAction(action, currentUserId, targetUserId),
+    errorMessage: (action) => ERROR_MESSAGE[action],
   })
 }
 

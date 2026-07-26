@@ -9,6 +9,7 @@ import { type CircleUserRow } from '@/entities/user'
 import { resolveUserIdentity } from '@/shared/lib/constants'
 import { createSupabaseServer } from '@/shared/lib/auth'
 import { isValidCursor, type Cursor } from '@/shared/lib/cursor'
+import { connectionsKey } from '@/shared/lib/queryKeys'
 
 type Tab = 'followers' | 'following'
 type ConnectionRowData = { user: CircleUserRow; isFollowingByMe: boolean }
@@ -107,7 +108,7 @@ export const fetchConnections = createServerFn({ method: 'POST' })
 // タブごとに別のクエリになるので、切り替えても前のタブのページが混ざることはない
 const connectionsQueryOptions = (userId: string, tab: Tab) =>
   infiniteQueryOptions({
-    queryKey: ['connections', userId, tab],
+    queryKey: connectionsKey(userId, tab),
     queryFn: ({ pageParam }) => fetchConnections({ data: { userId, tab, cursor: pageParam } }),
     initialPageParam: null as Cursor | null,
     getNextPageParam: (last) => last?.nextCursor ?? null,

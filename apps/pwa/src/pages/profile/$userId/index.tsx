@@ -9,6 +9,7 @@ import { SignOutButton } from '@/features/sign-out'
 import { EmptyState, PageHeader, UserAvatar } from '@/shared/ui'
 import { resolveUserIdentity } from '@/shared/lib/constants'
 import { createSupabaseServer } from '@/shared/lib/auth'
+import { profileKey } from '@/shared/lib/queryKeys'
 
 const fetchProfileData = createServerFn({ method: 'POST' })
   .inputValidator((data: { userId: string }) => data)
@@ -81,7 +82,7 @@ const fetchProfileData = createServerFn({ method: 'POST' })
 // クエリに載せる（同じ画面のフォロワー数がその場で更新される）
 const profileQueryOptions = (userId: string) =>
   queryOptions({
-    queryKey: ['profile', userId],
+    queryKey: profileKey(userId),
     queryFn: () => fetchProfileData({ data: { userId } }),
   })
 
@@ -102,8 +103,7 @@ function ProfilePage() {
   const { userId } = Route.useParams()
   const { data } = useQuery(profileQueryOptions(userId))
 
-  // loader がキャッシュを埋めてからレンダーされ、無効化中も前の値が残るため undefined には
-  // ならない。null は対象ユーザーが存在しないときだけで、そのときは loader が 404 にしている
+  // null になるのは対象ユーザーが存在しないときだけで、loader が 404 にしている
   if (!data) return null
 
   const { profile, posts, currentUserId, isFollowing, familyStatus, followerCount, followingCount } =

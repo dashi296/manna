@@ -11,12 +11,12 @@ import { Toaster as Sonner } from "sonner"
 
 type ToasterProps = React.ComponentProps<typeof Sonner>
 
-// shadcn の雛形は next-themes の useTheme を呼ぶが、このアプリのテーマは CSS 側
-// （data-theme と prefers-color-scheme）だけで切り替えており ThemeProvider が無い。
-// 配色は下の classNames でアプリのトークンに寄せているため、theme は渡さない
+// shadcn の雛形は next-themes の useTheme を呼ぶが、このアプリに ThemeProvider は無く
+// テーマは prefers-color-scheme だけで決まるため、sonner にも同じ判断をさせる
 const Toaster = ({ ...props }: ToasterProps) => {
   return (
     <Sonner
+      theme="system"
       className="toaster group"
       icons={{
         success: <CircleCheck className="h-4 w-4" />,
