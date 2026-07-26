@@ -1,34 +1,22 @@
-import { useState } from 'react'
 import { Button } from '@/shared/ui/button'
-import { supabase } from '@/shared/lib/supabase'
-import { useSupabaseAction } from '@/shared/lib/useSupabaseAction'
+import { useToggleFollow } from '../model/useToggleFollow'
 
 type Props = {
   targetUserId: string
   currentUserId: string
-  initialFollowing: boolean
+  isFollowing: boolean
 }
 
-export function FollowButton({ targetUserId, currentUserId, initialFollowing }: Props) {
-  const [following, setFollowing] = useState(initialFollowing)
-  const { pending, run } = useSupabaseAction()
+export function FollowButton({ targetUserId, currentUserId, isFollowing }: Props) {
+  const { mutate, isPending, variables } = useToggleFollow(currentUserId, targetUserId)
 
-  const toggle = () => run(
-    () => following
-      ? supabase.from('follows').delete()
-          .eq('follower_id', currentUserId)
-          .eq('following_id', targetUserId)
-      : supabase.from('follows').insert({
-          follower_id: currentUserId,
-          following_id: targetUserId,
-        }),
-    () => setFollowing(!following),
-  )
+  // 送信中は押した結果を先に見せる。確定後は無効化された prop 側が正になる
+  const following = isPending && variables !== undefined ? variables : isFollowing
 
   return (
     <Button
-      onClick={toggle}
-      disabled={pending}
+      onClick={() => mutate(!isFollowing)}
+      disabled={isPending}
       variant={following ? 'outline' : 'default'}
       size="sm"
     >

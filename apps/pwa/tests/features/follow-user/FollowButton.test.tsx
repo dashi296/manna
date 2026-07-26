@@ -1,14 +1,28 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { FollowButton } from '@/features/follow-user'
+import { renderWithQueryClient } from '../../helpers/query'
 
-const mockInsert = vi.fn().mockResolvedValue({ error: null })
-const mockDelete = vi.fn(() => ({
-  eq: vi.fn(() => ({
-    eq: vi.fn().mockResolvedValue({ error: null }),
-  })),
-}))
+const { mockToastError } = vi.hoisted(() => ({ mockToastError: vi.fn() }))
+
+vi.mock('sonner', () => ({ toast: { error: mockToastError } }))
+
+let insertResult: Promise<{ error: unknown }> = Promise.resolve({ error: null })
+let deleteResult: Promise<{ error: unknown }> = Promise.resolve({ error: null })
+
+const mockInsert = vi.fn(() => insertResult)
+const mockDeleteEq = vi.fn()
+// .delete().eq().eq() を await するので、eq を繋げられて自身が await 可能な形にする
+const deleteChain = {
+  eq: (column: string, value: string) => {
+    mockDeleteEq(column, value)
+    return deleteChain
+  },
+  then: (onOk: (v: { error: unknown }) => unknown, onErr?: (e: unknown) => unknown) =>
+    deleteResult.then(onOk, onErr),
+}
+const mockDelete = vi.fn(() => deleteChain)
 
 vi.mock('@/shared/lib/supabase', () => ({
   supabase: {
@@ -19,25 +33,100 @@ vi.mock('@/shared/lib/supabase', () => ({
   },
 }))
 
+const deferred = () => {
+  let resolve: (value: { error: unknown }) => void = () => {}
+  const promise = new Promise<{ error: unknown }>((r) => {
+    resolve = r
+  })
+  return { promise, resolve }
+}
+
+const renderButton = (isFollowing = false) => {
+  let following = isFollowing
+  const utils = renderWithQueryClient(() => (
+    <FollowButton targetUserId="u2" currentUserId="u1" isFollowing={following} />
+  ))
+  // 無効化後の再取得で prop が入れ替わるところを再現する
+  return {
+    ...utils,
+    refetchAs: (next: boolean) => {
+      following = next
+      utils.rerenderWithQueryClient()
+    },
+  }
+}
+
 describe('FollowButton', () => {
   beforeEach(() => {
+    insertResult = Promise.resolve({ error: null })
+    deleteResult = Promise.resolve({ error: null })
     mockInsert.mockClear()
     mockDelete.mockClear()
+    mockDeleteEq.mockClear()
+    mockToastError.mockClear()
   })
 
   it('未フォロー時に「フォロー」ボタンを表示する', () => {
-    render(<FollowButton targetUserId="u2" currentUserId="u1" initialFollowing={false} />)
+    renderButton(false)
     expect(screen.getByRole('button', { name: 'フォロー' })).toBeInTheDocument()
   })
 
   it('フォロー済み時に「フォロー中」ボタンを表示する', () => {
-    render(<FollowButton targetUserId="u2" currentUserId="u1" initialFollowing={true} />)
+    renderButton(true)
     expect(screen.getByRole('button', { name: 'フォロー中' })).toBeInTheDocument()
   })
 
-  it('クリックでフォロー→フォロー中に切り替わる', async () => {
-    render(<FollowButton targetUserId="u2" currentUserId="u1" initialFollowing={false} />)
+  it('未フォロー時のクリックで follows に自分と相手の組を追加する', async () => {
+    renderButton(false)
     await userEvent.click(screen.getByRole('button', { name: 'フォロー' }))
+    await waitFor(() =>
+      expect(mockInsert).toHaveBeenCalledWith({ follower_id: 'u1', following_id: 'u2' }),
+    )
+  })
+
+  it('フォロー済み時のクリックで該当行だけを削除する', async () => {
+    renderButton(true)
+    await userEvent.click(screen.getByRole('button', { name: 'フォロー中' }))
+    await waitFor(() => expect(mockDelete).toHaveBeenCalled())
+    expect(mockDeleteEq).toHaveBeenCalledWith('follower_id', 'u1')
+    expect(mockDeleteEq).toHaveBeenCalledWith('following_id', 'u2')
+  })
+
+  it('送信中は押した結果を先に表示し、ボタンを無効化する', async () => {
+    const pending = deferred()
+    insertResult = pending.promise
+    renderButton(false)
+    await userEvent.click(screen.getByRole('button', { name: 'フォロー' }))
+
+    const button = await screen.findByRole('button', { name: 'フォロー中' })
+    expect(button).toBeDisabled()
+
+    pending.resolve({ error: null })
+  })
+
+  it('成功したらプロフィールとフォロー一覧のクエリを無効化する', async () => {
+    const { client } = renderButton(false)
+    const invalidate = vi.spyOn(client, 'invalidateQueries')
+    await userEvent.click(screen.getByRole('button', { name: 'フォロー' }))
+    await waitFor(() => expect(invalidate).toHaveBeenCalledWith({ queryKey: ['profile'] }))
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['connections'] })
+  })
+
+  it('再取得で prop が入れ替わっても表示が巻き戻らない', async () => {
+    const { refetchAs } = renderButton(false)
+    await userEvent.click(screen.getByRole('button', { name: 'フォロー' }))
+    refetchAs(true)
     expect(await screen.findByRole('button', { name: 'フォロー中' })).toBeInTheDocument()
+  })
+
+  it('失敗したらトーストを出して表示を元に戻す', async () => {
+    insertResult = Promise.resolve({ error: { message: 'new row violates row-level security' } })
+    renderButton(false)
+    await userEvent.click(screen.getByRole('button', { name: 'フォロー' }))
+
+    await waitFor(() =>
+      expect(mockToastError).toHaveBeenCalledWith('フォローを更新できませんでした'),
+    )
+    expect(screen.getByRole('button', { name: 'フォロー' })).toBeEnabled()
   })
 })

@@ -9,6 +9,7 @@ import { BottomNav } from '@/shared/ui/BottomNav'
 import { DevTools } from '@/shared/ui/DevTools'
 import { InstallPwaBanner } from '@/shared/ui/InstallPwaBanner'
 import { sidebarStateFromCookieHeader, SidebarInset, SidebarProvider } from '@/shared/ui/sidebar'
+import { Toaster } from '@/shared/ui/sonner'
 import { TooltipProvider } from '@/shared/ui/tooltip'
 import appCss from '@/styles.css?url'
 
@@ -103,6 +104,8 @@ function RootLayout() {
           </SidebarProvider>
         </TooltipProvider>
       )}
+      {/* BottomNav が下部を占めるため上寄せ */}
+      <Toaster position="top-center" />
       {isDev && <DevTools />}
     </>
   )

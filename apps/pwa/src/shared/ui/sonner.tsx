@@ -7,17 +7,16 @@ import {
   OctagonX,
   TriangleAlert,
 } from "lucide-react"
-import { useTheme } from "next-themes"
 import { Toaster as Sonner } from "sonner"
 
 type ToasterProps = React.ComponentProps<typeof Sonner>
 
+// shadcn の雛形は next-themes の useTheme を呼ぶが、このアプリのテーマは CSS 側
+// （data-theme と prefers-color-scheme）だけで切り替えており ThemeProvider が無い。
+// 配色は下の classNames でアプリのトークンに寄せているため、theme は渡さない
 const Toaster = ({ ...props }: ToasterProps) => {
-  const { theme = "system" } = useTheme()
-
   return (
     <Sonner
-      theme={theme as ToasterProps["theme"]}
       className="toaster group"
       icons={{
         success: <CircleCheck className="h-4 w-4" />,

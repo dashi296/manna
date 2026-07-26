@@ -1,5 +1,6 @@
 import { createFileRoute, Link, notFound } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
+import { queryOptions, useQuery } from '@tanstack/react-query'
 import { PostCard, POST_SELECT, type PostWithUser } from '@/entities/post'
 import { filterFamilyPair, resolveFamilyStatus } from '@/entities/family'
 import { FollowButton } from '@/features/follow-user'
@@ -76,18 +77,37 @@ const fetchProfileData = createServerFn({ method: 'POST' })
     }
   })
 
+// フォロー/ファミリー操作から invalidateQueries で落とせるよう、loader ではなく
+// クエリに載せる（同じ画面のフォロワー数がその場で更新される）
+const profileQueryOptions = (userId: string) =>
+  queryOptions({
+    queryKey: ['profile', userId],
+    queryFn: () => fetchProfileData({ data: { userId } }),
+  })
+
 export const Route = createFileRoute('/profile/$userId/')({
-  loader: async ({ params }) => {
-    const data = await fetchProfileData({ data: { userId: params.userId } })
+  // SSR で埋めてクライアントへ引き継ぐ（ローディングのちらつきを避ける）。staleTime を 0 に
+  // するのは、別画面でフォロー／解除してから戻ったときに古い件数が出ないよう毎回取り直すため
+  loader: async ({ params, context }) => {
+    const data = await context.queryClient.fetchQuery({
+      ...profileQueryOptions(params.userId),
+      staleTime: 0,
+    })
     if (!data) throw notFound()
-    return data
   },
   component: ProfilePage,
 })
 
 function ProfilePage() {
+  const { userId } = Route.useParams()
+  const { data } = useQuery(profileQueryOptions(userId))
+
+  // loader がキャッシュを埋めてからレンダーされ、無効化中も前の値が残るため undefined には
+  // ならない。null は対象ユーザーが存在しないときだけで、そのときは loader が 404 にしている
+  if (!data) return null
+
   const { profile, posts, currentUserId, isFollowing, familyStatus, followerCount, followingCount } =
-    Route.useLoaderData()
+    data
 
   const { displayName, avatarUrl } = resolveUserIdentity(profile)
 
@@ -133,12 +153,12 @@ function ProfilePage() {
                 <FollowButton
                   targetUserId={profile.id}
                   currentUserId={currentUserId}
-                  initialFollowing={isFollowing}
+                  isFollowing={isFollowing}
                 />
                 <FamilyButton
                   targetUserId={profile.id}
                   currentUserId={currentUserId}
-                  initialStatus={familyStatus}
+                  status={familyStatus}
                 />
               </>
             )}

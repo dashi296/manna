@@ -1,9 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { act, render, screen } from '@testing-library/react'
+import { act, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { QueryClientProvider } from '@tanstack/react-query'
-import { createQueryClient } from '@/shared/lib/queryClient'
 import { routeComponent, routeLoader } from '../../helpers/tanstack'
+import { renderWithQueryClient } from '../../helpers/query'
 
 const mockFetchConnections = vi.fn()
 
@@ -43,17 +42,9 @@ const cursorAt = (otherId: string) => ({ createdAt: '2026-07-25T10:00:00+00:00',
 
 const renderPage = async () => {
   const ConnectionsPage = routeComponent(await import('@/pages/profile/$userId/connections'))
-  // キャッシュがテスト間で漏れないよう、毎回新しい QueryClient を使う
-  const client = createQueryClient()
-  // 要素を毎回作り直す。同じ参照を rerender に渡すと React が再レンダーを省き、
-  // useSearch の戻り値を差し替えてもタブ切り替えが反映されない
-  const ui = () => (
-    <QueryClientProvider client={client}>
-      <ConnectionsPage />
-    </QueryClientProvider>
-  )
-  const utils = render(ui())
-  return { ...utils, client, rerenderPage: () => utils.rerender(ui()) }
+  // useSearch の戻り値を差し替えてタブ切り替えを再現するため、rerender を持ち回る
+  const utils = renderWithQueryClient(() => <ConnectionsPage />)
+  return { ...utils, rerenderPage: utils.rerenderWithQueryClient }
 }
 
 const deferred = () => {

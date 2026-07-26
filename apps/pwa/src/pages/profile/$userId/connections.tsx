@@ -171,7 +171,7 @@ function ConnectionRow({
         <FollowButton
           targetUserId={row.user.id}
           currentUserId={currentUserId}
-          initialFollowing={row.isFollowingByMe}
+          isFollowing={row.isFollowingByMe}
         />
       )}
     </div>
