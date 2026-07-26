@@ -11,13 +11,10 @@ export function getRouter() {
     context: { queryClient },
     scrollRestoration: true,
     defaultPreload: 'intent',
-    // React Query 側にキャッシュの鮮度を任せるため、ルーターのプリロードキャッシュは無効化する
     defaultPreloadStaleTime: 0,
   })
 
-  // ルーターと QueryClient を繋ぐ。SSR 中に解決したクエリのデハイドレート／ストリーミングと、
-  // query/mutation から throw された redirect() のルーター遷移への変換を担う。
-  // QueryClientProvider はこの中で張られるため、アプリ側で用意する必要はない。
+  // SSR のデハイドレートと QueryClientProvider はこの中で張られるため、アプリ側では用意しない
   setupRouterSsrQueryIntegration({ router, queryClient })
 
   return router

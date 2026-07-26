@@ -83,8 +83,6 @@ function RootLayout() {
     registerServiceWorker()
   }, [])
 
-  // QueryClientProvider は setupRouterSsrQueryIntegration がルーターの Wrap として
-  // 張るため、ここでは張らない（src/router.tsx 参照）
   return (
     <>
       {isAuthPage ? (

@@ -6,8 +6,8 @@ import { QueryClient } from '@tanstack/react-query'
 // 呼ばれないため、結果的にタブ内で1つのインスタンスが使い回される（望ましい挙動）。
 export function createQueryClient() {
   return new QueryClient({
-    // SSR でサーバー取得済みのクエリが、ハイドレート直後にクライアントで即再取得
-    // されるのを防ぐ（既定の 0 のままだとマウント時に必ず stale 扱いになる）。
+    // loader から SSR でプリフェッチしたときに、ハイドレート直後の再取得を避けるための既定値。
+    // 現時点でその経路を通るクエリはまだ無く、唯一の useQuery は自前で staleTime を指定している。
     defaultOptions: { queries: { staleTime: 60 * 1000 } },
   })
 }
