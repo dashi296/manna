@@ -8,7 +8,7 @@ import { Button } from '@/shared/ui/button'
 import { type CircleUserRow } from '@/entities/user'
 import { resolveUserIdentity } from '@/shared/lib/constants'
 import { createSupabaseServer } from '@/shared/lib/auth'
-import { isValidCursor, type Cursor } from './-cursor'
+import { isValidCursor, type Cursor } from '@/shared/lib/cursor'
 
 type Tab = 'followers' | 'following'
 type ConnectionRowData = { user: CircleUserRow; isFollowingByMe: boolean }
