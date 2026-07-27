@@ -9,7 +9,7 @@ description: Manna PWA の変更をローカルで実機検証する手順（Sup
 
 ```bash
 npx supabase status          # "running" であること。止まっていたら: npx supabase start
-psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -t -A \
+psql "postgresql://postgres:postgres@127.0.0.1:55322/postgres" -t -A \
   -c "SELECT count(*) FROM scripture_verses;"   # 41,959 行あれば節データ復元済み
 ```
 

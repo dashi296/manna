@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-DB_URL="${DATABASE_URL:-postgresql://postgres:postgres@127.0.0.1:54322/postgres}"
+DB_URL="${DATABASE_URL:-postgresql://postgres:postgres@127.0.0.1:55322/postgres}"
 
 echo "Resetting database..."
 npx supabase db reset

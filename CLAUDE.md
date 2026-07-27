@@ -123,6 +123,24 @@ node scripts/export-verses-seed.mjs
 - `supabase/seed-verses.sql` — 節テキスト 41,959行（`.gitignore`、ローカルのみ）
 - `npx supabase db reset` を直接実行すると節データが消えるため、代わりに `bash scripts/db-reset.sh` を使う
 
+### ローカル Supabase のポート
+
+Supabase CLI のデフォルト（54321台）は他プロジェクトのローカル Supabase と衝突するため、55321台にずらしている。
+
+| 用途 | ポート | 用途 | ポート |
+|---|---|---|---|
+| API (Kong) | 55321 | Studio | 55323 |
+| DB | 55322 | Inbucket | 55324 |
+| DB shadow | 55320 | Analytics | 55327 |
+| DB pooler | 55329 | Edge inspector | 8183 |
+
+`.env.local` は `.gitignore` 対象のため、clone 後は自分で作成する（ルートと `apps/pwa/` の両方）:
+
+```
+VITE_SUPABASE_URL=http://127.0.0.1:55321
+VITE_SUPABASE_KEY=<npx supabase status の publishable key>
+```
+
 ### 聖典テーブル構成
 
 | テーブル | 内容 |
