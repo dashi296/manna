@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { routeComponent } from '../helpers/tanstack'
 import { renderWithQueryClient } from '../helpers/query'
 import { deferred } from '../helpers/deferred'
+import { cursorAt, loadMoreButton, makePost } from '../helpers/fixtures'
 
 const mockFetchFeed = vi.fn()
 const navigate = vi.fn()
@@ -22,32 +23,15 @@ vi.mock('@tanstack/react-start', async () =>
   (await import('../helpers/tanstack')).startMock(mockFetchFeed),
 )
 
-const post = (id: string, content: string) => ({
-  id,
-  content,
-  visibility: 'public',
-  created_at: '2026-07-25T10:00:00+00:00',
-  scripture_collection: null,
-  scripture_book: null,
-  scripture_chapter: null,
-  scripture_verses: null,
-  user_id: 'u1',
-  users: { display_name: '山田花子', avatar_url: null },
-})
-
-const page = (posts: ReturnType<typeof post>[], nextCursor: unknown = null) => ({
+const page = (posts: ReturnType<typeof makePost>[], nextCursor: unknown = null) => ({
   posts,
   nextCursor,
 })
-
-const cursorAt = (id: string) => ({ createdAt: '2026-07-25T10:00:00+00:00', id })
 
 const renderPage = async () => {
   const FeedPage = routeComponent(await import('@/pages/index'))
   return renderWithQueryClient(() => <FeedPage />)
 }
-
-const loadMoreButton = () => screen.getByRole('button', { name: 'もっと見る' })
 
 describe('FeedPage', () => {
   beforeEach(() => {
@@ -64,7 +48,7 @@ describe('FeedPage', () => {
   })
 
   it('見ているタブの投稿を表示する', async () => {
-    mockFetchFeed.mockResolvedValue(page([post('p1', '最初の投稿'), post('p2', '次の投稿')]))
+    mockFetchFeed.mockResolvedValue(page([makePost('p1', '最初の投稿'), makePost('p2', '次の投稿')]))
     await renderPage()
     expect(await screen.findByText('最初の投稿')).toBeInTheDocument()
     expect(screen.getByText('次の投稿')).toBeInTheDocument()
@@ -88,7 +72,7 @@ describe('FeedPage', () => {
   })
 
   it('nextCursor がなければ「もっと見る」を表示しない', async () => {
-    mockFetchFeed.mockResolvedValue(page([post('p1', '最初の投稿')]))
+    mockFetchFeed.mockResolvedValue(page([makePost('p1', '最初の投稿')]))
     await renderPage()
     expect(await screen.findByText('最初の投稿')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'もっと見る' })).not.toBeInTheDocument()
@@ -96,8 +80,8 @@ describe('FeedPage', () => {
 
   it('「もっと見る」で次のページを末尾に追記する', async () => {
     mockFetchFeed
-      .mockResolvedValueOnce(page([post('p1', '最初の投稿')], cursorAt('p1')))
-      .mockResolvedValueOnce(page([post('p2', '古い投稿')]))
+      .mockResolvedValueOnce(page([makePost('p1', '最初の投稿')], cursorAt('p1')))
+      .mockResolvedValueOnce(page([makePost('p2', '古い投稿')]))
     await renderPage()
     expect(await screen.findByText('最初の投稿')).toBeInTheDocument()
 
@@ -111,8 +95,8 @@ describe('FeedPage', () => {
   it('カーソルを渡して次のページを取得する', async () => {
     const cursor = cursorAt('p1')
     mockFetchFeed
-      .mockResolvedValueOnce(page([post('p1', '最初の投稿')], cursor))
-      .mockResolvedValueOnce(page([post('p2', '古い投稿')]))
+      .mockResolvedValueOnce(page([makePost('p1', '最初の投稿')], cursor))
+      .mockResolvedValueOnce(page([makePost('p2', '古い投稿')]))
     await renderPage()
     expect(await screen.findByText('最初の投稿')).toBeInTheDocument()
 
@@ -142,19 +126,19 @@ describe('FeedPage', () => {
   it('取得中にタブを切り替えたら、遅れて届いた前タブの結果を混ぜない', async () => {
     const pending = deferred()
     mockFetchFeed
-      .mockResolvedValueOnce(page([post('p1', 'フォロー中の投稿')], cursorAt('p1')))
+      .mockResolvedValueOnce(page([makePost('p1', 'フォロー中の投稿')], cursorAt('p1')))
       .mockReturnValueOnce(pending.promise)
     const { rerenderWithQueryClient } = await renderPage()
     expect(await screen.findByText('フォロー中の投稿')).toBeInTheDocument()
     await userEvent.click(loadMoreButton())
 
     currentTab = 'public'
-    mockFetchFeed.mockResolvedValue(page([post('p9', '全体の投稿')]))
+    mockFetchFeed.mockResolvedValue(page([makePost('p9', '全体の投稿')]))
     rerenderWithQueryClient()
     expect(await screen.findByText('全体の投稿')).toBeInTheDocument()
 
     await act(async () => {
-      pending.resolve(page([post('p2', '遅れて届いた投稿')]))
+      pending.resolve(page([makePost('p2', '遅れて届いた投稿')]))
     })
 
     expect(screen.queryByText('遅れて届いた投稿')).not.toBeInTheDocument()

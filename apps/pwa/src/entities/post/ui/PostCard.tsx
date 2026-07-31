@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import type { ReactNode, KeyboardEvent, MouseEvent } from 'react'
 import { Link } from '@tanstack/react-router'
 import type { Components } from 'react-markdown'
@@ -37,7 +38,9 @@ const NESTED_COMPONENTS: Components = {
 
 type Props = { post: PostWithUser }
 
-export function PostCard({ post }: Props) {
+// 「もっと見る」で一覧が伸びるため、押すたびに既存カード全部の markdown を
+// 再パースしないよう memo する（react-markdown 側にメモ化は無い）
+export const PostCard = memo(function PostCard({ post }: Props) {
   const { displayName, avatarUrl } = resolveUserIdentity(post.users)
 
   const scriptureRef = toScriptureRef(post)
@@ -80,4 +83,4 @@ export function PostCard({ post }: Props) {
       </article>
     </Link>
   )
-}
+})

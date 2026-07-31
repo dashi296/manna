@@ -6,14 +6,11 @@ import { filterFamilyPair, resolveFamilyStatus } from '@/entities/family'
 import { FollowButton } from '@/features/follow-user'
 import { FamilyButton } from '@/features/manage-family'
 import { SignOutButton } from '@/features/sign-out'
-import { EmptyState, PageHeader, UserAvatar } from '@/shared/ui'
-import { Button } from '@/shared/ui/button'
+import { EmptyState, LoadMoreButton, PageHeader, UserAvatar } from '@/shared/ui'
 import { resolveUserIdentity } from '@/shared/lib/constants'
 import { createSupabaseServer } from '@/shared/lib/auth'
-import { isValidCursor, type Cursor } from '@/shared/lib/cursor'
+import { isValidCursor, takePage, withKeyset, type Cursor } from '@/shared/lib/cursor'
 import { profileKey, userPostsKey } from '@/entities/user'
-
-const PAGE_SIZE = 20
 
 const fetchProfileData = createServerFn({ method: 'POST' })
   .inputValidator((data: { userId: string }) => data)
@@ -49,8 +46,9 @@ const fetchProfileData = createServerFn({ method: 'POST' })
       { count: followingCount },
       relations,
     ] = await Promise.all([
-      // 行が0件でも error になるため throwOnError は付けない。null のまま loader が 404 にする
-      serverSupabase.from('users').select('*').eq('id', userId).single(),
+      // maybeSingle は0件を null で返すので loader が 404 にできる。single だと0件も
+      // error になり、throwOnError と併せると 404 が 500 に化ける
+      serverSupabase.from('users').select('*').eq('id', userId).maybeSingle().throwOnError(),
       userPromise,
       serverSupabase
         .from('follows')
@@ -86,33 +84,10 @@ const fetchUserPosts = createServerFn({ method: 'POST' })
     const { userId, cursor } = ctx.data
     const serverSupabase = await createSupabaseServer()
 
-    let query = serverSupabase
-      .from('posts')
-      .select(POST_SELECT)
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .order('id', { ascending: false })
-      .limit(PAGE_SIZE + 1)
-
-    // (created_at, id) < カーソル の keyset 条件。PostgREST は '.' と ',' を区切りに
-    // 使うため、小数秒を含む timestamptz はダブルクォートで囲む
-    if (cursor) {
-      query = query.or(
-        `created_at.lt."${cursor.createdAt}",` +
-          `and(created_at.eq."${cursor.createdAt}",id.lt."${cursor.id}")`,
-      )
-    }
-
-    const { data } = await query.throwOnError()
-    const rows = data as PostWithUser[]
-    const hasMore = rows.length > PAGE_SIZE
-    const posts = rows.slice(0, PAGE_SIZE)
-    const last = posts[posts.length - 1]
-
-    return {
-      posts,
-      nextCursor: hasMore ? { createdAt: last.created_at, id: last.id } : null,
-    }
+    const query = serverSupabase.from('posts').select(POST_SELECT).eq('user_id', userId)
+    const { data } = await withKeyset(query, cursor).throwOnError()
+    const { rows: posts, nextCursor } = takePage(data as PostWithUser[], (p) => p.id)
+    return { posts, nextCursor }
   })
 
 // フォロー/ファミリー操作から invalidateQueries で落とせるよう、loader ではなく
@@ -236,16 +211,7 @@ function ProfilePage() {
               <PostCard key={post.id} post={post} />
             ))}
             {hasNextPage && (
-              <div className="p-4 text-center">
-                <Button
-                  onClick={() => fetchNextPage()}
-                  disabled={isFetchingNextPage}
-                  variant="outline"
-                  size="sm"
-                >
-                  もっと見る
-                </Button>
-              </div>
+              <LoadMoreButton onClick={() => fetchNextPage()} disabled={isFetchingNextPage} />
             )}
           </>
         )}

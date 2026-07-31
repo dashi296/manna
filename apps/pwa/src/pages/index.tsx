@@ -2,16 +2,14 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { infiniteQueryOptions, useInfiniteQuery } from '@tanstack/react-query'
 import { PostCard, POST_SELECT, type PostWithUser } from '@/entities/post'
-import { EmptyState, PageHeader, TabBar } from '@/shared/ui'
-import { Button } from '@/shared/ui/button'
+import { EmptyState, LoadMoreButton, PageHeader, TabBar } from '@/shared/ui'
 import { createSupabaseServer } from '@/shared/lib/auth'
-import { isValidCursor, type Cursor } from '@/shared/lib/cursor'
+import { isValidCursor, takePage, withKeyset, type Cursor } from '@/shared/lib/cursor'
 import { feedKey } from '@/entities/user'
 
 type Tab = 'following' | 'public'
 
 const DEFAULT_TAB: Tab = 'following'
-const PAGE_SIZE = 20
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'following', label: 'フォロー中' },
@@ -51,30 +49,9 @@ const fetchFeed = createServerFn({ method: 'POST' })
       query = query.in('user_id', ids)
     }
 
-    query = query
-      .order('created_at', { ascending: false })
-      .order('id', { ascending: false })
-      .limit(PAGE_SIZE + 1)
-
-    // (created_at, id) < カーソル の keyset 条件。PostgREST は '.' と ',' を区切りに
-    // 使うため、小数秒を含む timestamptz はダブルクォートで囲む
-    if (cursor) {
-      query = query.or(
-        `created_at.lt."${cursor.createdAt}",` +
-          `and(created_at.eq."${cursor.createdAt}",id.lt."${cursor.id}")`,
-      )
-    }
-
-    const { data } = await query.throwOnError()
-    const rows = data as PostWithUser[]
-    const hasMore = rows.length > PAGE_SIZE
-    const posts = rows.slice(0, PAGE_SIZE)
-    const last = posts[posts.length - 1]
-
-    return {
-      posts,
-      nextCursor: hasMore ? { createdAt: last.created_at, id: last.id } : null,
-    }
+    const { data } = await withKeyset(query, cursor).throwOnError()
+    const { rows: posts, nextCursor } = takePage(data as PostWithUser[], (p) => p.id)
+    return { posts, nextCursor }
   })
 
 // タブごとに別のクエリになるので、切り替えても前のタブのページが混ざることはない
@@ -132,16 +109,7 @@ function FeedPage() {
             <PostCard key={post.id} post={post} />
           ))}
           {hasNextPage && (
-            <div className="p-4 text-center">
-              <Button
-                onClick={() => fetchNextPage()}
-                disabled={isFetchingNextPage}
-                variant="outline"
-                size="sm"
-              >
-                もっと見る
-              </Button>
-            </div>
+            <LoadMoreButton onClick={() => fetchNextPage()} disabled={isFetchingNextPage} />
           )}
         </div>
       )}

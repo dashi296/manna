@@ -1,6 +1,7 @@
 export { AppSidebar } from './AppSidebar'
 export { type AvatarStackItem } from './avatarStackItem'
 export { EmptyState } from './EmptyState'
+export { LoadMoreButton } from './LoadMoreButton'
 export { LogoMark } from './LogoMark'
 export { MarkdownRenderer } from './MarkdownRenderer'
 export { PageHeader, stickyHeaderClassName, stickyHeaderStyle } from './PageHeader'

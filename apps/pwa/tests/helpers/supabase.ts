@@ -26,13 +26,10 @@ export function createSupabaseQueryChain(
       shouldThrow = true
       return chain
     },
-    then: (
-      resolve: (result: Result) => void,
-      reject: (reason: unknown) => void = () => {},
-    ) => {
+    then: (...args: Parameters<Promise<Result>['then']>) => {
       const res = getResponse()
-      if (shouldThrow && res.error) return reject(res.error)
-      return resolve(res)
+      const settled = shouldThrow && res.error ? Promise.reject(res.error) : Promise.resolve(res)
+      return settled.then(...args)
     },
   }
   return chain

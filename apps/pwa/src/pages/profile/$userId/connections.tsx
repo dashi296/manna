@@ -2,17 +2,14 @@ import { createFileRoute, Link, notFound, useNavigate } from '@tanstack/react-ro
 import { createServerFn } from '@tanstack/react-start'
 import { infiniteQueryOptions, useInfiniteQuery } from '@tanstack/react-query'
 import { FollowButton } from '@/features/follow-user'
-import { EmptyState, PageHeader, TabBar, UserAvatar } from '@/shared/ui'
-import { Button } from '@/shared/ui/button'
+import { EmptyState, LoadMoreButton, PageHeader, TabBar, UserAvatar } from '@/shared/ui'
 import { connectionsKey, type CircleUserRow } from '@/entities/user'
 import { resolveUserIdentity } from '@/shared/lib/constants'
 import { createSupabaseServer } from '@/shared/lib/auth'
-import { isValidCursor, type Cursor } from '@/shared/lib/cursor'
+import { isValidCursor, takePage, withKeyset, type Cursor } from '@/shared/lib/cursor'
 
 type Tab = 'followers' | 'following'
 type ConnectionRowData = { user: CircleUserRow; isFollowingByMe: boolean }
-
-const PAGE_SIZE = 20
 
 const TAB_LABELS: Record<Tab, string> = { followers: 'フォロワー', following: 'フォロー中' }
 const TABS = (Object.keys(TAB_LABELS) as Tab[]).map((id) => ({ id, label: TAB_LABELS[id] }))
@@ -31,31 +28,21 @@ export const fetchConnections = createServerFn({ method: 'POST' })
     // フォロー行の取得結果に依存しないので、待たずに先に走らせる
     const userPromise = serverSupabase.auth.getUser()
 
-    let query = serverSupabase
+    const query = serverSupabase
       .from('follows')
       .select(`created_at, ${otherIdColumn}`)
       .eq(ownIdColumn, userId)
-      .order('created_at', { ascending: false })
-      .order(otherIdColumn, { ascending: false })
-      .limit(PAGE_SIZE + 1)
-
-    // (created_at, 相手のid) < カーソル の keyset 条件。PostgREST は '.' と ',' を
-    // 区切りに使うため、小数秒を含む timestamptz はダブルクォートで囲む。
-    if (cursor) {
-      query = query.or(
-        `created_at.lt."${cursor.createdAt}",` +
-          `and(created_at.eq."${cursor.createdAt}",${otherIdColumn}.lt."${cursor.id}")`,
-      )
-    }
 
     const [{ data: followData }, { data: { user: currentUser } }] = await Promise.all([
-      query.throwOnError(),
+      withKeyset(query, cursor, otherIdColumn).throwOnError(),
       userPromise,
     ])
 
-    const followRows = followData as Record<string, string>[]
-    const hasMore = followRows.length > PAGE_SIZE
-    const page = followRows.slice(0, PAGE_SIZE)
+    // 同点を割るのは相手の id なので、カーソルもその列で組む
+    const { rows: page, nextCursor } = takePage(
+      followData as (Record<string, string> & { created_at: string })[],
+      (r) => r[otherIdColumn],
+    )
     const otherIds = page.map((r) => r[otherIdColumn])
 
     if (page.length === 0) {
@@ -93,7 +80,6 @@ export const fetchConnections = createServerFn({ method: 'POST' })
 
     const usersById = new Map(users.map((u) => [u.id, u]))
     const followingSet = new Set((myFollowsRes?.data ?? []).map((f) => f.following_id))
-    const last = page[page.length - 1]
 
     return {
       userId,
@@ -103,7 +89,7 @@ export const fetchConnections = createServerFn({ method: 'POST' })
         const user = usersById.get(r[otherIdColumn])
         return user ? [{ user, isFollowingByMe: followingSet.has(user.id) }] : []
       }),
-      nextCursor: hasMore ? { createdAt: last.created_at, id: last[otherIdColumn] } : null,
+      nextCursor,
     }
   })
 
@@ -222,16 +208,7 @@ function ConnectionsPage() {
             <ConnectionRow key={row.user.id} row={row} currentUserId={currentUserId} />
           ))}
           {hasNextPage && (
-            <div className="p-4 text-center">
-              <Button
-                onClick={() => fetchNextPage()}
-                disabled={isFetchingNextPage}
-                variant="outline"
-                size="sm"
-              >
-                もっと見る
-              </Button>
-            </div>
+            <LoadMoreButton onClick={() => fetchNextPage()} disabled={isFetchingNextPage} />
           )}
         </div>
       )}
