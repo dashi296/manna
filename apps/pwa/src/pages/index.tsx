@@ -6,6 +6,7 @@ import { EmptyState, PageHeader, TabBar } from '@/shared/ui'
 import { Button } from '@/shared/ui/button'
 import { createSupabaseServer } from '@/shared/lib/auth'
 import { isValidCursor, type Cursor } from '@/shared/lib/cursor'
+import { feedKey } from '@/entities/user'
 
 type Tab = 'following' | 'public'
 
@@ -79,7 +80,7 @@ const fetchFeed = createServerFn({ method: 'POST' })
 // タブごとに別のクエリになるので、切り替えても前のタブのページが混ざることはない
 const feedQueryOptions = (tab: Tab) =>
   infiniteQueryOptions({
-    queryKey: ['feed', tab],
+    queryKey: feedKey(tab),
     queryFn: ({ pageParam }) => fetchFeed({ data: { tab, cursor: pageParam } }),
     initialPageParam: null as Cursor | null,
     getNextPageParam: (last) => last.nextCursor,

@@ -11,7 +11,7 @@ import { Button } from '@/shared/ui/button'
 import { resolveUserIdentity } from '@/shared/lib/constants'
 import { createSupabaseServer } from '@/shared/lib/auth'
 import { isValidCursor, type Cursor } from '@/shared/lib/cursor'
-import { profileKey } from '@/entities/user'
+import { profileKey, userPostsKey } from '@/entities/user'
 
 const PAGE_SIZE = 20
 
@@ -123,10 +123,12 @@ const profileQueryOptions = (userId: string) =>
     queryFn: () => fetchProfileData({ data: { userId } }),
   })
 
-// 投稿は関係の変更で古くならないので、無効化対象の ['profile'] とはキーを分ける
+// ページングのためにプロフィール本体とはキーを分ける。関係の変更では両方が古くなる
+// （posts の RLS が followers/family の行を関係で出し分けるため）ので、どちらも
+// invalidateRelationQueries の対象に入っている
 const userPostsQueryOptions = (userId: string) =>
   infiniteQueryOptions({
-    queryKey: ['user-posts', userId],
+    queryKey: userPostsKey(userId),
     queryFn: ({ pageParam }) => fetchUserPosts({ data: { userId, cursor: pageParam } }),
     initialPageParam: null as Cursor | null,
     getNextPageParam: (last) => last.nextCursor,

@@ -49,7 +49,9 @@ created_at.lt."<createdAt>",and(created_at.eq."<createdAt>",id.lt."<id>")
 - `fetchProfileData({ userId })` — プロフィール行 / currentUserId / 関係 / 件数
 - `fetchUserPosts({ userId, cursor })` — 投稿ページ
 
-`invalidateRelationQueries` が落とすのは `['profile']` のままなので、フォロー操作で件数は更新され、投稿は再取得されない。#85 のプロフィール側がこれで解消する。
+投稿の可視性は関係に依存する（posts の RLS が `followers`/`family` の行をフォロー・ファミリーの有無で出し分ける）ため、`['user-posts']` も `invalidateRelationQueries` の対象に入れる。フィードの「フォロー中」タブも同様に `['feed']` を対象にする。
+
+したがって「フォロー1回でプロフィールの投稿20件を取り直す」（#85 のプロフィール側）は解消しない。あの再取得は無駄ではなく、可視性の変化を反映するために必要だった。分割の目的はページングであって、再取得の削減ではない。
 
 ### 3. カーソル型
 
@@ -104,5 +106,5 @@ connections のテストで確立した形（`renderWithQueryClient` + server fu
 ## スコープ外
 
 - 通知のページネーション（別 issue に残す）
-- connections の全ページ再取得（#85 の残り半分）
+- connections の全ページ再取得（#85）
 - `staleTime` / プリロード設定の調整（#86）
