@@ -21,7 +21,7 @@ export function isValidCursor(cursor: Cursor): boolean {
   return UUID_RE.test(cursor.id) && ISO_TS_RE.test(cursor.createdAt)
 }
 
-export const PAGE_SIZE = 20
+const PAGE_SIZE = 20
 
 type OrderedQuery<Q> = {
   order: (column: string, options: { ascending: boolean }) => Q
@@ -51,16 +51,17 @@ export function withKeyset<Q extends OrderedQuery<Q>>(
   )
 }
 
-// withKeyset が余分に取った1件を落とし、次ページのカーソルを組み立てる
+// withKeyset が余分に取った1件を落とし、次ページのカーソルを組み立てる。
+// idColumn は withKeyset に渡したものと必ず同じにすること（別の列だと行が飛ぶ）
 export function takePage<T extends { created_at: string }>(
   rows: T[],
-  idOf: (row: T) => string,
+  idColumn = 'id',
 ): { rows: T[]; nextCursor: Cursor | null } {
   const hasMore = rows.length > PAGE_SIZE
   const page = rows.slice(0, PAGE_SIZE)
-  const last = page[page.length - 1]
+  const last = page[page.length - 1] as T & Record<string, string>
   return {
     rows: page,
-    nextCursor: hasMore ? { createdAt: last.created_at, id: idOf(last) } : null,
+    nextCursor: hasMore ? { createdAt: last.created_at, id: last[idColumn] } : null,
   }
 }

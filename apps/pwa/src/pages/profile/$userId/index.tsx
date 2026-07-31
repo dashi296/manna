@@ -1,6 +1,6 @@
 import { createFileRoute, Link, notFound } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
-import { infiniteQueryOptions, queryOptions, useInfiniteQuery, useQuery } from '@tanstack/react-query'
+import { queryOptions, useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { PostCard, POST_SELECT, type PostWithUser } from '@/entities/post'
 import { filterFamilyPair, resolveFamilyStatus } from '@/entities/family'
 import { FollowButton } from '@/features/follow-user'
@@ -10,6 +10,7 @@ import { EmptyState, LoadMoreButton, PageHeader, UserAvatar } from '@/shared/ui'
 import { resolveUserIdentity } from '@/shared/lib/constants'
 import { createSupabaseServer } from '@/shared/lib/auth'
 import { isValidCursor, takePage, withKeyset, type Cursor } from '@/shared/lib/cursor'
+import { keysetInfiniteOptions, loadFirstPage } from '@/shared/lib/keysetQuery'
 import { profileKey, userPostsKey } from '@/entities/user'
 
 const fetchProfileData = createServerFn({ method: 'POST' })
@@ -86,7 +87,7 @@ const fetchUserPosts = createServerFn({ method: 'POST' })
 
     const query = serverSupabase.from('posts').select(POST_SELECT).eq('user_id', userId)
     const { data } = await withKeyset(query, cursor).throwOnError()
-    const { rows: posts, nextCursor } = takePage(data as PostWithUser[], (p) => p.id)
+    const { rows: posts, nextCursor } = takePage(data as PostWithUser[])
     return { posts, nextCursor }
   })
 
@@ -102,28 +103,22 @@ const profileQueryOptions = (userId: string) =>
 // （posts の RLS が followers/family の行を関係で出し分けるため）ので、どちらも
 // invalidateRelationQueries の対象に入っている
 const userPostsQueryOptions = (userId: string) =>
-  infiniteQueryOptions({
-    queryKey: userPostsKey(userId),
-    queryFn: ({ pageParam }) => fetchUserPosts({ data: { userId, cursor: pageParam } }),
-    initialPageParam: null as Cursor | null,
-    getNextPageParam: (last) => last.nextCursor,
-    // 失敗したら黙って叩き直さず、「もっと見る」を押し直せる状態に戻す
-    retry: false,
-  })
+  keysetInfiniteOptions(userPostsKey(userId), (cursor) =>
+    fetchUserPosts({ data: { userId, cursor } }),
+  )
 
 export const Route = createFileRoute('/profile/$userId/')({
   // SSR で埋めてクライアントへ引き継ぐ（ローディングのちらつきを避ける）。staleTime を 0 に
   // するのは、loader だった頃と同じく他人の変更も訪問のたびに拾うため
   loader: async ({ params, context }) => {
-    const postsOptions = userPostsQueryOptions(params.userId)
-    await context.queryClient.cancelQueries({ queryKey: postsOptions.queryKey })
-    const [data] = await Promise.all([
-      context.queryClient.fetchQuery({
-        ...profileQueryOptions(params.userId),
-        staleTime: 0,
-      }),
-      context.queryClient.fetchInfiniteQuery({ ...postsOptions, staleTime: 0, pages: 1 }),
-    ])
+    // 投稿側の cancelQueries を待つ前に投げる。進行中の「もっと見る」があるとき、
+    // プロフィール本体の取得までその完了待ちにしないため
+    const profilePromise = context.queryClient.fetchQuery({
+      ...profileQueryOptions(params.userId),
+      staleTime: 0,
+    })
+    const postsPromise = loadFirstPage(context.queryClient, userPostsQueryOptions(params.userId))
+    const [data] = await Promise.all([profilePromise, postsPromise])
     if (!data) throw notFound()
   },
   component: ProfilePage,
@@ -132,14 +127,9 @@ export const Route = createFileRoute('/profile/$userId/')({
 function ProfilePage() {
   const { userId } = Route.useParams()
   const { data } = useQuery(profileQueryOptions(userId))
-  const {
-    data: postPages,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-  } = useInfiniteQuery(userPostsQueryOptions(userId))
+  const postsQuery = useInfiniteQuery(userPostsQueryOptions(userId))
 
-  const posts = (postPages?.pages ?? []).flatMap((p) => p.posts)
+  const posts = (postsQuery.data?.pages ?? []).flatMap((p) => p.posts)
 
   // null になるのは対象ユーザーが存在しないときだけで、loader が 404 にしている
   if (!data) return null
@@ -210,9 +200,7 @@ function ProfilePage() {
             {posts.map((post) => (
               <PostCard key={post.id} post={post} />
             ))}
-            {hasNextPage && (
-              <LoadMoreButton onClick={() => fetchNextPage()} disabled={isFetchingNextPage} />
-            )}
+            <LoadMoreButton query={postsQuery} />
           </>
         )}
       </div>

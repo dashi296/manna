@@ -1,10 +1,11 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
-import { infiniteQueryOptions, useInfiniteQuery } from '@tanstack/react-query'
+import { useInfiniteQuery } from '@tanstack/react-query'
 import { PostCard, POST_SELECT, type PostWithUser } from '@/entities/post'
 import { EmptyState, LoadMoreButton, PageHeader, TabBar } from '@/shared/ui'
 import { createSupabaseServer } from '@/shared/lib/auth'
 import { isValidCursor, takePage, withKeyset, type Cursor } from '@/shared/lib/cursor'
+import { keysetInfiniteOptions, loadFirstPage } from '@/shared/lib/keysetQuery'
 import { feedKey } from '@/entities/user'
 
 type Tab = 'following' | 'public'
@@ -50,46 +51,29 @@ const fetchFeed = createServerFn({ method: 'POST' })
     }
 
     const { data } = await withKeyset(query, cursor).throwOnError()
-    const { rows: posts, nextCursor } = takePage(data as PostWithUser[], (p) => p.id)
+    const { rows: posts, nextCursor } = takePage(data as PostWithUser[])
     return { posts, nextCursor }
   })
 
 // タブごとに別のクエリになるので、切り替えても前のタブのページが混ざることはない
 const feedQueryOptions = (tab: Tab) =>
-  infiniteQueryOptions({
-    queryKey: feedKey(tab),
-    queryFn: ({ pageParam }) => fetchFeed({ data: { tab, cursor: pageParam } }),
-    initialPageParam: null as Cursor | null,
-    getNextPageParam: (last) => last.nextCursor,
-    // 失敗したら黙って叩き直さず、「もっと見る」を押し直せる状態に戻す
-    retry: false,
-  })
+  keysetInfiniteOptions(feedKey(tab), (cursor) => fetchFeed({ data: { tab, cursor } }))
 
 export const Route = createFileRoute('/')({
   // 既定タブでは付けない。他の画面から to: "/" で戻るときに search を書かせないため
   validateSearch: (search: Record<string, unknown>): { tab?: Tab } =>
     search.tab === 'public' ? { tab: 'public' } : {},
   loaderDeps: ({ search }) => ({ tab: search.tab ?? DEFAULT_TAB }),
-  // 1ページ目は SSR で埋めてクライアントへ引き継ぐ（ローディングのちらつきを避ける）。
-  // pages: 1 で追加読み込み分は捨てる（全ページ再取得は遷移のたびに N 回叩くことになる）
-  loader: async ({ deps, context }) => {
-    const options = feedQueryOptions(deps.tab)
-    // 「もっと見る」が飛んでいる最中に戻ってくると、fetchInfiniteQuery は進行中の Promise を
-    // そのまま返すため、先に打ち切る
-    await context.queryClient.cancelQueries({ queryKey: options.queryKey })
-    await context.queryClient.fetchInfiniteQuery({ ...options, staleTime: 0, pages: 1 })
-  },
+  loader: ({ deps, context }) => loadFirstPage(context.queryClient, feedQueryOptions(deps.tab)),
   component: FeedPage,
 })
 
 function FeedPage() {
   const { tab = DEFAULT_TAB } = Route.useSearch()
   const navigate = useNavigate()
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery(
-    feedQueryOptions(tab),
-  )
+  const query = useInfiniteQuery(feedQueryOptions(tab))
 
-  const posts = (data?.pages ?? []).flatMap((p) => p.posts)
+  const posts = (query.data?.pages ?? []).flatMap((p) => p.posts)
 
   return (
     <div>
@@ -108,9 +92,7 @@ function FeedPage() {
           {posts.map((post) => (
             <PostCard key={post.id} post={post} />
           ))}
-          {hasNextPage && (
-            <LoadMoreButton onClick={() => fetchNextPage()} disabled={isFetchingNextPage} />
-          )}
+          <LoadMoreButton query={query} />
         </div>
       )}
     </div>

@@ -1,12 +1,9 @@
 import { screen } from '@testing-library/react'
+import type { PostWithUser } from '@/entities/post'
 
-export const makePost = (
-  id: string,
-  content: string,
-  overrides: Record<string, unknown> = {},
-) => ({
-  id,
-  content,
+export const makePost = (overrides: Partial<PostWithUser> = {}): PostWithUser => ({
+  id: 'p1',
+  content: '投稿',
   visibility: 'public',
   created_at: '2026-07-25T10:00:00+00:00',
   scripture_collection: null,
@@ -16,6 +13,11 @@ export const makePost = (
   user_id: 'u1',
   users: { display_name: '山田花子', avatar_url: null },
   ...overrides,
+})
+
+export const postsPage = (posts: PostWithUser[], nextCursor: unknown = null) => ({
+  posts,
+  nextCursor,
 })
 
 export const cursorAt = (id: string) => ({ createdAt: '2026-07-25T10:00:00+00:00', id })

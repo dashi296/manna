@@ -3,7 +3,7 @@ import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { routeComponent } from '../../helpers/tanstack'
 import { renderWithQueryClient } from '../../helpers/query'
-import { cursorAt, loadMoreButton, makePost } from '../../helpers/fixtures'
+import { cursorAt, loadMoreButton, makePost, postsPage } from '../../helpers/fixtures'
 
 // startMock はモジュール内の createServerFn を区別できないため、fetchProfileData と
 // fetchUserPosts を引数で振り分ける（投稿側だけが cursor を持つ）
@@ -31,11 +31,6 @@ const profile = {
   followerCount: 3,
   followingCount: 5,
 }
-
-const postsPage = (posts: ReturnType<typeof makePost>[], nextCursor: unknown = null) => ({
-  posts,
-  nextCursor,
-})
 
 type Call = { data: { cursor?: unknown } }
 
@@ -95,7 +90,7 @@ describe('ProfilePage', () => {
   })
 
   it('投稿を別クエリで取得して表示する', async () => {
-    const { client } = await renderPage({}, [postsPage([makePost('p1', '最初の投稿'), makePost('p2', '次の投稿')])])
+    const { client } = await renderPage({}, [postsPage([makePost({ id: 'p1', content: '最初の投稿' }), makePost({ id: 'p2', content: '次の投稿' })])])
     expect(await screen.findByText('最初の投稿')).toBeInTheDocument()
     expect(screen.getByText('次の投稿')).toBeInTheDocument()
     // プロフィール本体と投稿でキーが分かれている（フォロー操作で投稿を取り直さないため）
@@ -109,7 +104,7 @@ describe('ProfilePage', () => {
   })
 
   it('nextCursor がなければ「もっと見る」を表示しない', async () => {
-    await renderPage({}, [postsPage([makePost('p1', '最初の投稿')])])
+    await renderPage({}, [postsPage([makePost({ id: 'p1', content: '最初の投稿' })])])
     expect(await screen.findByText('最初の投稿')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'もっと見る' })).not.toBeInTheDocument()
   })
@@ -117,8 +112,8 @@ describe('ProfilePage', () => {
   it('「もっと見る」でカーソルを渡して次のページを追記する', async () => {
     const cursor = cursorAt('p1')
     await renderPage({}, [
-      postsPage([makePost('p1', '最初の投稿')], cursor),
-      postsPage([makePost('p2', '古い投稿')]),
+      postsPage([makePost({ id: 'p1', content: '最初の投稿' })], cursor),
+      postsPage([makePost({ id: 'p2', content: '古い投稿' })]),
     ])
     expect(await screen.findByText('最初の投稿')).toBeInTheDocument()
 

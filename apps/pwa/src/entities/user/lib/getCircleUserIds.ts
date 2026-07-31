@@ -23,11 +23,8 @@ export async function getCircleUserIds(
   ])
 
   const ids = new Set<string>([userId])
-  follows.forEach((f) => ids.add((f as { following_id: string }).following_id))
-  family.forEach((r) => {
-    const row = r as { requester_id: string; addressee_id: string }
-    ids.add(row.requester_id === userId ? row.addressee_id : row.requester_id)
-  })
+  follows.forEach((f) => ids.add(f.following_id))
+  family.forEach((r) => ids.add(r.requester_id === userId ? r.addressee_id : r.requester_id))
   const idList = [...ids]
 
   const { data: users } = await supabase
@@ -36,5 +33,5 @@ export async function getCircleUserIds(
     .in('id', idList)
     .throwOnError()
 
-  return { ids: idList, users: users as CircleUserRow[] }
+  return { ids: idList, users }
 }

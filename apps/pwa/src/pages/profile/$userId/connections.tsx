@@ -1,12 +1,13 @@
 import { createFileRoute, Link, notFound, useNavigate } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
-import { infiniteQueryOptions, useInfiniteQuery } from '@tanstack/react-query'
+import { useInfiniteQuery } from '@tanstack/react-query'
 import { FollowButton } from '@/features/follow-user'
 import { EmptyState, LoadMoreButton, PageHeader, TabBar, UserAvatar } from '@/shared/ui'
 import { connectionsKey, type CircleUserRow } from '@/entities/user'
 import { resolveUserIdentity } from '@/shared/lib/constants'
 import { createSupabaseServer } from '@/shared/lib/auth'
 import { isValidCursor, takePage, withKeyset, type Cursor } from '@/shared/lib/cursor'
+import { keysetInfiniteOptions, loadFirstPage } from '@/shared/lib/keysetQuery'
 
 type Tab = 'followers' | 'following'
 type ConnectionRowData = { user: CircleUserRow; isFollowingByMe: boolean }
@@ -41,10 +42,8 @@ export const fetchConnections = createServerFn({ method: 'POST' })
     // 同点を割るのは相手の id なので、カーソルもその列で組む
     const { rows: page, nextCursor } = takePage(
       followData as (Record<string, string> & { created_at: string })[],
-      (r) => r[otherIdColumn],
+      otherIdColumn,
     )
-    const otherIds = page.map((r) => r[otherIdColumn])
-
     if (page.length === 0) {
       // フォロー行が1件でもあれば FK により対象ユーザーは存在する。0件のときだけ、
       // 存在しないプロフィールと本当に0件とを区別する（loader が 404 にする）
@@ -61,6 +60,8 @@ export const fetchConnections = createServerFn({ method: 'POST' })
       }
       return { userId, tab, currentUserId: currentUser?.id ?? null, rows: [], nextCursor: null }
     }
+
+    const otherIds = page.map((r) => r[otherIdColumn])
 
     const [{ data: users }, myFollowsRes] = await Promise.all([
       serverSupabase
@@ -95,35 +96,18 @@ export const fetchConnections = createServerFn({ method: 'POST' })
 
 // タブごとに別のクエリになるので、切り替えても前のタブのページが混ざることはない
 const connectionsQueryOptions = (userId: string, tab: Tab) =>
-  infiniteQueryOptions({
-    queryKey: connectionsKey(userId, tab),
-    queryFn: ({ pageParam }) => fetchConnections({ data: { userId, tab, cursor: pageParam } }),
-    initialPageParam: null as Cursor | null,
-    getNextPageParam: (last) => last?.nextCursor ?? null,
-    // 失敗したら黙って叩き直さず、「もっと見る」を押し直せる状態に戻す
-    retry: false,
-  })
+  keysetInfiniteOptions(connectionsKey(userId, tab), (cursor) =>
+    fetchConnections({ data: { userId, tab, cursor } }),
+  )
 
 export const Route = createFileRoute('/profile/$userId/connections')({
   validateSearch: (search: Record<string, unknown>): { tab: Tab } => ({
     tab: search.tab === 'following' ? 'following' : 'followers',
   }),
   loaderDeps: ({ search }) => ({ tab: search.tab }),
-  // 1ページ目は SSR で埋めてクライアントへ引き継ぐ（ローディングのちらつきを避ける）。
-  // 自分の操作による陳腐化は invalidateRelationQueries が拾うので、ensureInfiniteQueryData
-  // ではなく fetchInfiniteQuery + staleTime 0 にするのは他人の変更も毎回取り直すため。
-  // pages: 1 で追加読み込み分は捨てる（全ページ再取得は遷移のたびに N 回叩くことになる）
   loader: async ({ params, deps, context }) => {
     const options = connectionsQueryOptions(params.userId, deps.tab)
-    // 「もっと見る」が飛んでいる最中に戻ってくると、fetchInfiniteQuery は進行中の Promise を
-    // そのまま返す（query.js の fetchStatus !== 'idle' 分岐）。取り直しが起きないうえ、
-    // 遷移がその取得の完了待ちになるため、先に打ち切る
-    await context.queryClient.cancelQueries({ queryKey: options.queryKey })
-    const data = await context.queryClient.fetchInfiniteQuery({
-      ...options,
-      staleTime: 0,
-      pages: 1,
-    })
+    const data = await loadFirstPage(context.queryClient, options)
     // 1ページ目が null なのは対象ユーザーが存在しないときだけ（server function 側の判定）
     if (!data.pages[0]) throw notFound()
   },
@@ -171,12 +155,10 @@ function ConnectionsPage() {
   const { userId } = Route.useParams()
   const { tab } = Route.useSearch()
   const navigate = useNavigate()
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery(
-    connectionsQueryOptions(userId, tab),
-  )
+  const query = useInfiniteQuery(connectionsQueryOptions(userId, tab))
 
   // null が入るのは対象ユーザーが存在しないときだけで、そのときは loader が 404 にしている
-  const pages = (data?.pages ?? []).filter((p) => p !== null)
+  const pages = (query.data?.pages ?? []).filter((p) => p !== null)
   const allRows = pages.flatMap((p) => p.rows)
   const currentUserId = pages[0]?.currentUserId ?? null
 
@@ -207,9 +189,7 @@ function ConnectionsPage() {
           {allRows.map((row) => (
             <ConnectionRow key={row.user.id} row={row} currentUserId={currentUserId} />
           ))}
-          {hasNextPage && (
-            <LoadMoreButton onClick={() => fetchNextPage()} disabled={isFetchingNextPage} />
-          )}
+          <LoadMoreButton query={query} />
         </div>
       )}
     </div>
