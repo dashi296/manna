@@ -6,7 +6,6 @@ import { EmptyState, PageHeader, UserAvatar } from '@/shared/ui'
 import { resolveUserIdentity, type UserSummary } from '@/shared/lib/constants'
 import { formatDate } from '@/shared/lib/date'
 import { createSupabaseServer } from '@/shared/lib/auth'
-import { unwrap } from '@/shared/lib/unwrap'
 import { supabase } from '@/shared/lib/supabase'
 
 type NotificationRow = {
@@ -28,13 +27,12 @@ const LABELS: Record<NotificationRow['type'], string> = {
 
 const fetchNotifications = createServerFn({ method: 'GET' }).handler(async () => {
   const serverSupabase = await createSupabaseServer()
-  const data = unwrap(
-    await serverSupabase
-      .from('notifications')
-      .select('id, type, read, created_at, post_id, actor_id, users!notifications_actor_id_fkey ( display_name, avatar_url )')
-      .order('created_at', { ascending: false })
-      .limit(50),
-  )
+  const { data } = await serverSupabase
+    .from('notifications')
+    .select('id, type, read, created_at, post_id, actor_id, users!notifications_actor_id_fkey ( display_name, avatar_url )')
+    .order('created_at', { ascending: false })
+    .limit(50)
+    .throwOnError()
   return data as NotificationRow[]
 })
 

@@ -11,7 +11,6 @@ import { Button } from '@/shared/ui/button'
 import { resolveUserIdentity } from '@/shared/lib/constants'
 import { createSupabaseServer } from '@/shared/lib/auth'
 import { isValidCursor, type Cursor } from '@/shared/lib/cursor'
-import { unwrap } from '@/shared/lib/unwrap'
 import { profileKey } from '@/entities/user'
 
 const PAGE_SIZE = 20
@@ -46,35 +45,35 @@ const fetchProfileData = createServerFn({ method: 'POST' })
       {
         data: { user: currentUser },
       },
-      followerRes,
-      followingRes,
+      { count: followerCount },
+      { count: followingCount },
       relations,
     ] = await Promise.all([
-      // 行が0件でも error になるため unwrap は使わない。null のまま loader が 404 にする
+      // 行が0件でも error になるため throwOnError は付けない。null のまま loader が 404 にする
       serverSupabase.from('users').select('*').eq('id', userId).single(),
       userPromise,
       serverSupabase
         .from('follows')
         .select('*', { count: 'exact', head: true })
-        .eq('following_id', userId),
+        .eq('following_id', userId)
+        .throwOnError(),
       serverSupabase
         .from('follows')
         .select('*', { count: 'exact', head: true })
-        .eq('follower_id', userId),
+        .eq('follower_id', userId)
+        .throwOnError(),
       relationsPromise,
     ])
 
     if (!profile) return null
-    if (followerRes.error) throw followerRes.error
-    if (followingRes.error) throw followingRes.error
 
     return {
       profile,
       currentUserId: currentUser?.id ?? null,
       isFollowing: relations?.isFollowing ?? false,
       familyStatus: resolveFamilyStatus(relations?.familyData, currentUser?.id ?? ''),
-      followerCount: followerRes.count ?? 0,
-      followingCount: followingRes.count ?? 0,
+      followerCount: followerCount ?? 0,
+      followingCount: followingCount ?? 0,
     }
   })
 
@@ -104,7 +103,8 @@ const fetchUserPosts = createServerFn({ method: 'POST' })
       )
     }
 
-    const rows = unwrap(await query) as PostWithUser[]
+    const { data } = await query.throwOnError()
+    const rows = data as PostWithUser[]
     const hasMore = rows.length > PAGE_SIZE
     const posts = rows.slice(0, PAGE_SIZE)
     const last = posts[posts.length - 1]

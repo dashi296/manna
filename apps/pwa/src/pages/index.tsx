@@ -6,7 +6,6 @@ import { EmptyState, PageHeader, TabBar } from '@/shared/ui'
 import { Button } from '@/shared/ui/button'
 import { createSupabaseServer } from '@/shared/lib/auth'
 import { isValidCursor, type Cursor } from '@/shared/lib/cursor'
-import { unwrap } from '@/shared/lib/unwrap'
 
 type Tab = 'following' | 'public'
 
@@ -40,9 +39,11 @@ const fetchFeed = createServerFn({ method: 'POST' })
       const { data: { user } } = await serverSupabase.auth.getUser()
       if (!user) return { posts: [] as PostWithUser[], nextCursor: null }
       // ページごとに引き直す。PostgREST はサブクエリを書けないので、避けるには RPC が要る
-      const following = unwrap(
-        await serverSupabase.from('follows').select('following_id').eq('follower_id', user.id),
-      )
+      const { data: following } = await serverSupabase
+        .from('follows')
+        .select('following_id')
+        .eq('follower_id', user.id)
+        .throwOnError()
       const ids = following.map((f) => f.following_id)
       if (ids.length === 0) return { posts: [] as PostWithUser[], nextCursor: null }
       // followers/family の投稿が混じるかは RLS が決めるので、ここでは visibility を絞らない
@@ -63,7 +64,8 @@ const fetchFeed = createServerFn({ method: 'POST' })
       )
     }
 
-    const rows = unwrap(await query) as PostWithUser[]
+    const { data } = await query.throwOnError()
+    const rows = data as PostWithUser[]
     const hasMore = rows.length > PAGE_SIZE
     const posts = rows.slice(0, PAGE_SIZE)
     const last = posts[posts.length - 1]

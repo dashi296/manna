@@ -69,9 +69,13 @@ DROP INDEX posts_user_id_idx;
 
 ### 5. エラー処理（#70）
 
-connections が持つ `unwrap()` を `shared/lib` に上げ、書き換える一覧系クエリで使う。対象はフィード 3 クエリ、プロフィール（投稿・件数）、通知、`getCircleUserIds` 3 クエリ。
+supabase-js 組み込みの `.throwOnError()` を一覧系クエリに付ける。対象はフィード 3 クエリ、プロフィール（投稿・件数）、通知、`getCircleUserIds` 3 クエリ。connections が持っていた自作の `unwrap()` は不要になるので削除する。
 
-`.single()` の 2 箇所（`posts/$id.tsx`、プロフィール行）は触らない。今の握り潰しが「行 0 件 → `null` → `notFound()` で 404」を成立させており、throw を足すと 404 が 500 に退行する（#70 に明記されている）。
+`.throwOnError()` はクエリ単位でしか有効にできない（`createClient` に相当するオプションは無く、postgrest-js のソースにも `// TODO: Add back shouldThrowOnError once we figure out the typings` が残っている）。付け忘れると握り潰しに戻る点は自作ヘルパーと同じ。
+
+`.maybeSingle()` と組み合わせたとき、複数行にマッチしたケースだけは throw せず `{ error: PGRST116 }` を返す（型は `error: null` と主張する）。本プロジェクトの `.maybeSingle()` 3 箇所はいずれも主キーで絞っており複数行にならないため影響しない。
+
+`.single()` の 2 箇所（`posts/$id.tsx`、プロフィール行）には付けない。今の握り潰しが「行 0 件 → `null` → `notFound()` で 404」を成立させており、`.single().throwOnError()` は 0 件で PGRST116 を throw するため 404 が 500 に退行する（#70 に明記されている。ローカルで実測して確認済み）。
 
 これで #70 の「一覧系のみ対応」が全部埋まるため、#70 はクローズできる。
 

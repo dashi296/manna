@@ -8,7 +8,6 @@ import { connectionsKey, type CircleUserRow } from '@/entities/user'
 import { resolveUserIdentity } from '@/shared/lib/constants'
 import { createSupabaseServer } from '@/shared/lib/auth'
 import { isValidCursor, type Cursor } from '@/shared/lib/cursor'
-import { unwrap } from '@/shared/lib/unwrap'
 
 type Tab = 'followers' | 'following'
 type ConnectionRowData = { user: CircleUserRow; isFollowingByMe: boolean }
@@ -49,9 +48,12 @@ export const fetchConnections = createServerFn({ method: 'POST' })
       )
     }
 
-    const [followRes, { data: { user: currentUser } }] = await Promise.all([query, userPromise])
+    const [{ data: followData }, { data: { user: currentUser } }] = await Promise.all([
+      query.throwOnError(),
+      userPromise,
+    ])
 
-    const followRows = unwrap(followRes) as Record<string, string>[]
+    const followRows = followData as Record<string, string>[]
     const hasMore = followRows.length > PAGE_SIZE
     const page = followRows.slice(0, PAGE_SIZE)
     const otherIds = page.map((r) => r[otherIdColumn])
@@ -60,29 +62,37 @@ export const fetchConnections = createServerFn({ method: 'POST' })
       // フォロー行が1件でもあれば FK により対象ユーザーは存在する。0件のときだけ、
       // 存在しないプロフィールと本当に0件とを区別する（loader が 404 にする）
       if (!cursor) {
-        const owner = unwrap(
-          await serverSupabase.from('users').select('id').eq('id', userId).maybeSingle(),
-        )
+        // id は主キーなので複数行にはならない（maybeSingle が複数行のとき
+        // throwOnError は throw せず error を返す挙動になる）
+        const { data: owner } = await serverSupabase
+          .from('users')
+          .select('id')
+          .eq('id', userId)
+          .maybeSingle()
+          .throwOnError()
         if (!owner) return null
       }
       return { userId, tab, currentUserId: currentUser?.id ?? null, rows: [], nextCursor: null }
     }
 
-    const [usersRes, myFollowsRes] = await Promise.all([
-      serverSupabase.from('users').select('id, display_name, avatar_url').in('id', otherIds),
+    const [{ data: users }, myFollowsRes] = await Promise.all([
+      serverSupabase
+        .from('users')
+        .select('id, display_name, avatar_url')
+        .in('id', otherIds)
+        .throwOnError(),
       currentUser
         ? serverSupabase
             .from('follows')
             .select('following_id')
             .eq('follower_id', currentUser.id)
             .in('following_id', otherIds)
+            .throwOnError()
         : null,
     ])
 
-    const usersById = new Map(unwrap(usersRes).map((u) => [u.id, u]))
-    const followingSet = new Set(
-      (myFollowsRes ? unwrap(myFollowsRes) : []).map((f) => f.following_id),
-    )
+    const usersById = new Map(users.map((u) => [u.id, u]))
+    const followingSet = new Set((myFollowsRes?.data ?? []).map((f) => f.following_id))
     const last = page[page.length - 1]
 
     return {
