@@ -84,12 +84,12 @@ describe('FollowButton', () => {
     pending.resolve({ error: null })
   })
 
-  it('成功したらプロフィールとフォロー一覧のクエリを無効化する', async () => {
+  // 落とすキーの全量は relationQueries.test.ts が持つ。ここは配線だけを見る
+  it('成功したら関係で古くなる読み取りを無効化する', async () => {
     const { client } = renderButton(false)
     const invalidate = vi.spyOn(client, 'invalidateQueries')
     await userEvent.click(screen.getByRole('button', { name: 'フォロー' }))
     await waitFor(() => expect(invalidate).toHaveBeenCalledWith({ queryKey: ['profile'] }))
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['connections'] })
   })
 
   it('再取得で prop が入れ替わっても表示が巻き戻らない', async () => {

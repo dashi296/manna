@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { routeComponent, routeLoader } from '../../helpers/tanstack'
 import { renderWithQueryClient } from '../../helpers/query'
 import { deferred } from '../../helpers/deferred'
+import { cursorAt, loadMoreButton } from '../../helpers/fixtures'
 
 const mockFetchConnections = vi.fn()
 
@@ -39,15 +40,11 @@ const page = (rows: ReturnType<typeof row>[], nextCursor: unknown = null) => ({
   nextCursor,
 })
 
-const cursorAt = (otherId: string) => ({ createdAt: '2026-07-25T10:00:00+00:00', otherId })
-
 const renderPage = async () => {
   const ConnectionsPage = routeComponent(await import('@/pages/profile/$userId/connections'))
   // useSearch の戻り値を差し替えてタブ切り替えを再現するため、rerender を持ち回る
   return renderWithQueryClient(() => <ConnectionsPage />)
 }
-
-const loadMoreButton = () => screen.getByRole('button', { name: 'もっと見る' })
 
 describe('ConnectionsPage', () => {
   beforeEach(() => {

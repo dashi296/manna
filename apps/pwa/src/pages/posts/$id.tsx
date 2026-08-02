@@ -11,11 +11,14 @@ const fetchPost = createServerFn({ method: 'POST' })
   .inputValidator((data: { id: string }) => data)
   .handler(async (ctx) => {
     const serverSupabase = await createSupabaseServer()
+    // maybeSingle は0件を null で返すので loader が 404 にできる。single だと0件も
+    // error になり、throwOnError と併せると 404 が 500 に化ける
     const { data: post } = await serverSupabase
       .from('posts')
       .select(POST_SELECT)
       .eq('id', ctx.data.id)
-      .single()
+      .maybeSingle()
+      .throwOnError()
     return post as PostWithUser | null
   })
 

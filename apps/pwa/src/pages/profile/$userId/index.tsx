@@ -1,15 +1,17 @@
 import { createFileRoute, Link, notFound } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
-import { queryOptions, useQuery } from '@tanstack/react-query'
+import { queryOptions, useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { PostCard, POST_SELECT, type PostWithUser } from '@/entities/post'
 import { filterFamilyPair, resolveFamilyStatus } from '@/entities/family'
 import { FollowButton } from '@/features/follow-user'
 import { FamilyButton } from '@/features/manage-family'
 import { SignOutButton } from '@/features/sign-out'
-import { EmptyState, PageHeader, UserAvatar } from '@/shared/ui'
+import { EmptyState, LoadMoreButton, PageHeader, UserAvatar } from '@/shared/ui'
 import { resolveUserIdentity } from '@/shared/lib/constants'
 import { createSupabaseServer } from '@/shared/lib/auth'
-import { profileKey } from '@/entities/user'
+import { isValidCursor, takePage, withKeyset, type Cursor } from '@/shared/lib/cursor'
+import { keysetInfiniteOptions, loadFirstPage } from '@/shared/lib/keysetQuery'
+import { profileKey, userPostsKey } from '@/entities/user'
 
 const fetchProfileData = createServerFn({ method: 'POST' })
   .inputValidator((data: { userId: string }) => data)
@@ -41,27 +43,24 @@ const fetchProfileData = createServerFn({ method: 'POST' })
       {
         data: { user: currentUser },
       },
-      { data: posts },
       { count: followerCount },
       { count: followingCount },
       relations,
     ] = await Promise.all([
-      serverSupabase.from('users').select('*').eq('id', userId).single(),
+      // maybeSingle は0件を null で返すので loader が 404 にできる。single だと0件も
+      // error になり、throwOnError と併せると 404 が 500 に化ける
+      serverSupabase.from('users').select('*').eq('id', userId).maybeSingle().throwOnError(),
       userPromise,
       serverSupabase
-        .from('posts')
-        .select(POST_SELECT)
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(20),
+        .from('follows')
+        .select('*', { count: 'exact', head: true })
+        .eq('following_id', userId)
+        .throwOnError(),
       serverSupabase
         .from('follows')
         .select('*', { count: 'exact', head: true })
-        .eq('following_id', userId),
-      serverSupabase
-        .from('follows')
-        .select('*', { count: 'exact', head: true })
-        .eq('follower_id', userId),
+        .eq('follower_id', userId)
+        .throwOnError(),
       relationsPromise,
     ])
 
@@ -69,13 +68,27 @@ const fetchProfileData = createServerFn({ method: 'POST' })
 
     return {
       profile,
-      posts: (posts ?? []) as PostWithUser[],
       currentUserId: currentUser?.id ?? null,
       isFollowing: relations?.isFollowing ?? false,
       familyStatus: resolveFamilyStatus(relations?.familyData, currentUser?.id ?? ''),
       followerCount: followerCount ?? 0,
       followingCount: followingCount ?? 0,
     }
+  })
+
+const fetchUserPosts = createServerFn({ method: 'POST' })
+  .inputValidator((data: { userId: string; cursor: Cursor | null }) => {
+    if (data.cursor && !isValidCursor(data.cursor)) throw new Error('invalid cursor')
+    return data
+  })
+  .handler(async (ctx) => {
+    const { userId, cursor } = ctx.data
+    const serverSupabase = await createSupabaseServer()
+
+    const query = serverSupabase.from('posts').select(POST_SELECT).eq('user_id', userId)
+    const { data } = await withKeyset(query, cursor).throwOnError()
+    const { rows: posts, nextCursor } = takePage(data as PostWithUser[])
+    return { posts, nextCursor }
   })
 
 // フォロー/ファミリー操作から invalidateQueries で落とせるよう、loader ではなく
@@ -86,14 +99,26 @@ const profileQueryOptions = (userId: string) =>
     queryFn: () => fetchProfileData({ data: { userId } }),
   })
 
+// ページングのためにプロフィール本体とはキーを分ける。関係の変更では両方が古くなる
+// （posts の RLS が followers/family の行を関係で出し分けるため）ので、どちらも
+// invalidateRelationQueries の対象に入っている
+const userPostsQueryOptions = (userId: string) =>
+  keysetInfiniteOptions(userPostsKey(userId), (cursor) =>
+    fetchUserPosts({ data: { userId, cursor } }),
+  )
+
 export const Route = createFileRoute('/profile/$userId/')({
   // SSR で埋めてクライアントへ引き継ぐ（ローディングのちらつきを避ける）。staleTime を 0 に
   // するのは、loader だった頃と同じく他人の変更も訪問のたびに拾うため
   loader: async ({ params, context }) => {
-    const data = await context.queryClient.fetchQuery({
+    // 投稿側の cancelQueries を待つ前に投げる。進行中の「もっと見る」があるとき、
+    // プロフィール本体の取得までその完了待ちにしないため
+    const profilePromise = context.queryClient.fetchQuery({
       ...profileQueryOptions(params.userId),
       staleTime: 0,
     })
+    const postsPromise = loadFirstPage(context.queryClient, userPostsQueryOptions(params.userId))
+    const [data] = await Promise.all([profilePromise, postsPromise])
     if (!data) throw notFound()
   },
   component: ProfilePage,
@@ -102,12 +127,14 @@ export const Route = createFileRoute('/profile/$userId/')({
 function ProfilePage() {
   const { userId } = Route.useParams()
   const { data } = useQuery(profileQueryOptions(userId))
+  const postsQuery = useInfiniteQuery(userPostsQueryOptions(userId))
+
+  const posts = (postsQuery.data?.pages ?? []).flatMap((p) => p.posts)
 
   // null になるのは対象ユーザーが存在しないときだけで、loader が 404 にしている
   if (!data) return null
 
-  const { profile, posts, currentUserId, isFollowing, familyStatus, followerCount, followingCount } =
-    data
+  const { profile, currentUserId, isFollowing, familyStatus, followerCount, followingCount } = data
 
   const { displayName, avatarUrl } = resolveUserIdentity(profile)
 
@@ -169,7 +196,12 @@ function ProfilePage() {
         {posts.length === 0 ? (
           <EmptyState>投稿はまだありません</EmptyState>
         ) : (
-          posts.map((post) => <PostCard key={post.id} post={post} />)
+          <>
+            {posts.map((post) => (
+              <PostCard key={post.id} post={post} />
+            ))}
+            <LoadMoreButton query={postsQuery} />
+          </>
         )}
       </div>
     </div>
