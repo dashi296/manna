@@ -141,6 +141,8 @@ VITE_SUPABASE_URL=http://127.0.0.1:55321
 VITE_SUPABASE_KEY=<npx supabase status の publishable key>
 ```
 
+**Google OAuth のリダイレクトURI**: ローカルログイン時に `redirect_uri_mismatch` (エラー400) が出た場合、Google Cloud Console の OAuth クライアントの「承認済みのリダイレクトURI」に `http://127.0.0.1:55321/auth/v1/callback`（API ポート合わせ）が登録されているか確認する。ポート番号を変更した際はここも合わせて更新が必要。
+
 ### 聖典テーブル構成
 
 | テーブル | 内容 |

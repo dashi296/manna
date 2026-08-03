@@ -109,4 +109,13 @@ describe('FollowButton', () => {
     )
     expect(screen.getByRole('button', { name: 'フォロー' })).toBeEnabled()
   })
+
+  // 失敗時も無効化する: 相手の操作と競合して弾かれた場合に古いキャッシュのまま固まらないようにする
+  it('失敗しても関係で古くなる読み取りを無効化する', async () => {
+    insertResult = Promise.resolve({ error: { message: 'new row violates row-level security' } })
+    const { client } = renderButton(false)
+    const invalidate = vi.spyOn(client, 'invalidateQueries')
+    await userEvent.click(screen.getByRole('button', { name: 'フォロー' }))
+    await waitFor(() => expect(invalidate).toHaveBeenCalledWith({ queryKey: ['profile'] }))
+  })
 })
