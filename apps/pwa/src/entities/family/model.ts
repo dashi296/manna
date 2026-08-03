@@ -13,6 +13,9 @@ export function resolveFamilyStatus(
 // あるため、両列を同じ2人組に絞れば該当ペアの行だけが残る。
 // id を .or() のフィルタ文字列に埋め込まないので、値に PostgREST の構文が混ざっても
 // 式として解釈されない。
+// DB 側の family_relationships_pair_uniq（LEAST/GREATEST への一意インデックス）が
+// 同一ペアの逆方向重複（A→B と B→A の同時存在）を防いでいるため、maybeSingle() は
+// 常に高々1行を返す前提でよい。
 export function filterFamilyPair<T extends { in: (column: string, values: string[]) => T }>(
   query: T,
   userA: string,

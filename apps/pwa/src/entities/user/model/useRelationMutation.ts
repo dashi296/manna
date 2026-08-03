@@ -23,7 +23,12 @@ export function useRelationMutation<V, T>({ current, optimistic, run, errorMessa
     // Promise を返すと再取得の完了まで isPending が立ったままになり、楽観表示から実データへ
     // 切り替わる瞬間に表示が戻らない
     onSuccess: () => invalidateRelationQueries(queryClient),
-    onError: (_error, variables) => toast.error(errorMessage(variables)),
+    // 失敗時も無効化する: 相手の操作と競合して自分の変更が弾かれた場合、
+    // 古いキャッシュのまま固まらず実際の状態に取り直す
+    onError: (_error, variables) => {
+      toast.error(errorMessage(variables))
+      invalidateRelationQueries(queryClient)
+    },
   })
 
   return {
