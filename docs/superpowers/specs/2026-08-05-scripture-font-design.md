@@ -109,7 +109,9 @@ link 属性は React DOM の props としてそのまま渡されるため、`cr
 - 章表示（`ScriptureText` → `pages/scriptures/$collection/$book/$chapter.tsx`）
 - 節選択リスト（`features/select-scripture-verses/ui/VerseRow.tsx`）
 
-節番号（`ScriptureText` / `VerseRow` 内の別 `span`）は sans のまま影響を受けない。対訳の英語側も同じファミリになり、Noto Serif JP の欧文グリフ（Noto Serif 系）で和欧のトーンが揃う。`font-family` は継承プロパティのため、`innerHTML` で後から挿入される `ruby` / `rb` / `rt` にも適用される。
+節番号（`ScriptureText` / `VerseRow` 内の別 `span`）は sans のまま影響を受けない。`font-family` は継承プロパティのため、`innerHTML` で後から挿入される `ruby` / `rb` / `rt` にも適用される。
+
+対訳の英語側も同じファミリとなり、Noto Serif JP に含まれるラテングリフ（latin サブセット 18.7KB）で表示される。CJK フォントのラテン部分は和文との混植を前提に設計されているため、欧文専用書体とは字形・字幅が異なる。英語聖典は独立したブロックとして読むため専用の Noto Serif（latin サブセット 14.4KB）を当てる選択肢もあるが、差が実物を見ないと判断できないため項目4で比較する。
 
 `cn` は内部で `tailwind-merge` を使うため、呼び出し元が `className` に別の font-family ユーティリティ（`font-sans` など）を渡した場合はそちらが優先される。**この上書きは許容する**（呼び出し元が明示的に指定した場合のみ発生し、現状そのような呼び出し元は存在しない）。
 
@@ -123,6 +125,13 @@ link 属性は React DOM の props としてそのまま渡されるため、`cr
 - B: 16px 相当 / 行高 1.9
 
 比較に使うサンプルは、通常の節・ルビの多い節・日英対訳表示の3種とする。同時にルビの見え方（`rt` は UA スタイルシートにより親の約50%サイズ）が潰れていないか、既存の `rt { transform: translateY(0.25em) }` の調整量が明朝体でも適切かを確認する。
+
+**対訳の英語側の書体もここで判断する。** 日英対訳のスクリーンショットで以下2案を比較する:
+
+- A: Noto Serif JP のラテングリフ（追加ロードなし）
+- B: 欧文専用の Noto Serif を `[lang="en"]` に指定（+14.4KB）
+
+B を採る場合は `--font-scripture-latin` トークンを追加し、`SanitizedVerseHtml` が `lang` を受け取っている既存の仕組み（`secondaryLang`）を使って CSS で切り分ける。
 
 ### 5. テスト
 
