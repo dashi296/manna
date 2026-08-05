@@ -3,7 +3,6 @@ import { Link } from '@tanstack/react-router'
 import { Check } from 'lucide-react'
 import { SanitizedVerseHtml, UserAvatar } from '@/shared/ui'
 import type { AvatarStackItem } from '@/shared/ui'
-import { cn } from '@/shared/lib/utils'
 
 const ROW_TRANSITION = 'background-color 200ms, border-color 200ms'
 const ROW_SELECTED_STYLE: CSSProperties = {
@@ -96,7 +95,7 @@ export function VerseRow({
               </div>
               <SanitizedVerseHtml
                 html={textHtmlSecondary}
-                className={cn('text-sm lg:flex-1', showNumber && 'ml-2 lg:ml-0')}
+                className="text-sm lg:flex-1"
                 style={{ color: 'var(--sea-ink-soft)' }}
                 lang={secondaryLang}
               />
