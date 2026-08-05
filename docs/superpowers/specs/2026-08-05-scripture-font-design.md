@@ -133,6 +133,12 @@ link 属性は React DOM の props としてそのまま渡されるため、`cr
 
 B を採る場合は `--font-scripture-latin` トークンを追加し、`SanitizedVerseHtml` が `lang` を受け取っている既存の仕組み（`secondaryLang`）を使って CSS で切り分ける。
 
+### 実機確認・決定（2026-08-05）
+
+- 文字サイズは **B（`text-base` / `leading-[1.9]`）を採用**した。`ScriptureText`（章表示）は外側 `div` に、`VerseRow`（節選択リスト）は `.font-scripture` 要素自身に付与する。節選択リストはサイズのみ揃え、リスト表示という性質上行高は現状維持とした
+- 対訳の英語側は **A（Noto Serif JP のラテングリフ）を採用**した。欧文専用 Noto Serif との比較実測で、英文段落の高さ・行数は完全に同一（差 0px）、半角スペース幅の差は 1.6%（4.096px vs 4.160px）と、追加ロード（+14.4KB）に見合うほどの実害・改善が確認できなかったため
+- ルビは明朝体でも潰れず、既存の `rt { transform: translateY(0.25em) }` の調整量はサイズ変更後も適切だった
+
 ### 5. テスト
 
 `tests/shared/ui/ScriptureText.test.tsx` に以下を追加する。TDD（失敗するテストを書く → 実装 → 通過）で進める。
