@@ -61,7 +61,7 @@ export function VerseRow({
   const primaryText = textHtml && (
     <SanitizedVerseHtml
       html={textHtml}
-      className={showNumber ? 'ml-2 text-sm' : 'text-sm'}
+      className={showNumber ? 'ml-2 text-base' : 'text-base'}
       style={{ color: 'var(--sea-ink)' }}
     />
   )
@@ -95,7 +95,7 @@ export function VerseRow({
               </div>
               <SanitizedVerseHtml
                 html={textHtmlSecondary}
-                className="text-sm lg:flex-1"
+                className="text-base lg:flex-1"
                 style={{ color: 'var(--sea-ink-soft)' }}
                 lang={secondaryLang}
               />
