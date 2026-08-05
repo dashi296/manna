@@ -78,6 +78,15 @@ describe('VerseRow', () => {
     })
   })
 
+  it('本文に明朝体クラスを適用する', async () => {
+    const { container } = renderInRouter(
+      <VerseRow {...baseProps} mode="read" selected={false} onSelect={vi.fn()} />,
+    )
+    await waitFor(() => {
+      expect(container.querySelector('span.font-scripture')).not.toBeNull()
+    })
+  })
+
 })
 
 describe('VerseRow commenterMarker', () => {
