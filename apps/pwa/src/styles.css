@@ -320,6 +320,11 @@ a {
   background: color-mix(in oklab, var(--header-bg) 84%, transparent 16%);
 }
 
+/* ふりがなを漢字寄りに少し下げる。rt はマージンやvertical-alignが効かないため transform で調整する */
+rt {
+  transform: translateY(0.25em);
+}
+
 .rise-in {
   animation: rise-in 700ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
