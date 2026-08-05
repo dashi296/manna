@@ -320,9 +320,11 @@ a {
   background: color-mix(in oklab, var(--header-bg) 84%, transparent 16%);
 }
 
-/* ふりがなを漢字寄りに少し下げる。rt はマージンやvertical-alignが効かないため transform で調整する */
+/* ふりがなを小さめにし漢字寄りに下げる。ルビ付きの行は rt が行ボックスを押し広げるため、
+   ここを詰めることが行間を詰めることにもなる。rt はマージンや vertical-align が効かないため transform で調整する */
 rt {
-  transform: translateY(0.25em);
+  font-size: 0.45em;
+  transform: translateY(0.45em);
 }
 
 .rise-in {
