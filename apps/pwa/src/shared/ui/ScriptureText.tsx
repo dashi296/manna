@@ -35,7 +35,7 @@ export function SanitizedVerseHtml({ html, className, style, lang }: SanitizedVe
     }
   }, [html])
 
-  return <span ref={ref} className={className} style={style} lang={lang} />
+  return <span ref={ref} className={cn('font-scripture', className)} style={style} lang={lang} />
 }
 
 type Props = {

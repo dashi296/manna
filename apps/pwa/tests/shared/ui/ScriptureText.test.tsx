@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { ScriptureText } from '@/shared/ui/ScriptureText'
+import { ScriptureText, SanitizedVerseHtml } from '@/shared/ui/ScriptureText'
 
 describe('ScriptureText', () => {
   it('節番号とテキストを表示する', () => {
@@ -54,5 +54,35 @@ describe('ScriptureText', () => {
     render(<ScriptureText verse={7} textHtml="テキスト" />)
     const numberSpan = screen.getByText('7')
     expect(numberSpan.nextElementSibling?.tagName).toBe('SPAN')
+  })
+
+  it('本文に明朝体クラスを適用する', () => {
+    const { container } = render(<ScriptureText verse={1} textHtml="テキスト" />)
+    expect(container.querySelector('span.font-scripture')).not.toBeNull()
+  })
+
+  it('節番号には明朝体クラスを適用しない', () => {
+    render(<ScriptureText verse={7} textHtml="テキスト" />)
+    expect(screen.getByText('7').classList.contains('font-scripture')).toBe(false)
+  })
+
+  it('対訳表示では日本語・英語の両方に明朝体クラスを適用する', () => {
+    const { container } = render(
+      <ScriptureText
+        verse={1}
+        textHtml="日本語のテキスト"
+        textHtmlSecondary="English text"
+        secondaryLang="en"
+      />
+    )
+    expect(container.querySelectorAll('span.font-scripture')).toHaveLength(2)
+    expect(container.querySelector('[lang="en"]')?.classList.contains('font-scripture')).toBe(true)
+  })
+
+  it('SanitizedVerseHtml に渡した className と明朝体クラスが併存する', () => {
+    const { container } = render(<SanitizedVerseHtml html="テキスト" className="lg:flex-1" />)
+    const span = container.querySelector('span')
+    expect(span?.classList.contains('font-scripture')).toBe(true)
+    expect(span?.classList.contains('lg:flex-1')).toBe(true)
   })
 })
