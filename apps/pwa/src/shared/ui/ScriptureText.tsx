@@ -56,7 +56,7 @@ export function ScriptureText({
   showNumber = true,
 }: Props) {
   return (
-    <div className={cn('flex gap-2 py-2 text-base leading-[1.9]', className)}>
+    <div className={cn('flex gap-2 py-2 text-sm leading-relaxed', className)}>
       {showNumber && (
         <span
           className="shrink-0 w-6 text-right text-xs font-medium pt-0.5"

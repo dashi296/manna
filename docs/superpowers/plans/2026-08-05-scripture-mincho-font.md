@@ -317,7 +317,7 @@ document.querySelectorAll('.font-scripture').forEach(el => {
 
 あわせて、ルビ（`rt`）が潰れていないか、既存の `rt { transform: translateY(0.25em) }` の調整量が明朝体でも適切かの所見を添える。
 
-- [x] **Step 5: 文字サイズで B が選ばれた場合のみ適用する**
+- [x] **Step 5: 文字サイズで B が選ばれた場合のみ適用する**（適用後に取り消し: 最終的に A の据え置きを採用）
 
 `apps/pwa/src/shared/ui/ScriptureText.tsx` の59行目:
 
