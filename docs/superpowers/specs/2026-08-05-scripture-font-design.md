@@ -1,7 +1,7 @@
 # 聖典本文の明朝体化 設計
 
 - 日付: 2026-08-05
-- ステータス: 設計承認済み・実装計画待ち
+- ステータス: 実装完了（ブランチ scripture-mincho-font）
 
 ## 背景・目的
 
@@ -158,6 +158,7 @@ B を採る場合は `--font-scripture-latin` トークンを追加し、`Saniti
 - **オフライン**: `apps/pwa/public/sw.js` は `install` / `activate` のみで `fetch` ハンドラを持たないため、フォントを一切キャッシュしない。オフライン時の表示可否はブラウザの HTTP キャッシュ次第であり保証されない。オフライン環境での目視確認では明朝体を確認できない
 - **第三者送信**: 外部リクエストにより利用者の IP アドレス・User-Agent・Referrer が Google に送られる。本アプリの利用者層と現時点のプライバシー方針において**これを許容する**と判断する。排除が必要になった場合は issue #107 のセルフホスト移行で対応する
 - **CSP**: 現在リポジトリ内に CSP 設定はない。将来導入する場合は `style-src` に `https://fonts.googleapis.com`、`font-src` に `https://fonts.gstatic.com` が必要になる
+- **フォント CSS 自体の転送量増**: 全体レビューでの実測（2026-08-05、Chrome UA）によると、変更前（Fraunces + Manrope）は `@font-face` 36個・生 13,619B・gzip 878B だったのに対し、変更後（+ Noto Serif JP）は `@font-face` 160個・生 131,280B・gzip 31,294B に増える。Noto Serif JP の124分割 `unicode-range` は woff2 を必要分だけ取る仕組みだが、**分割定義を記述した CSS 自体は124個ぶん丸ごと降ってくる**。本セクション冒頭からの転送量分析は woff2 側の話であり、この CSS 側のコストは扱っていなかった。この stylesheet は render-blocking で、節テキストを描画しないルート（`/login`、フィード `/`、`/profile`、`/notifications`）でも読み込まれる。緩和要因として、レスポンスヘッダが `cache-control: private, max-age=86400, stale-while-revalidate=604800` であるため、render-blocking になるのは初回のみで、以降は1日キャッシュ＋1週間 SWR により実効コストは限定的である。将来ルート単位でフォント読み込みを分割する案もあるが、セルフホスト移行（issue #107）でまとめて設計し直す方が筋が通るため今回は見送る
 
 ## Out of Scope
 

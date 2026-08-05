@@ -48,7 +48,7 @@
 
 このタスクにはユニットテストを書かない。Tailwind のユーティリティ生成と `<head>` への出力はコンポーネント単体テストでは検証できないため、開発サーバーが返す SSR HTML を直接確認する。
 
-- [ ] **Step 1: `styles.css` の `@import` を削除する**
+- [x] **Step 1: `styles.css` の `@import` を削除する**
 
 `apps/pwa/src/styles.css` の2行目を削除する。削除対象は次の1行:
 
@@ -58,7 +58,7 @@
 
 削除後、ファイルは `@import "tailwindcss";` から始まる（1行目の空行は残す）。
 
-- [ ] **Step 2: `--font-scripture` トークンを追加する**
+- [x] **Step 2: `--font-scripture` トークンを追加する**
 
 `apps/pwa/src/styles.css` の `@theme inline` ブロック内、`--font-display` の直後に1行足す:
 
@@ -71,7 +71,7 @@
 
 Tailwind v4 は `--font-*` から `font-scripture` ユーティリティを自動生成する。CDN 到達不能時は OS 標準の明朝体にフォールバックする。
 
-- [ ] **Step 3: `__root.tsx` の `links` に preconnect と stylesheet を追加する**
+- [x] **Step 3: `__root.tsx` の `links` に preconnect と stylesheet を追加する**
 
 `apps/pwa/src/pages/__root.tsx` の `links` 配列を次の内容に置き換える。既存の manifest / icon の3行はそのまま残す:
 
@@ -93,7 +93,7 @@ Tailwind v4 は `--font-*` から `font-scripture` ユーティリティを自�
 
 `preconnect` を先頭に置くのは、`fonts.gstatic.com` への DNS 解決と TLS ハンドシェイクを woff2 取得前に済ませるため。`crossOrigin` は React DOM の props としてそのまま渡るためキャメルケースが正しい。
 
-- [ ] **Step 4: 既存テストが全件通ることを確認する**
+- [x] **Step 4: 既存テストが全件通ることを確認する**
 
 `apps/pwa` ディレクトリで実行:
 
@@ -103,7 +103,7 @@ pnpm test
 
 Expected: `Test Files 52 passed (52)` / `Tests 303 passed (303)`
 
-- [ ] **Step 5: 開発サーバーの SSR HTML に link が出力されることを確認する**
+- [x] **Step 5: 開発サーバーの SSR HTML に link が出力されることを確認する**
 
 `verify` スキルの手順でローカル Supabase と Vite dev サーバーを起動したうえで、別ターミナルから実行:
 
@@ -115,7 +115,7 @@ Expected: 3行出力される（`preconnect` 2件と `stylesheet` 1件）。styl
 
 `/scriptures` は認証不要のため、ログインせずに確認できる。
 
-- [ ] **Step 6: コミット**
+- [x] **Step 6: コミット**
 
 ```bash
 git add apps/pwa/src/styles.css apps/pwa/src/pages/__root.tsx
@@ -145,7 +145,7 @@ EOF
 
 **検証対象の注意:** テストで見るのは `SanitizedVerseHtml` が描画する本文 `span` の className であり、`ScriptureText` の `className` prop（外側 `div` に付く）とは別物である。
 
-- [ ] **Step 1: 失敗するテストを書く（ScriptureText 側）**
+- [x] **Step 1: 失敗するテストを書く（ScriptureText 側）**
 
 `apps/pwa/tests/shared/ui/ScriptureText.test.tsx` の1行目の import に `SanitizedVerseHtml` を追加する:
 
@@ -187,7 +187,7 @@ import { ScriptureText, SanitizedVerseHtml } from '@/shared/ui/ScriptureText'
   })
 ```
 
-- [ ] **Step 2: 失敗するテストを書く（VerseRow 側）**
+- [x] **Step 2: 失敗するテストを書く（VerseRow 側）**
 
 `apps/pwa/tests/features/select-scripture-verses/VerseRow.test.tsx` の `describe('VerseRow', ...)` の閉じ括弧の直前に1件を追加する。`VerseRow` は `Link` を使うためルーター配下でのレンダリングが必要で、同ファイルが定義済みの `renderInRouter` ヘルパーと `baseProps` をそのまま使う:
 
@@ -204,7 +204,7 @@ import { ScriptureText, SanitizedVerseHtml } from '@/shared/ui/ScriptureText'
 
 `waitFor` で待つのは、`SanitizedVerseHtml` が `useEffect` 内で本文を注入するため。`renderInRouter` / `baseProps` / `waitFor` / `vi` はすべて同ファイルで定義・import 済みのため追加の import は不要。
 
-- [ ] **Step 3: テストが失敗することを確認する**
+- [x] **Step 3: テストが失敗することを確認する**
 
 `apps/pwa` ディレクトリで実行:
 
@@ -214,7 +214,7 @@ pnpm test tests/shared/ui/ScriptureText.test.tsx tests/features/select-scripture
 
 Expected: 新規5件が FAIL（`expected null not to be null` など）。既存テストは PASS のまま。
 
-- [ ] **Step 4: 実装する**
+- [x] **Step 4: 実装する**
 
 `apps/pwa/src/shared/ui/ScriptureText.tsx` の `SanitizedVerseHtml` の return を変更する。変更前:
 
@@ -230,7 +230,7 @@ Expected: 新規5件が FAIL（`expected null not to be null` など）。既存
 
 `cn` は同ファイル3行目で既に import 済みのため追加の import は不要。
 
-- [ ] **Step 5: テストが通ることを確認する**
+- [x] **Step 5: テストが通ることを確認する**
 
 `apps/pwa` ディレクトリで実行:
 
@@ -240,7 +240,7 @@ pnpm test tests/shared/ui/ScriptureText.test.tsx tests/features/select-scripture
 
 Expected: すべて PASS
 
-- [ ] **Step 6: 全件テストで回帰がないことを確認する**
+- [x] **Step 6: 全件テストで回帰がないことを確認する**
 
 ```bash
 pnpm test
@@ -248,7 +248,7 @@ pnpm test
 
 Expected: `Tests 308 passed (308)`（ベースライン 303 + 新規5）
 
-- [ ] **Step 7: コミット**
+- [x] **Step 7: コミット**
 
 ```bash
 git add apps/pwa/src/shared/ui/ScriptureText.tsx apps/pwa/tests/shared/ui/ScriptureText.test.tsx apps/pwa/tests/features/select-scripture-verses/VerseRow.test.tsx
@@ -277,11 +277,11 @@ EOF
 
 このタスクは判断を伴う。**ステップ4でユーザーに提示し、決定を待ってからステップ5以降に進むこと。**
 
-- [ ] **Step 1: ローカル環境を起動する**
+- [x] **Step 1: ローカル環境を起動する**
 
 `verify` スキルの手順に従い、ローカル Supabase と Vite dev サーバーを起動する。節データが入っていない場合は `bash scripts/db-reset.sh` を先に実行する。
 
-- [ ] **Step 2: 明朝体が実際に適用されていることを確認する**
+- [x] **Step 2: 明朝体が実際に適用されていることを確認する**
 
 Playwright MCP で章ページ（例: `http://localhost:3000/scriptures/bofm/1-ne/1`）を開き、ブラウザコンソールで実行:
 
@@ -291,7 +291,7 @@ document.fonts.check('16px "Noto Serif JP"')
 
 Expected: `true`。`false` の場合はフォントが読み込まれていないため、`<head>` の link とネットワークタブの woff2 リクエストを確認する。オフライン環境では読み込めないため、この確認はネットワーク接続下で行う。
 
-- [ ] **Step 3: 比較用スクリーンショットを撮る**
+- [x] **Step 3: 比較用スクリーンショットを撮る**
 
 以下3種のサンプルで、それぞれ現状（`text-sm` / `leading-relaxed`）のスクリーンショットを撮る:
 
@@ -308,7 +308,7 @@ document.querySelectorAll('.font-scripture').forEach(el => {
 })
 ```
 
-- [ ] **Step 4: 判断材料をユーザーに提示する**
+- [x] **Step 4: 判断材料をユーザーに提示する**
 
 以下2点をスクリーンショット付きで提示し、決定を仰ぐ:
 
@@ -317,7 +317,7 @@ document.querySelectorAll('.font-scripture').forEach(el => {
 
 あわせて、ルビ（`rt`）が潰れていないか、既存の `rt { transform: translateY(0.25em) }` の調整量が明朝体でも適切かの所見を添える。
 
-- [ ] **Step 5: 文字サイズで B が選ばれた場合のみ適用する**
+- [x] **Step 5: 文字サイズで B が選ばれた場合のみ適用する**
 
 `apps/pwa/src/shared/ui/ScriptureText.tsx` の59行目:
 
@@ -335,7 +335,7 @@ document.querySelectorAll('.font-scripture').forEach(el => {
 
 A が選ばれた場合はこのステップをスキップする。
 
-- [ ] **Step 6: 英語書体で B が選ばれた場合のみ適用する**
+- [ ] **Step 6: 英語書体で B が選ばれた場合のみ適用する**（スキップ: 英語書体は A を採用）
 
 `apps/pwa/src/pages/__root.tsx` の Google Fonts URL に `&family=Noto+Serif:wght@400` を追加する。
 
@@ -355,7 +355,7 @@ A が選ばれた場合はこのステップをスキップする。
 
 A が選ばれた場合はこのステップをスキップする。
 
-- [ ] **Step 7: 変更を適用した場合はテストを再実行する**
+- [x] **Step 7: 変更を適用した場合はテストを再実行する**
 
 ステップ5または6を実行した場合、`apps/pwa` ディレクトリで:
 
@@ -367,7 +367,7 @@ Expected: `Tests 308 passed (308)`
 
 どちらもスキップした場合はこのステップも不要。
 
-- [ ] **Step 8: 変更があればコミット**
+- [x] **Step 8: 変更があればコミット**
 
 ```bash
 git add -A apps/pwa/src
@@ -381,6 +381,6 @@ EOF
 
 ステップ5・6の両方をスキップした場合はコミット不要。
 
-- [ ] **Step 9: 実装後の記録を spec に残す**
+- [x] **Step 9: 実装後の記録を spec に残す**
 
 `docs/superpowers/specs/2026-08-05-scripture-font-design.md` の項目4に、決定した内容（サイズ A/B、英語書体 A/B、ルビの所見）を1〜2文で追記してコミットする。
