@@ -534,4 +534,40 @@ describe('ChapterPage', () => {
     expect(trigger.closest('header')).not.toBeNull()
     expect(trigger.className).not.toContain('fixed')
   })
+
+  it('節表示のタイトルに絵文字を含めない', () => {
+    loaderData = { ...baseChapterData, mode: 'verse', verses: [1] }
+    render(<ChapterPage />)
+    expect(screen.getByRole('heading', { name: '第1ニーファイ書 1:1' })).toBeInTheDocument()
+  })
+
+  it('モバイルの節表示では投稿導線をヘッダー外の FAB として表示する', async () => {
+    Object.defineProperty(window, 'innerWidth', { writable: true, value: 390 })
+    loaderData = { ...baseChapterData, mode: 'verse', verses: [1] }
+    render(<ChapterPage />)
+
+    const fab = await screen.findByRole('button', { name: '投稿する' })
+    expect(fab.className).toContain('fixed')
+    expect(fab.closest('header')).toBeNull()
+  })
+
+  it('節表示の投稿導線は2択メニューを挟まず composer を直接開く', async () => {
+    Object.defineProperty(window, 'innerWidth', { writable: true, value: 390 })
+    loaderData = { ...baseChapterData, mode: 'verse', verses: [1] }
+    const user = userEvent.setup()
+    render(<ChapterPage />)
+
+    await user.click(await screen.findByRole('button', { name: '投稿する' }))
+
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
+    expect(screen.queryByRole('menuitem')).toBeNull()
+  })
+
+  it('デスクトップの節表示では投稿ボタンがヘッダー内に残る', () => {
+    loaderData = { ...baseChapterData, mode: 'verse', verses: [1] }
+    render(<ChapterPage />)
+    const trigger = screen.getByRole('button', { name: '投稿する' })
+    expect(trigger.closest('header')).not.toBeNull()
+    expect(trigger.className).not.toContain('fixed')
+  })
 })
