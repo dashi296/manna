@@ -23,6 +23,11 @@ function render(ui: React.ReactElement) {
   }
 }
 
+// useIsMobile は effect 内で innerWidth を読むため、render の前に設定する必要がある
+function setViewportWidth(width: number) {
+  Object.defineProperty(window, 'innerWidth', { writable: true, value: width })
+}
+
 type TestLoaderData = {
   book: {
     id: string
@@ -124,7 +129,7 @@ describe('ChapterPage', () => {
     const { useBilingualDisplayStore } = await import('@/entities/bilingual-display')
     useBilingualDisplayStore.setState({ enabled: false })
     queryClient.clear()
-    Object.defineProperty(window, 'innerWidth', { writable: true, value: 1024 })
+    setViewportWidth(1024)
   })
 
   it('選択中でも「章に投稿」は節指定なしでシートを開く', async () => {
@@ -258,7 +263,7 @@ describe('ChapterPage', () => {
   })
 
   it('mode=select 中は選択ユーザーがあっても吹き出しを描画しない', async () => {
-    Object.defineProperty(window, 'innerWidth', { writable: true, value: 1440 })
+    setViewportWidth(1440)
     window.dispatchEvent(new Event('resize'))
     const { useSelectedUserStore } = await import('@/features/select-verse-view')
     useSelectedUserStore.setState({ selectedUserId: 'u1' })
@@ -286,7 +291,7 @@ describe('ChapterPage', () => {
   })
 
   it('desktop 相当なら選択ユーザーの吹き出しが節横に描画される', async () => {
-    Object.defineProperty(window, 'innerWidth', { writable: true, value: 1440 })
+    setViewportWidth(1440)
     window.dispatchEvent(new Event('resize'))
     const { useSelectedUserStore } = await import('@/features/select-verse-view')
     useSelectedUserStore.setState({ selectedUserId: 'u1' })
@@ -500,7 +505,7 @@ describe('ChapterPage', () => {
   })
 
   it('モバイルの章表示では投稿導線をヘッダー外の FAB として表示する', async () => {
-    Object.defineProperty(window, 'innerWidth', { writable: true, value: 390 })
+    setViewportWidth(390)
     render(<ChapterPage />)
 
     const fab = await screen.findByRole('button', { name: '投稿する' })
@@ -509,7 +514,7 @@ describe('ChapterPage', () => {
   })
 
   it('モバイルの章表示の FAB を押すと投稿の2択メニューが開く', async () => {
-    Object.defineProperty(window, 'innerWidth', { writable: true, value: 390 })
+    setViewportWidth(390)
     const user = userEvent.setup()
     render(<ChapterPage />)
 
@@ -520,7 +525,7 @@ describe('ChapterPage', () => {
   })
 
   it('モバイルの節選択モード中は FAB を表示しない', async () => {
-    Object.defineProperty(window, 'innerWidth', { writable: true, value: 390 })
+    setViewportWidth(390)
     search = { mode: 'select', select: [1] }
     render(<ChapterPage />)
 
@@ -542,7 +547,7 @@ describe('ChapterPage', () => {
   })
 
   it('モバイルの節表示では投稿導線をヘッダー外の FAB として表示する', async () => {
-    Object.defineProperty(window, 'innerWidth', { writable: true, value: 390 })
+    setViewportWidth(390)
     loaderData = { ...baseChapterData, mode: 'verse', verses: [1] }
     render(<ChapterPage />)
 
@@ -552,7 +557,7 @@ describe('ChapterPage', () => {
   })
 
   it('節表示の投稿導線は2択メニューを挟まず composer を直接開く', async () => {
-    Object.defineProperty(window, 'innerWidth', { writable: true, value: 390 })
+    setViewportWidth(390)
     loaderData = { ...baseChapterData, mode: 'verse', verses: [1] }
     const user = userEvent.setup()
     render(<ChapterPage />)

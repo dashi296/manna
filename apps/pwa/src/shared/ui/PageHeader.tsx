@@ -4,6 +4,8 @@ import { ChevronLeft } from 'lucide-react'
 import { cn } from '@/shared/lib/utils'
 
 export const stickyHeaderClassName = 'sticky top-0 z-10 flex items-center gap-2'
+// backdropFilter は position: fixed の子孫にとって containing block になるため、
+// 画面固定したい要素（FAB など）はこのヘッダーの中ではなく兄弟として置くこと
 export const stickyHeaderStyle: CSSProperties = {
   background: 'var(--header-bg)',
   borderBottom: '1px solid var(--line)',

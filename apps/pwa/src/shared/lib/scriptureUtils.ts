@@ -26,6 +26,10 @@ export function buildScriptureUrl(ref: ScriptureRef, book: ScriptureBook = findB
   return url
 }
 
+export function getChapterLabel(book: ScriptureBook, chapter: number): string {
+  return book?.isFrontMatter ? book.name : `第${chapter}章`
+}
+
 export function getScriptureLabel(ref: ScriptureRef, book: ScriptureBook = findBook(ref)): string {
   const bookName = book?.name ?? ref.book
   if (!ref.chapter) return bookName

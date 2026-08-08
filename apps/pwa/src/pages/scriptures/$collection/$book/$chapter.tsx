@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { createFileRoute, notFound, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { useQuery } from '@tanstack/react-query'
-import { getBook, getCollection, buildScriptureUrl, getScriptureLabel } from '@/entities/scripture'
+import { getBook, getCollection, buildScriptureUrl, getChapterLabel, getScriptureLabel } from '@/entities/scripture'
 import { PostCard, POST_SELECT, CommenterBubble, type PostWithUser } from '@/entities/post'
 import { createSupabaseServer } from '@/shared/lib/auth'
 import { supabase } from '@/shared/lib/supabase'
@@ -309,7 +309,7 @@ function VerseView({ book, chapter, collection, verses, posts, verseTexts, canCo
       <PageHeader
         title={scriptureLabel}
         backTo="/scriptures/$collection/$book/$chapter"
-        backLabel={book.isFrontMatter ? book.name : `第${chapter}章`}
+        backLabel={getChapterLabel(book, chapter)}
         action={
           <div className="flex items-center gap-2">
             {canCompose && !isMobile && (
@@ -500,7 +500,7 @@ function ChapterView({
   const chapterHeader = (
     <>
       <PageHeader
-        title={book.isFrontMatter ? getScriptureLabel(loc, book) : `第${chapter}章`}
+        title={getChapterLabel(book, chapter)}
         backTo={book.isFrontMatter ? '/scriptures/$collection' : '/scriptures/$collection/$book'}
         backLabel={collectionName ?? book.name}
         action={headerAction}
