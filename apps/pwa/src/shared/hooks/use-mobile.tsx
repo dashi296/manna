@@ -1,7 +1,7 @@
 import * as React from "react"
 
 // サイドバー（lg:）と BottomNav（lg:hidden）の表示境界に合わせる
-export const MOBILE_BREAKPOINT = 1024
+const MOBILE_BREAKPOINT = 1024
 
 export function useIsMobile() {
   const [isMobile, setIsMobile] = React.useState<boolean | undefined>(undefined)

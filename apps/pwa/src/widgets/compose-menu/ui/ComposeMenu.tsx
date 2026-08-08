@@ -3,7 +3,10 @@ import { BookOpen, PenLine } from 'lucide-react'
 import { ComposePostButton } from '@/shared/ui/ComposePostButton'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/shared/ui/sheet'
 import { Popover, PopoverContent, PopoverTrigger } from '@/shared/ui/popover'
-import { MOBILE_BREAKPOINT } from '@/shared/hooks/use-mobile'
+
+// Tailwind の lg（--breakpoint-lg: 64rem）と同じクエリ。1024px と書くと
+// ブラウザの既定フォントサイズを変えている環境で CSS 側の境界とずれる
+const LG_MEDIA_QUERY = '(min-width: 64rem)'
 
 type Props = {
   onSelectChapter: () => void
@@ -19,7 +22,7 @@ export function ComposeMenu({ onSelectChapter, onSelectVerses, layout = 'pill', 
   // portal 側にあり className が届かない。境界をまたいだ時点で閉じないと、
   // 非表示側のメニューだけが画面に取り残される（スクロールロックも残る）。
   useEffect(() => {
-    const mql = window.matchMedia(`(min-width: ${MOBILE_BREAKPOINT}px)`)
+    const mql = window.matchMedia(LG_MEDIA_QUERY)
     const close = () => setOpen(false)
     mql.addEventListener('change', close)
     return () => mql.removeEventListener('change', close)

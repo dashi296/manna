@@ -7,15 +7,19 @@ import { ComposeMenu } from '@/widgets/compose-menu'
 // ブレークポイントの跨ぎを手動で起こせるスタブに差し替える
 function stubMatchMedia() {
   const listeners = new Set<() => void>()
+  const queries: string[] = []
   const original = window.matchMedia
-  window.matchMedia = ((query: string) =>
-    ({
+  window.matchMedia = ((query: string) => {
+    queries.push(query)
+    return {
       matches: false,
       media: query,
       addEventListener: (_: string, l: () => void) => listeners.add(l),
       removeEventListener: (_: string, l: () => void) => listeners.delete(l),
-    }) as unknown as MediaQueryList) as typeof window.matchMedia
+    } as unknown as MediaQueryList
+  }) as typeof window.matchMedia
   return {
+    queries,
     crossBreakpoint: () => act(() => listeners.forEach((l) => l())),
     restore: () => {
       window.matchMedia = original
@@ -106,6 +110,13 @@ describe('ComposeMenu', () => {
     })
     afterEach(() => {
       media.restore()
+    })
+
+    // Tailwind の lg は 64rem。px 固定で監視するとブラウザの既定フォント
+    // サイズを変えている環境で CSS 側の境界とずれ、閉じるべき場面で発火しない。
+    it('CSS の lg と同じ rem 単位で監視する', () => {
+      render(<ComposeMenu onSelectChapter={vi.fn()} onSelectVerses={vi.fn()} />)
+      expect(media.queries).toContain('(min-width: 64rem)')
     })
 
     it('開いていたボトムシートを閉じる', async () => {
