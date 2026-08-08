@@ -124,6 +124,7 @@ describe('ChapterPage', () => {
     const { useBilingualDisplayStore } = await import('@/entities/bilingual-display')
     useBilingualDisplayStore.setState({ enabled: false })
     queryClient.clear()
+    Object.defineProperty(window, 'innerWidth', { writable: true, value: 1024 })
   })
 
   it('選択中でも「章に投稿」は節指定なしでシートを開く', async () => {
@@ -496,5 +497,41 @@ describe('ChapterPage', () => {
     render(<ChapterPage />)
     expect(screen.getByText('一節の日本語')).toBeInTheDocument()
     expect(screen.queryByText('Verse one in English')).toBeNull()
+  })
+
+  it('モバイルの章表示では投稿導線をヘッダー外の FAB として表示する', async () => {
+    Object.defineProperty(window, 'innerWidth', { writable: true, value: 390 })
+    render(<ChapterPage />)
+
+    const fab = await screen.findByRole('button', { name: '投稿する' })
+    expect(fab.className).toContain('fixed')
+    expect(fab.closest('header')).toBeNull()
+  })
+
+  it('モバイルの章表示の FAB を押すと投稿の2択メニューが開く', async () => {
+    Object.defineProperty(window, 'innerWidth', { writable: true, value: 390 })
+    const user = userEvent.setup()
+    render(<ChapterPage />)
+
+    await user.click(await screen.findByRole('button', { name: '投稿する' }))
+
+    expect(await screen.findByRole('menuitem', { name: /章全体に投稿/ })).toBeInTheDocument()
+    expect(await screen.findByRole('menuitem', { name: /節を選んで投稿/ })).toBeInTheDocument()
+  })
+
+  it('モバイルの節選択モード中は FAB を表示しない', async () => {
+    Object.defineProperty(window, 'innerWidth', { writable: true, value: 390 })
+    search = { mode: 'select', select: [1] }
+    render(<ChapterPage />)
+
+    expect(await screen.findByText('1節選択中')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '投稿する' })).toBeNull()
+  })
+
+  it('デスクトップの章表示では投稿ボタンがヘッダー内に残る', () => {
+    render(<ChapterPage />)
+    const trigger = screen.getByRole('button', { name: /投稿/ })
+    expect(trigger.closest('header')).not.toBeNull()
+    expect(trigger.className).not.toContain('fixed')
   })
 })

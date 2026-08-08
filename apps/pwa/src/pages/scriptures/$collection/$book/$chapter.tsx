@@ -471,18 +471,23 @@ function ChapterView({
   const showBubbles = hasSelectedUser && !isMobile
   const showMarkers = hasSelectedUser && isMobile
 
+  const composeMenuProps = {
+    onSelectChapter: openComposerForChapter,
+    onSelectVerses: enterSelectMode,
+  }
+
   const headerAction = (
     <div className="flex items-center gap-2">
-      {canCompose && (
-        <ComposeMenu
-          onSelectChapter={openComposerForChapter}
-          onSelectVerses={enterSelectMode}
-        />
-      )}
+      {canCompose && !isMobile && <ComposeMenu {...composeMenuProps} />}
       <BilingualToggleButton />
       <BookmarkButton loc={loc} />
     </div>
   )
+
+  const composeFab =
+    canCompose && isMobile && mode !== 'select' ? (
+      <ComposeMenu {...composeMenuProps} layout="fab" />
+    ) : null
 
   const collectionName = book.isFrontMatter ? getCollection(collection)?.name : undefined
 
@@ -585,6 +590,7 @@ function ChapterView({
   return (
     <div>
       {mode === 'select' ? selectionHeader : chapterHeader}
+      {composeFab}
       {posts.length > 0 && (
         <div className="border-b" style={{ borderColor: 'var(--line)' }}>
           <p className="px-4 pt-3 pb-1 text-xs font-medium" style={{ color: 'var(--sea-ink-soft)' }}>
