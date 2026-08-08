@@ -3,12 +3,14 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/shared/ui/sheet'
 import { PostEditor } from '@/widgets/post-editor'
 import { type ScriptureRefPartial } from '@/features/select-scripture'
 import { getScriptureLabel } from '@/entities/scripture'
+import type { EditablePost } from '@/entities/post'
 import { useIsMobile } from '@/shared/hooks/use-mobile'
 
 type Props = {
   open: boolean
   onOpenChange: (open: boolean) => void
   initialScripture?: ScriptureRefPartial
+  post?: EditablePost
   /**
    * シートの close 動作 (history.back による composer 用エントリ pop) が
    * 完了した後に呼ばれる。onOpenChange とは別に必要。呼び出し側は
@@ -20,7 +22,7 @@ type Props = {
 type ComposerHistoryState = { mannaComposer: true }
 const HISTORY_STATE_MARKER: ComposerHistoryState = { mannaComposer: true }
 
-export function PostComposerSheet({ open, onOpenChange, initialScripture, onClosed }: Props) {
+export function PostComposerSheet({ open, onOpenChange, initialScripture, post, onClosed }: Props) {
   const isMobile = useIsMobile()
   const onOpenChangeRef = useRef(onOpenChange)
   const onClosedRef = useRef(onClosed)
@@ -50,14 +52,16 @@ export function PostComposerSheet({ open, onOpenChange, initialScripture, onClos
     }
   }, [open])
 
-  const title = initialScripture?.collection && initialScripture.book
-    ? `📖 ${getScriptureLabel({
-        collection: initialScripture.collection,
-        book: initialScripture.book,
-        chapter: initialScripture.chapter,
-        verses: initialScripture.verses,
-      })}`
-    : '新しい投稿'
+  const title = post
+    ? '投稿を編集'
+    : initialScripture?.collection && initialScripture.book
+      ? `📖 ${getScriptureLabel({
+          collection: initialScripture.collection,
+          book: initialScripture.book,
+          chapter: initialScripture.chapter,
+          verses: initialScripture.verses,
+        })}`
+      : '新しい投稿'
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -76,6 +80,7 @@ export function PostComposerSheet({ open, onOpenChange, initialScripture, onClos
           <PostEditor
             initialScripture={initialScripture}
             mode="sheet"
+            post={post}
             onSuccess={() => onOpenChange(false)}
           />
         </div>
