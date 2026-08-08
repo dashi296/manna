@@ -352,6 +352,17 @@ describe('ChapterPage', () => {
     expect(screen.getByRole('button', { name: '栞に追加' })).toBeInTheDocument()
   })
 
+  it('章表示のタイトルは書名を含まず「第◯章」だけを表示する', () => {
+    render(<ChapterPage />)
+    expect(screen.getByRole('heading', { name: '第1章' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: '第1ニーファイ書 第1章' })).toBeNull()
+  })
+
+  it('章表示の戻りリンクは書名を表示する', () => {
+    render(<ChapterPage />)
+    expect(screen.getByRole('link', { name: '第1ニーファイ書' })).toBeInTheDocument()
+  })
+
   it('front matter の章表示ではタイトルに「第◯章」を付けず書名のみ表示する', () => {
     loaderData = {
       ...baseChapterData,
