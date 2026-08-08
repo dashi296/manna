@@ -1,3 +1,3 @@
 export { getCircleUserIds, type CircleUserRow } from './lib/getCircleUserIds'
-export { profileKey, connectionsKey, userPostsKey, feedKey } from './model/relationQueries'
+export { profileKey, connectionsKey, userPostsKey, feedKey, invalidatePostLists } from './model/relationQueries'
 export { useRelationMutation } from './model/useRelationMutation'

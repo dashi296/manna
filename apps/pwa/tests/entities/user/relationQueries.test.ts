@@ -33,3 +33,24 @@ describe('invalidateRelationQueries', () => {
     }
   })
 })
+
+describe('invalidatePostLists', () => {
+  const invalidatedPostPrefixes = async () => {
+    const invalidateQueries = vi.fn().mockResolvedValue(undefined)
+    await relationQueries.invalidatePostLists({ invalidateQueries } as unknown as QueryClient)
+    return invalidateQueries.mock.calls.map((call) => call[0].queryKey)
+  }
+
+  it('投稿一覧のプレフィックスだけを落とす', async () => {
+    const prefixes = await invalidatedPostPrefixes()
+
+    expect(prefixes).toEqual([['user-posts'], ['feed']])
+  })
+
+  it('プロフィールとコネクションは落とさない（投稿の編集で古くならない）', async () => {
+    const heads = (await invalidatedPostPrefixes()).map(([head]) => head)
+
+    expect(heads).not.toContain('profile')
+    expect(heads).not.toContain('connections')
+  })
+})
