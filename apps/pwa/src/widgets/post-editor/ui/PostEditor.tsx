@@ -3,7 +3,8 @@ import { useNavigate } from '@tanstack/react-router'
 import { MarkdownRenderer, TabBar } from '@/shared/ui'
 import { Button } from '@/shared/ui/button'
 import { supabase } from '@/shared/lib/supabase'
-import type { Visibility } from '@/entities/post'
+import type { EditablePost, Visibility } from '@/entities/post'
+import { getScriptureLabel } from '@/entities/scripture'
 import { VisibilitySelector } from '@/features/choose-visibility'
 import { ScriptureSelector, type ScriptureRefPartial } from '@/features/select-scripture'
 
@@ -46,10 +47,12 @@ function loadDraft(key: string): Draft {
 type Props = {
   initialScripture?: ScriptureRefPartial
   mode?: 'page' | 'sheet'
+  post?: EditablePost
   onSuccess?: () => void
 }
 
-export function PostEditor({ initialScripture, mode = 'page', onSuccess }: Props) {
+export function PostEditor({ initialScripture, mode = 'page', post, onSuccess }: Props) {
+  const isEditing = post !== undefined
   const navigate = useNavigate()
   const [tab, setTab] = useState<'edit' | 'preview'>('edit')
   const [content, setContent] = useState('')
@@ -60,6 +63,12 @@ export function PostEditor({ initialScripture, mode = 'page', onSuccess }: Props
   const draftLoaded = useRef(false)
 
   useEffect(() => {
+    if (post) {
+      setContent(post.content)
+      setVisibility(post.visibility)
+      setScripture(initialScripture ?? {})
+      return
+    }
     const key = draftKey(mode, initialScripture ?? {})
     const draft = loadDraft(key)
     setContent(draft.content)
@@ -77,10 +86,30 @@ export function PostEditor({ initialScripture, mode = 'page', onSuccess }: Props
     return () => clearTimeout(timer)
   }, [content, visibility, scripture, mode])
 
+  const unchanged =
+    post !== undefined && content === post.content && visibility === post.visibility
+
   const handleSubmit = async () => {
     if (!content.trim() || submitting) return
     setSubmitting(true)
     setErrorMessage(null)
+
+    if (post) {
+      const { data, error } = await supabase
+        .from('posts')
+        .update({ content, visibility })
+        .eq('id', post.id)
+        .select('id')
+
+      // RLS 違反はエラーではなく 0 行で返るため、行数でも判定する
+      if (error || !data || data.length === 0) {
+        setSubmitting(false)
+        setErrorMessage('更新に失敗しました。もう一度お試しください。')
+        return
+      }
+      onSuccess?.()
+      return
+    }
 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
@@ -114,6 +143,16 @@ export function PostEditor({ initialScripture, mode = 'page', onSuccess }: Props
   }
 
   const rootClass = mode === 'sheet' ? 'flex flex-col gap-4' : 'flex flex-col gap-4 p-4'
+
+  const scriptureLabel =
+    isEditing && initialScripture?.collection && initialScripture.book
+      ? getScriptureLabel({
+          collection: initialScripture.collection,
+          book: initialScripture.book,
+          chapter: initialScripture.chapter,
+          verses: initialScripture.verses,
+        })
+      : null
 
   return (
     <div className={rootClass}>
@@ -150,10 +189,23 @@ export function PostEditor({ initialScripture, mode = 'page', onSuccess }: Props
 
       <div className="space-y-4">
         <div>
-          <p className="text-xs font-medium mb-2" style={softTextStyle}>
-            聖典参照（任意）
-          </p>
-          <ScriptureSelector value={scripture} onChange={setScripture} />
+          {isEditing ? (
+            scriptureLabel && (
+              <span
+                className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium"
+                style={{ background: 'var(--chip-bg)', border: '1px solid var(--chip-line)', color: 'var(--palm)' }}
+              >
+                <span aria-hidden="true">📖</span> {scriptureLabel}
+              </span>
+            )
+          ) : (
+            <>
+              <p className="text-xs font-medium mb-2" style={softTextStyle}>
+                聖典参照（任意）
+              </p>
+              <ScriptureSelector value={scripture} onChange={setScripture} />
+            </>
+          )}
         </div>
 
         <div>
@@ -166,10 +218,12 @@ export function PostEditor({ initialScripture, mode = 'page', onSuccess }: Props
 
       <Button
         onClick={handleSubmit}
-        disabled={!content.trim() || submitting}
+        disabled={!content.trim() || submitting || unchanged}
         className="w-full"
       >
-        {submitting ? '投稿中...' : '投稿する'}
+        {isEditing
+          ? (submitting ? '更新中...' : '更新する')
+          : (submitting ? '投稿中...' : '投稿する')}
       </Button>
     </div>
   )
