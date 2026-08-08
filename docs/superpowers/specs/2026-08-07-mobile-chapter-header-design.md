@@ -70,7 +70,9 @@
 
 ### 3. 投稿を FAB へ移す
 
-`ComposeMenu`（`widgets/compose-menu`）に省略可能な `layout?: 'pill' | 'fab'` prop を追加する（デフォルト `'pill'`）。出し分けは CSS ではなく `useIsMobile()` による JS 分岐で行う。`layout === 'fab'` のときはモバイル判定を待たず FAB を描画し（`isMobile || layout === 'fab'`）、それ以外は従来どおりデスクトップのピルを描画する。見た目は共通の `ComposePostButton`（`shared/ui/ComposePostButton.tsx`）が `layout` prop で FAB とピルを切り替える。呼び出し側（`ChapterView`）が配置場所と `layout` を同時に決める。
+`ComposeMenu`（`widgets/compose-menu`）に省略可能な `layout?: 'pill' | 'fab'` prop を追加する（デフォルト `'pill'`）。`layout` だけが pill（ポップオーバー）と fab（ボトムシート）を決め、`ComposeMenu` 自身はビューポートを見ない。見た目は共通の `ComposePostButton`（`shared/ui/ComposePostButton.tsx`）が `layout` prop で FAB とピルを切り替える。呼び出し側（`ChapterView` / `VerseView`）が配置場所と `layout` を同時に決める。
+
+どちらを見せるかは CSS のブレークポイントが決める。呼び出し側が両方を常にマウントし、`className` で `hidden lg:inline-flex`（ヘッダー内ピル）と `lg:hidden`（FAB）を渡す。`ComposeMenu` は受け取った `className` をトリガーへ転送する。`lg` は `useIsMobile()` の `MOBILE_BREAKPOINT`（1024px）と同じ境界。
 
 - モバイル: 右下固定の円形 FAB。`fixed right-4 bottom-[calc(var(--bottom-nav-h)+1rem)]`
 - デスクトップ: ヘッダー内のピルのまま。横幅に余裕があり FAB を出す理由がない
@@ -79,7 +81,7 @@
 
 `--bottom-nav-h` は `styles.css:89` に既存の CSS 変数で、`__root.tsx:102` と `InstallPwaBanner.tsx:73` が既に使っている。
 
-トレードオフ: `useIsMobile()` は初回レンダーで必ず `false` を返すため、モバイルではハイドレーション後にピルから FAB へ切り替わる一瞬のレイアウトシフトが残る。CSS（`lg:hidden` / `hidden lg:flex`）方式ならこの切り替えは起きないが、`ComposeMenu` のシート／ポップオーバー分岐まで CSS 化する必要があり、見合わないと判断した。
+当初は `useIsMobile()` による JS 分岐で実装したが、このフックは初回レンダーで必ず `false` を返すため、モバイルではハイドレーション後にピルから FAB へ切り替わるレイアウトシフトが起きた（issue #111）。上記の CSS 方式に変更してこれを解消した。両方を常にマウントするため `open` state はピル用と FAB 用で別々になるが、片方は `display: none` で開けないため実害はない。
 
 ### 4. FAB が開く先は章ビューと節ビューで異なる
 
@@ -131,9 +133,9 @@ CLAUDE.md の TDD に従い、失敗テストから書く。
 | `tests/pages/scriptures/chapter.test.tsx` | 通常の書でタイトルが `第1章`、戻るラベルが書名であること |
 | `tests/pages/scriptures/chapter.test.tsx` | 序文（`isFrontMatter`）では従来どおり書名がタイトルであること |
 | `tests/pages/scriptures/chapter.test.tsx` | 節ビューのタイトルに `📖` が含まれないこと |
-| `tests/pages/scriptures/chapter.test.tsx` | モバイルで投稿 FAB が表示され、節選択モード中は表示されないこと |
+| `tests/pages/scriptures/chapter.test.tsx` | FAB がヘッダー外で `lg:hidden`、ピルがヘッダー内で `hidden lg:inline-flex` を持つこと。節選択モード中は FAB を出さないこと |
 | `tests/pages/scriptures/chapter.test.tsx` | 章ビューの FAB は2択メニューを開き、節ビューの FAB は composer を直接開くこと |
-| `tests/widgets/compose-menu/ComposeMenu.test.tsx` | トリガー差し替え後もデスクトップのピル表示とシート挙動が変わらないこと |
+| `tests/widgets/compose-menu/ComposeMenu.test.tsx` | `layout` だけで pill／fab が決まりビューポートに依存しないこと。`className` をトリガーへ転送すること |
 | `tests/shared/ui/PageHeader.test.tsx` | 変更なし（`PageHeader` 自体は変更せず props の渡し方のみ変わるため） |
 
 FAB の位置は CSS のみで決まりテストで検証しづらいため、テストでは**存在・非存在と `aria-label`** に絞る。見た目と重なりは実機確認に回す。

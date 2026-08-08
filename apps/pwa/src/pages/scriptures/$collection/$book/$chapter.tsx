@@ -295,7 +295,6 @@ function VerseView({ book, chapter, collection, verses, posts, verseTexts, canCo
   const loc = { collection, book: book.id, chapter }
   const scriptureLabel = getScriptureLabel({ ...loc, verses }, book)
   const officialUrl = buildScriptureUrl({ ...loc, verses }, book)
-  const isMobile = useIsMobile()
   const bilingual = useBilingualEnabled()
   const secondaryTexts = useSecondaryVerseTexts(loc, verses, bilingual)
 
@@ -312,9 +311,10 @@ function VerseView({ book, chapter, collection, verses, posts, verseTexts, canCo
         backLabel={getChapterLabel(book, chapter)}
         action={
           <div className="flex items-center gap-2">
-            {canCompose && !isMobile && (
+            {canCompose && (
               <ComposePostButton
                 label="投稿する"
+                className="hidden lg:inline-flex"
                 onClick={() => setSheetOpen(true)}
                 aria-haspopup="dialog"
               />
@@ -324,10 +324,11 @@ function VerseView({ book, chapter, collection, verses, posts, verseTexts, canCo
           </div>
         }
       />
-      {canCompose && isMobile && (
+      {canCompose && (
         <ComposePostButton
           layout="fab"
           label="投稿する"
+          className="lg:hidden"
           onClick={() => setSheetOpen(true)}
           aria-haspopup="dialog"
         />
@@ -484,15 +485,15 @@ function ChapterView({
 
   const headerAction = (
     <div className="flex items-center gap-2">
-      {canCompose && !isMobile && <ComposeMenu {...composeMenuProps} />}
+      {canCompose && <ComposeMenu {...composeMenuProps} className="hidden lg:inline-flex" />}
       <BilingualToggleButton />
       <BookmarkButton loc={loc} />
     </div>
   )
 
   const composeFab =
-    canCompose && isMobile && mode !== 'select' ? (
-      <ComposeMenu {...composeMenuProps} layout="fab" />
+    canCompose && mode !== 'select' ? (
+      <ComposeMenu {...composeMenuProps} layout="fab" className="lg:hidden" />
     ) : null
 
   const collectionName = book.isFrontMatter ? getCollection(collection)?.name : undefined

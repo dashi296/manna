@@ -3,16 +3,15 @@ import { BookOpen, PenLine } from 'lucide-react'
 import { ComposePostButton } from '@/shared/ui/ComposePostButton'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/shared/ui/sheet'
 import { Popover, PopoverContent, PopoverTrigger } from '@/shared/ui/popover'
-import { useIsMobile } from '@/shared/hooks/use-mobile'
 
 type Props = {
   onSelectChapter: () => void
   onSelectVerses: () => void
   layout?: 'pill' | 'fab'
+  className?: string
 }
 
-export function ComposeMenu({ onSelectChapter, onSelectVerses, layout = 'pill' }: Props) {
-  const isMobile = useIsMobile()
+export function ComposeMenu({ onSelectChapter, onSelectVerses, layout = 'pill', className }: Props) {
   const [open, setOpen] = useState(false)
 
   const handleChapter = () => {
@@ -41,12 +40,13 @@ export function ComposeMenu({ onSelectChapter, onSelectVerses, layout = 'pill' }
     </div>
   )
 
-  if (isMobile || layout === 'fab') {
+  if (layout === 'fab') {
     return (
       <>
         <ComposePostButton
-          layout={layout}
+          layout="fab"
           label="投稿する"
+          className={className}
           onClick={() => setOpen(true)}
           aria-haspopup="menu"
           aria-expanded={open}
@@ -70,7 +70,7 @@ export function ComposeMenu({ onSelectChapter, onSelectVerses, layout = 'pill' }
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
-        render={<ComposePostButton label="投稿する" aria-haspopup="menu" />}
+        render={<ComposePostButton label="投稿する" className={className} aria-haspopup="menu" />}
       />
       <PopoverContent align="end" className="w-64">
         {menuItems}
