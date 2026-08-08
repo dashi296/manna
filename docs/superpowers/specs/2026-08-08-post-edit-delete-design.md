@@ -87,7 +87,9 @@ type Props = { postId: string; onEdit: () => void }
 
 **③ キャッシュ無効化は entities 層に置く**
 
-`PostEditor`（widgets）と `useDeletePost`（features）の両方から呼ぶ必要がある。両者が共通して import できるのは entities 以下だけ。
+投稿詳細ページ（pages）と `useDeletePost`（features）の両方から呼ぶ。共通して import できるのは entities 以下。
+
+更新そのものは `PostEditor` が行うが、キャッシュ無効化とルート再取得はページ側で行う。章ページが `PostComposerSheet` の close 後に `router.invalidate()` を呼んでいるのと同じ形にする。
 
 `apps/pwa/src/entities/user/model/relationQueries.ts` に `FEED` / `USER_POSTS` の定数と `invalidateRelationQueries` が既にあるので、同じファイルに追加する。
 
@@ -330,8 +332,9 @@ CLAUDE.md の方針どおり TDD（失敗テスト → 実装 → 通過）で�
 - `apps/pwa/src/entities/post/index.ts` — `EditablePost` の export 追加
 - `apps/pwa/src/entities/user/model/relationQueries.ts` — `invalidatePostLists`
 - `apps/pwa/src/entities/user/index.ts` — export 追加
-- `apps/pwa/tests/helpers/fixtures.ts` — `makePost` に `updated_at`
-- `packages/database/index.ts` — マイグレーション追加後に `pnpm supabase:types` で再生成
+- `apps/pwa/tests/helpers/fixtures.ts` ほか、`PostWithUser` のリテラルを組み立てている全テスト — `updated_at` の追加
+
+`packages/database/index.ts` の再生成は不要。追加するのはトリガーだけで列構成が変わらないため。
 
 **変更なし**
 
