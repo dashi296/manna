@@ -1,5 +1,6 @@
-import { PenLine, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import { Button } from '@/shared/ui/button'
+import { ComposePostButton } from '@/shared/ui/ComposePostButton'
 import { stickyHeaderClassName, stickyHeaderStyle } from '@/shared/ui'
 import { cn } from '@/shared/lib/utils'
 
@@ -31,17 +32,13 @@ export function SelectionModeHeader({ count, onCancel, onSubmit }: Props) {
       >
         {titleLabel}
       </h1>
-      <Button
-        variant="accent"
-        size="pill"
+      <ComposePostButton
+        label={`投稿 (${count})`}
         onClick={onSubmit}
         disabled={count === 0}
         aria-label={submitLabel}
-        className="shrink-0 gap-1"
-      >
-        <PenLine size={12} aria-hidden="true" />
-        <span>投稿 ({count})</span>
-      </Button>
+        className="shrink-0"
+      />
     </header>
   )
 }

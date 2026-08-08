@@ -32,6 +32,13 @@ describe('SelectionModeHeader', () => {
     expect(onSubmit).toHaveBeenCalledOnce()
   })
 
+  it('投稿ボタンは表示テキストと aria-label を別々に持ち、フォーム送信を起こさない', () => {
+    render(<SelectionModeHeader count={2} onCancel={vi.fn()} onSubmit={vi.fn()} />)
+    const submit = screen.getByRole('button', { name: '2節に投稿' })
+    expect(submit).toHaveTextContent('投稿 (2)')
+    expect(submit).toHaveAttribute('type', 'button')
+  })
+
   it('セーフエリア分の上部パディングクラスが付与される', () => {
     render(<SelectionModeHeader count={0} onCancel={vi.fn()} onSubmit={vi.fn()} />)
     const header = screen.getByRole('button', { name: '選択をキャンセル' }).closest('header')
