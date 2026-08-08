@@ -1,8 +1,9 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { BookOpen, PenLine } from 'lucide-react'
 import { ComposePostButton } from '@/shared/ui/ComposePostButton'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/shared/ui/sheet'
 import { Popover, PopoverContent, PopoverTrigger } from '@/shared/ui/popover'
+import { MOBILE_BREAKPOINT } from '@/shared/hooks/use-mobile'
 
 type Props = {
   onSelectChapter: () => void
@@ -13,6 +14,16 @@ type Props = {
 
 export function ComposeMenu({ onSelectChapter, onSelectVerses, layout = 'pill', className }: Props) {
   const [open, setOpen] = useState(false)
+
+  // トリガーは CSS のブレークポイントで隠れるが、開いている Sheet / Popover は
+  // portal 側にあり className が届かない。境界をまたいだ時点で閉じないと、
+  // 非表示側のメニューだけが画面に取り残される（スクロールロックも残る）。
+  useEffect(() => {
+    const mql = window.matchMedia(`(min-width: ${MOBILE_BREAKPOINT}px)`)
+    const close = () => setOpen(false)
+    mql.addEventListener('change', close)
+    return () => mql.removeEventListener('change', close)
+  }, [])
 
   const handleChapter = () => {
     setOpen(false)

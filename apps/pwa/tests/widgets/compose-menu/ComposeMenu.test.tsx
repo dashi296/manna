@@ -1,7 +1,27 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ComposeMenu } from '@/widgets/compose-menu'
+
+// setup.ts の matchMedia スタブは change を発火しないため、リスナーを捕まえて
+// ブレークポイントの跨ぎを手動で起こせるスタブに差し替える
+function stubMatchMedia() {
+  const listeners = new Set<() => void>()
+  const original = window.matchMedia
+  window.matchMedia = ((query: string) =>
+    ({
+      matches: false,
+      media: query,
+      addEventListener: (_: string, l: () => void) => listeners.add(l),
+      removeEventListener: (_: string, l: () => void) => listeners.delete(l),
+    }) as unknown as MediaQueryList) as typeof window.matchMedia
+  return {
+    crossBreakpoint: () => act(() => listeners.forEach((l) => l())),
+    restore: () => {
+      window.matchMedia = original
+    },
+  }
+}
 
 // 表示の出し分けは CSS のブレークポイントが行うため、ComposeMenu 自体は
 // ビューポートを見ない。innerWidth を変えても layout だけで結果が決まる。
@@ -73,6 +93,44 @@ describe('ComposeMenu', () => {
     await userEvent.click(screen.getByRole('button', { name: /投稿/ }))
     await userEvent.click(await screen.findByRole('menuitem', { name: /節を選んで投稿/ }))
     expect(onSelectVerses).toHaveBeenCalledOnce()
+  })
+
+  // Sheet / Popover の中身は portal に描画されるため、トリガーに付けた
+  // ブレークポイントの class では隠せない。開いたまま境界をまたぐと
+  // 非表示側のメニューだけが画面に取り残される。
+  describe('ブレークポイントを跨いだとき', () => {
+    let media: ReturnType<typeof stubMatchMedia>
+
+    beforeEach(() => {
+      media = stubMatchMedia()
+    })
+    afterEach(() => {
+      media.restore()
+    })
+
+    it('開いていたボトムシートを閉じる', async () => {
+      render(<ComposeMenu onSelectChapter={vi.fn()} onSelectVerses={vi.fn()} layout="fab" />)
+      await userEvent.click(screen.getByRole('button', { name: '投稿する' }))
+      expect(await screen.findByRole('menuitem', { name: /章全体に投稿/ })).toBeInTheDocument()
+
+      media.crossBreakpoint()
+
+      await waitFor(() => {
+        expect(screen.queryByRole('menuitem', { name: /章全体に投稿/ })).toBeNull()
+      })
+    })
+
+    it('開いていたポップオーバーを閉じる', async () => {
+      render(<ComposeMenu onSelectChapter={vi.fn()} onSelectVerses={vi.fn()} />)
+      await userEvent.click(screen.getByRole('button', { name: /投稿/ }))
+      expect(await screen.findByRole('menuitem', { name: /章全体に投稿/ })).toBeInTheDocument()
+
+      media.crossBreakpoint()
+
+      await waitFor(() => {
+        expect(screen.queryByRole('menuitem', { name: /章全体に投稿/ })).toBeNull()
+      })
+    })
   })
 
   it('FAB を押すとボトムシートで同じ2択が開く', async () => {
