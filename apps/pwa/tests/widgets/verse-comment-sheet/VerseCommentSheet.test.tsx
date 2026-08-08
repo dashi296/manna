@@ -17,6 +17,7 @@ const posts: PostWithUser[] = [
     content: '節7 への A の投稿',
     visibility: 'public',
     created_at: '2026-07-19T00:00:00.000Z',
+    updated_at: '2026-07-19T00:00:00.000Z',
     scripture_collection: 'bofm',
     scripture_book: '1-ne',
     scripture_chapter: 3,

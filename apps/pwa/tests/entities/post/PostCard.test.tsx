@@ -9,6 +9,7 @@ const basePost: PostWithUser = {
   content: 'これは試験投稿です。',
   visibility: 'public',
   created_at: '2026-05-31T10:00:00Z',
+  updated_at: '2026-05-31T10:00:00Z',
   scripture_collection: 'bofm',
   scripture_book: '1-ne',
   scripture_chapter: 3,
