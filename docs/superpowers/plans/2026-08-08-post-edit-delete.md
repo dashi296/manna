@@ -635,16 +635,24 @@ export function PostEditor({ initialScripture, mode = 'page', post, onSuccess }:
   const isEditing = post !== undefined
 ```
 
-初期値ロードの `useEffect` を差し替える:
+state の初期化を差し替える。編集モードの値は props から導出できるのでレンダー時に入れる:
 
 ```ts
+  // 編集は props から導出できるのでレンダー時に初期化する。effect で入れると
+  // 空のまま1フレーム描画され、その間だけ差分ありと判定されて更新ボタンが有効になる
+  const [content, setContent] = useState(() => post?.content ?? '')
+  const [visibility, setVisibility] = useState<Visibility>(() => post?.visibility ?? 'public')
+  const [scripture, setScripture] = useState<ScriptureRefPartial>(() =>
+    post ? (initialScripture ?? {}) : {},
+  )
+```
+
+初期値ロードの `useEffect` はドラフト専用にする:
+
+```ts
+  // ドラフトはサーバーで読めずハイドレーションがずれるため、こちらは effect のまま
   useEffect(() => {
-    if (post) {
-      setContent(post.content)
-      setVisibility(post.visibility)
-      setScripture(initialScripture ?? {})
-      return
-    }
+    if (post) return
     const key = draftKey(mode, initialScripture ?? {})
     const draft = loadDraft(key)
     setContent(draft.content)

@@ -188,7 +188,7 @@ type Props = {
 
 | 項目 | 新規投稿 | 編集 |
 |---|---|---|
-| 初期値 | ドラフト or 空 | `post.content` / `post.visibility` |
+| 初期値 | ドラフト or 空（mount 後の effect で読む） | `post.content` / `post.visibility`（`useState` の関数形でレンダー時に初期化） |
 | localStorage ドラフト | 読む・書く・成功時に消す | **一切触らない** |
 | 聖典参照 | `ScriptureSelector`（編集可） | 読み取り専用チップ（参照が無ければ非表示） |
 | 公開範囲 | `VisibilitySelector` | `VisibilitySelector` |
@@ -197,6 +197,8 @@ type Props = {
 | 送信 | `insert` | `update({ content, visibility }).eq('id', post.id).select('id')` |
 
 未変更のまま「更新する」を押せると `posts_set_updated_at` が発火して「編集済み」が空振りする。編集モードでは差分が無い間ボタンを無効化する。
+
+初期値を effect で流し込まないのは、空のまま1フレーム描画されるうえ、その間だけ差分ありと判定されて更新ボタンが有効に見えるため。編集モードの値は props から導出できるのでレンダー時に初期化できる。ドラフト側はサーバーで `localStorage` を読めずハイドレーションがずれるので effect のまま残す。
 
 聖典参照チップの元データは `initialScripture` を使う。詳細ページが `toScriptureRef(post)` の結果をそのまま `PostComposerSheet` に渡し、`PostEditor` へ素通しする。参照の無い投稿では `toScriptureRef` が `null` を返すのでチップを描画しない。
 

@@ -55,20 +55,20 @@ export function PostEditor({ initialScripture, mode = 'page', post, onSuccess }:
   const isEditing = post !== undefined
   const navigate = useNavigate()
   const [tab, setTab] = useState<'edit' | 'preview'>('edit')
-  const [content, setContent] = useState('')
-  const [visibility, setVisibility] = useState<Visibility>('public')
-  const [scripture, setScripture] = useState<ScriptureRefPartial>({})
+  // 編集は props から導出できるのでレンダー時に初期化する。effect で入れると
+  // 空のまま1フレーム描画され、その間だけ差分ありと判定されて更新ボタンが有効になる
+  const [content, setContent] = useState(() => post?.content ?? '')
+  const [visibility, setVisibility] = useState<Visibility>(() => post?.visibility ?? 'public')
+  const [scripture, setScripture] = useState<ScriptureRefPartial>(() =>
+    post ? (initialScripture ?? {}) : {},
+  )
   const [submitting, setSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const draftLoaded = useRef(false)
 
+  // ドラフトはサーバーで読めずハイドレーションがずれるため、こちらは effect のまま
   useEffect(() => {
-    if (post) {
-      setContent(post.content)
-      setVisibility(post.visibility)
-      setScripture(initialScripture ?? {})
-      return
-    }
+    if (post) return
     const key = draftKey(mode, initialScripture ?? {})
     const draft = loadDraft(key)
     setContent(draft.content)

@@ -123,6 +123,19 @@ describe('PostEditor（編集モード）', () => {
     expect(screen.getByPlaceholderText(/感じたこと/)).toHaveValue('元の本文')
   })
 
+  // renderToStaticMarkup はレンダーフェーズだけを走らせ effect を実行しない。
+  // 初期値を effect で流し込む実装に戻すと、本文が空になってここが落ちる
+  it('初期レンダーの時点で post の内容が入っている', async () => {
+    const { renderToStaticMarkup } = await import('react-dom/server')
+
+    const html = renderToStaticMarkup(
+      <PostEditor mode="sheet" post={editablePost} onSuccess={() => {}} />,
+    )
+
+    expect(html).toContain('元の本文')
+    expect(html).toContain('更新する')
+  })
+
   it('ボタンのラベルが「更新する」になる', () => {
     render(<PostEditor mode="sheet" post={editablePost} onSuccess={() => {}} />)
 
