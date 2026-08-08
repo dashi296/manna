@@ -49,7 +49,7 @@ export function ComposeMenu({ onSelectChapter, onSelectVerses, layout = 'pill' }
     </>
   )
 
-  if (isMobile) {
+  if (isMobile || layout === 'fab') {
     return (
       <>
         <ComposePostButton

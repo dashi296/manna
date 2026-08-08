@@ -32,6 +32,13 @@ describe('ComposeMenu (desktop)', () => {
     await userEvent.click(await screen.findByRole('menuitem', { name: /節を選んで投稿/ }))
     expect(onSelectVerses).toHaveBeenCalledOnce()
   })
+
+  it('useIsMobile が false でも layout="fab" なら FAB が描画される', () => {
+    render(
+      <ComposeMenu onSelectChapter={vi.fn()} onSelectVerses={vi.fn()} layout="fab" />,
+    )
+    expect(screen.getByRole('button', { name: '投稿する' }).className).toContain('fixed')
+  })
 })
 
 describe('ComposeMenu (mobile)', () => {

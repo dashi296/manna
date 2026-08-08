@@ -313,7 +313,11 @@ function VerseView({ book, chapter, collection, verses, posts, verseTexts, canCo
         action={
           <div className="flex items-center gap-2">
             {canCompose && !isMobile && (
-              <ComposePostButton label="投稿する" onClick={() => setSheetOpen(true)} />
+              <ComposePostButton
+                label="投稿する"
+                onClick={() => setSheetOpen(true)}
+                aria-haspopup="dialog"
+              />
             )}
             <BilingualToggleButton />
             <BookmarkButton loc={loc} />
@@ -321,7 +325,12 @@ function VerseView({ book, chapter, collection, verses, posts, verseTexts, canCo
         }
       />
       {canCompose && isMobile && (
-        <ComposePostButton layout="fab" label="投稿する" onClick={() => setSheetOpen(true)} />
+        <ComposePostButton
+          layout="fab"
+          label="投稿する"
+          onClick={() => setSheetOpen(true)}
+          aria-haspopup="dialog"
+        />
       )}
       <div className="px-4 py-2 border-b" style={{ borderColor: 'var(--line)' }}>
         <a

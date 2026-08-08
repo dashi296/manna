@@ -70,14 +70,16 @@
 
 ### 3. 投稿を FAB へ移す
 
-`ComposeMenu`（`widgets/compose-menu`）に省略可能な `trigger?: ReactNode` を追加する。未指定なら現行の `✏️投稿` ピルを描画し、既存の呼び出し側は変更不要とする。メニュー本体（「章全体に投稿」「節を選んで投稿」のボトムシート／ポップオーバー）は現状のまま再利用する。
+`ComposeMenu`（`widgets/compose-menu`）に省略可能な `layout?: 'pill' | 'fab'` prop を追加する（デフォルト `'pill'`）。出し分けは CSS ではなく `useIsMobile()` による JS 分岐で行う。`layout === 'fab'` のときはモバイル判定を待たず FAB を描画し（`isMobile || layout === 'fab'`）、それ以外は従来どおりデスクトップのピルを描画する。見た目は共通の `ComposePostButton`（`shared/ui/ComposePostButton.tsx`）が `layout` prop で FAB とピルを切り替える。呼び出し側（`ChapterView`）が配置場所と `layout` を同時に決める。
 
-- モバイル: 右下固定の円形 FAB。`fixed right-4 bottom-[calc(var(--bottom-nav-h)+1rem)]`、`lg:hidden`
-- デスクトップ: ヘッダー内のピルのまま（`hidden lg:flex`）。横幅に余裕があり FAB を出す理由がない
+- モバイル: 右下固定の円形 FAB。`fixed right-4 bottom-[calc(var(--bottom-nav-h)+1rem)]`
+- デスクトップ: ヘッダー内のピルのまま。横幅に余裕があり FAB を出す理由がない
 - タップ領域 56px、`aria-label="投稿する"`
 - 節選択モード中は FAB を隠す。`SelectionModeHeader` が「N節に投稿」を持っており二重になるため
 
 `--bottom-nav-h` は `styles.css:89` に既存の CSS 変数で、`__root.tsx:102` と `InstallPwaBanner.tsx:73` が既に使っている。
+
+トレードオフ: `useIsMobile()` は初回レンダーで必ず `false` を返すため、モバイルではハイドレーション後にピルから FAB へ切り替わる一瞬のレイアウトシフトが残る。CSS（`lg:hidden` / `hidden lg:flex`）方式ならこの切り替えは起きないが、`ComposeMenu` のシート／ポップオーバー分岐まで CSS 化する必要があり、見合わないと判断した。
 
 ### 4. FAB が開く先は章ビューと節ビューで異なる
 
@@ -121,6 +123,6 @@ FAB の位置は CSS のみで決まりテストで検証しづらいため、�
 | ファイル | 変更内容 |
 |---|---|
 | `pages/scriptures/$collection/$book/$chapter.tsx` | タイトル分岐、`📖` 削除、FAB 配置、`ComposeButton` 削除 |
-| `widgets/compose-menu/ui/ComposeMenu.tsx` | トリガー差し替えの口を追加 |
+| `widgets/compose-menu/ui/ComposeMenu.tsx` | `layout?: 'pill' \| 'fab'` prop を追加し、`useIsMobile()` と合わせて FAB/ピルを JS で出し分け |
 | `shared/ui/PageHeader.tsx` | 変更なし |
 | `shared/lib/scriptureUtils.ts` | 変更なし |
