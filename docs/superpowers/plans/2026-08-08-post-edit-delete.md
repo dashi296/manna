@@ -16,7 +16,7 @@
 - テストは `pnpm test`（= `vitest run`）。単一ファイルは `pnpm --filter @manna/pwa exec vitest run <path>`
 - 型チェックは `pnpm --filter @manna/pwa exec tsc --noEmit`。CI には無いが `strict` / `noUnusedLocals` が有効なので各タスクで回す
 - テストは `apps/pwa/tests/` 下。`@` エイリアスは `apps/pwa/src`
-- FSD のインポート方向: pages → widgets → features → entities → shared。逆流と同一層間の import を増やさない
+- FSD のインポート方向: pages → widgets → features → entities → shared。逆流させない。新しい同一層間の import も作らない（`PostComposerSheet` → `PostEditor` は既存の widget→widget 依存で、Task 5 はそこに prop を1つ足すだけ。新しい依存辺は増やさない。この既存違反の解消は spec のとおりスコープ外）
 - コメントは原則不要。WHY が自明でない場合のみ1行
 - 新規 FSD スライスには必ず `index.ts` を作る
 - UI 実装は TDD（失敗テスト → 実装 → 通過）
@@ -71,35 +71,56 @@ CREATE TRIGGER posts_protect_immutable
 
 - [ ] **Step 2: DB に適用する**
 
-Run: `bash scripts/db-reset.sh`
-Expected: エラーなく完了し、節データが復元される
+未適用のマイグレーションだけを流す。フルリセットは手元の投稿と 41,959 行の節データを作り直すことになるので避ける。
 
-- [ ] **Step 3: トリガーが効くことを手動で確認する**
+Run: `npx supabase migration up --local`
+Expected: `20260808000001_protect_post_immutable_cols` が適用される
+
+適用済みマイグレーションの差分などで失敗した場合のみ `bash scripts/db-reset.sh` にフォールバックする（`npx supabase db reset` の直接実行は禁止 — 節データが消える）。
+
+- [ ] **Step 3: 検証用のユーザーと投稿を作る**
+
+`public.users.id` は `auth.users(id)` への FK なので（`20260519000001_initial_schema.sql:3`）、`public.users` へ直接 INSERT すると FK 違反になる。`auth.users` に入れると `on_auth_user_created` トリガーが `public.users` を自動生成する。
+
+Run:
+
+```bash
+psql "postgresql://postgres:postgres@127.0.0.1:55322/postgres" -v ON_ERROR_STOP=1 -c "
+INSERT INTO auth.users (id, instance_id, aud, role, email)
+VALUES ('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000000',
+        'authenticated', 'authenticated', 'trigger-test@example.com');
+INSERT INTO posts (id, user_id, content, scripture_collection, scripture_book, scripture_chapter, scripture_verses)
+VALUES ('00000000-0000-0000-0000-0000000000aa', '00000000-0000-0000-0000-000000000001',
+        'before', 'bofm', '1-ne', 3, ARRAY[7]);
+"
+```
+
+Expected: `INSERT 0 1` が2回
+
+- [ ] **Step 4: 通るべき UPDATE を確認する**
+
+Step 3 とは**別のトランザクション**で実行すること。`now()` はトランザクション内で固定されるため、同じトランザクションで INSERT と UPDATE を行うと `created_at = updated_at` のままになり、「編集済み」判定の確認にならない。
 
 Run:
 
 ```bash
 psql "postgresql://postgres:postgres@127.0.0.1:55322/postgres" -c "
-INSERT INTO users (id, display_name) VALUES ('00000000-0000-0000-0000-000000000001', 'trigger test')
-  ON CONFLICT (id) DO NOTHING;
-INSERT INTO posts (id, user_id, content, scripture_collection, scripture_book, scripture_chapter, scripture_verses)
-  VALUES ('00000000-0000-0000-0000-0000000000aa', '00000000-0000-0000-0000-000000000001', 'before', 'bofm', '1-ne', 3, ARRAY[7])
-  ON CONFLICT (id) DO NOTHING;
-"
-```
-
-続けて、通す UPDATE:
-
-```bash
-psql "postgresql://postgres:postgres@127.0.0.1:55322/postgres" -c "
 UPDATE posts SET content = 'after', visibility = 'private' WHERE id = '00000000-0000-0000-0000-0000000000aa';
-SELECT content, visibility, created_at <> updated_at AS touched FROM posts WHERE id = '00000000-0000-0000-0000-0000000000aa';
+SELECT content, visibility, created_at <> updated_at AS edited FROM posts WHERE id = '00000000-0000-0000-0000-0000000000aa';
 "
 ```
 
-Expected: `after | private | t`
+Expected:
 
-続けて、弾かれる UPDATE:
+```
+ content | visibility | edited
+---------+------------+--------
+ after   | private    | t
+```
+
+- [ ] **Step 5: 弾かれるべき UPDATE を確認する**
+
+Run:
 
 ```bash
 psql "postgresql://postgres:postgres@127.0.0.1:55322/postgres" -c "
@@ -109,20 +130,34 @@ UPDATE posts SET scripture_verses = ARRAY[9] WHERE id = '00000000-0000-0000-0000
 
 Expected: `ERROR:  only content and visibility may be updated on posts`
 
-- [ ] **Step 4: 検証用の行を片付ける**
+Run:
+
+```bash
+psql "postgresql://postgres:postgres@127.0.0.1:55322/postgres" -c "
+UPDATE posts SET created_at = now() WHERE id = '00000000-0000-0000-0000-0000000000aa';
+"
+```
+
+Expected: 同じ `ERROR`
+
+（トリガーを入れる前にこの2つを流すと `UPDATE 1` が返る。今この列が無防備であることの確認になるので、先に流しておいてもよい）
+
+- [ ] **Step 6: 検証用の行を片付ける**
+
+`auth.users` を消せば `public.users` → `posts` と CASCADE で落ちる。
 
 Run:
 
 ```bash
 psql "postgresql://postgres:postgres@127.0.0.1:55322/postgres" -c "
-DELETE FROM posts WHERE id = '00000000-0000-0000-0000-0000000000aa';
-DELETE FROM users WHERE id = '00000000-0000-0000-0000-000000000001';
+DELETE FROM auth.users WHERE id = '00000000-0000-0000-0000-000000000001';
+SELECT count(*) AS leftover FROM posts WHERE id = '00000000-0000-0000-0000-0000000000aa';
 "
 ```
 
-Expected: `DELETE 1` が2回
+Expected: `DELETE 1` と `leftover = 0`
 
-- [ ] **Step 5: コミット**
+- [ ] **Step 7: コミット**
 
 ```bash
 git add supabase/migrations/20260808000001_protect_post_immutable_cols.sql
@@ -495,9 +530,26 @@ describe('PostEditor（編集モード）', () => {
     )
     await user.type(screen.getByPlaceholderText(/感じたこと/), '追記')
 
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: '更新する' })).not.toBeDisabled(),
+    // 新規投稿モードの保存は 500ms デバウンスされる。待たずに見ると
+    // 「まだ書いていないだけ」を「書かない」と誤判定する
+    await new Promise((resolve) => setTimeout(resolve, 700))
+
+    expect(localStorage.getItem('manna:post-draft:bofm:mosiah:3:19')).toBe(draft)
+  })
+
+  it('更新に成功しても下書きを消さない', async () => {
+    const user = userEvent.setup()
+    const draft = JSON.stringify({ content: '書きかけの新規投稿', visibility: 'public', scripture })
+    localStorage.setItem('manna:post-draft:bofm:mosiah:3:19', draft)
+    const onSuccess = vi.fn()
+
+    render(
+      <PostEditor mode="sheet" post={editablePost} initialScripture={scripture} onSuccess={onSuccess} />,
     )
+    await user.type(screen.getByPlaceholderText(/感じたこと/), 'を直した')
+    await user.click(screen.getByRole('button', { name: '更新する' }))
+
+    await waitFor(() => expect(onSuccess).toHaveBeenCalledOnce())
     expect(localStorage.getItem('manna:post-draft:bofm:mosiah:3:19')).toBe(draft)
   })
 
@@ -556,7 +608,7 @@ describe('PostEditor（編集モード）', () => {
 - [ ] **Step 2: テストを実行して落ちることを確認する**
 
 Run: `pnpm --filter @manna/pwa exec vitest run tests/widgets/post-editor/PostEditor.test.tsx`
-Expected: FAIL — 編集モード側の8件が落ちる（`toHaveValue('元の本文')` が空文字、「更新する」ボタンが見つからない等）。既存の新規投稿5件は PASS のまま
+Expected: FAIL — 編集モード側の9件が落ちる（`toHaveValue('元の本文')` が空文字、「更新する」ボタンが見つからない等）。既存の新規投稿5件は PASS のまま
 
 - [ ] **Step 3: `PostEditor.tsx` を書き換える**
 
@@ -723,7 +775,7 @@ export function PostEditor({ initialScripture, mode = 'page', post, onSuccess }:
 - [ ] **Step 4: テストを実行して通ることを確認する**
 
 Run: `pnpm --filter @manna/pwa exec vitest run tests/widgets/post-editor/PostEditor.test.tsx`
-Expected: 全 PASS（新規投稿5件 + 編集9件）
+Expected: 全 PASS（新規投稿5件 + 編集10件）
 
 - [ ] **Step 5: 型チェック**
 
@@ -872,7 +924,7 @@ Task 7 の `useDeletePost` が `useRouter().history` を使う。`routerMock` �
 
 **Interfaces:**
 - Consumes: なし
-- Produces: `routerMock(...)` の戻りに `useRouter` が加わる。第5引数 `router` で `{ invalidate, history: { canGoBack, back } }` を差し替えられる。省略時は `invalidate` / `back` が no-op、`canGoBack()` は `true`
+- Produces: `routerMock(...)` の戻りに `useRouter` が加わる。第5引数 `router` で `{ invalidate, canGoBack, back, routeId }` を差し替えられる。省略時は `invalidate` / `back` が no-op、`canGoBack()` は `true`、`state.matches` は `[{ routeId: '/' }]`
 
 - [ ] **Step 1: `routerMock` に `useRouter` を足す**
 
@@ -887,9 +939,11 @@ export function routerMock(
   routeHooks: { useParams?: () => unknown; useSearch?: () => unknown } = {},
   // 削除フローのように router.invalidate() / history.back() を叩くコンポーネント用
   router: {
-    invalidate?: () => void
+    invalidate?: (opts?: { filter?: (match: { routeId: string }) => boolean }) => void
     canGoBack?: () => boolean
     back?: () => void
+    // invalidate の filter が「今いるルート」を除外できているか検証するための現在地
+    routeId?: string
   } = {},
 ) {
 ```
@@ -899,6 +953,7 @@ export function routerMock(
 ```ts
     useRouter: () => ({
       invalidate: router.invalidate ?? (() => {}),
+      state: { matches: [{ routeId: router.routeId ?? '/' }] },
       history: {
         canGoBack: router.canGoBack ?? (() => true),
         back: router.back ?? (() => {}),
@@ -950,6 +1005,7 @@ const mockDelete = vi.fn()
 const mockDeleteEq = vi.fn()
 const mockDeleteResult = vi.fn()
 const mockInvalidate = vi.fn()
+const mockInvalidatePostLists = vi.fn()
 const mockBack = vi.fn()
 const mockCanGoBack = vi.fn()
 const mockNavigate = vi.fn()
@@ -972,6 +1028,15 @@ vi.mock('@/shared/lib/supabase', () => ({
   },
 }))
 
+// 一覧を落とし忘れても router.invalidate() だけで動いてしまうため、
+// この呼び出し自体をスパイして削除フローから確実に通ることを見る
+vi.mock('@/entities/user', () => ({
+  invalidatePostLists: () => {
+    mockInvalidatePostLists()
+    return Promise.resolve([])
+  },
+}))
+
 vi.mock('@/shared/ui/sonner', () => ({
   toast: Object.assign((msg: string) => mockToast(msg), { error: (msg: string) => mockToastError(msg) }),
 }))
@@ -982,7 +1047,12 @@ vi.mock('@tanstack/react-router', async () =>
     undefined,
     (opts) => mockNavigate(opts),
     undefined,
-    { invalidate: () => mockInvalidate(), canGoBack: () => mockCanGoBack(), back: () => mockBack() },
+    {
+      invalidate: (opts) => mockInvalidate(opts),
+      canGoBack: () => mockCanGoBack(),
+      back: () => mockBack(),
+      routeId: '/posts/$id',
+    },
   ),
 )
 
@@ -1011,6 +1081,7 @@ describe('PostActionsMenu', () => {
     mockDeleteEq.mockClear()
     mockDeleteResult.mockClear().mockResolvedValue({ data: [{ id: 'p1' }], error: null })
     mockInvalidate.mockClear()
+    mockInvalidatePostLists.mockClear()
     mockBack.mockClear()
     mockCanGoBack.mockClear().mockReturnValue(true)
     mockNavigate.mockClear()
@@ -1061,8 +1132,21 @@ describe('PostActionsMenu', () => {
     await waitFor(() => expect(mockBack).toHaveBeenCalledOnce())
     expect(mockDeleteEq).toHaveBeenCalledWith('id', 'p1')
     expect(mockToast).toHaveBeenCalledWith('投稿を削除しました')
-    expect(mockInvalidate).toHaveBeenCalled()
+    expect(mockInvalidatePostLists).toHaveBeenCalledOnce()
     expect(mockNavigate).not.toHaveBeenCalled()
+  })
+
+  it('ルート再取得から「今いる投稿詳細」を除外する', async () => {
+    renderMenu()
+    const sheet = await openConfirmSheet()
+
+    await userEvent.click(within(sheet).getByRole('button', { name: '削除する' }))
+
+    await waitFor(() => expect(mockInvalidate).toHaveBeenCalledOnce())
+    const { filter } = mockInvalidate.mock.calls[0][0]
+    // 削除済みの詳細を再取得すると loader が notFound() を投げる
+    expect(filter({ routeId: '/posts/$id' })).toBe(false)
+    expect(filter({ routeId: '/scriptures/$collection/$book/$chapter' })).toBe(true)
   })
 
   it('戻れる履歴が無ければフィードへ送る', async () => {
@@ -1099,6 +1183,9 @@ describe('PostActionsMenu', () => {
     await waitFor(() => expect(mockToastError).toHaveBeenCalledWith('削除に失敗しました'))
     expect(mockBack).not.toHaveBeenCalled()
     expect(mockNavigate).not.toHaveBeenCalled()
+    expect(mockInvalidatePostLists).not.toHaveBeenCalled()
+    // シートが開いたまま、同じボタンをもう一度押せること
+    expect(screen.getByText('投稿を削除しますか？')).toBeInTheDocument()
     expect(confirm).not.toBeDisabled()
   })
 })
@@ -1148,7 +1235,11 @@ export function useDeletePost(postId: string) {
     toast(data && data.length > 0 ? '投稿を削除しました' : '投稿は既に削除されています')
 
     await invalidatePostLists(queryClient)
-    router.invalidate()
+
+    // 今いるルート（削除済み投稿の詳細）を除いて落とす。含めると load() が
+    // 走って loader が notFound() を投げ、戻る前に 404 が一瞬見える
+    const currentRouteId = router.state.matches.at(-1)?.routeId
+    router.invalidate({ filter: (match) => match.routeId !== currentRouteId })
 
     if (router.history.canGoBack()) router.history.back()
     else navigate({ to: '/' })
@@ -1297,7 +1388,7 @@ export { PostActionsMenu } from './ui/PostActionsMenu'
 - [ ] **Step 7: テストを実行して通ることを確認する**
 
 Run: `pnpm --filter @manna/pwa exec vitest run tests/features/manage-post/PostActionsMenu.test.tsx`
-Expected: 全 PASS（8件）
+Expected: 全 PASS（9件）
 
 - [ ] **Step 8: 型チェック**
 
@@ -1331,7 +1422,7 @@ viewer の id をサーバー側で取り、自分の投稿ならヘッダーに
 
 ```tsx
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { PostWithUser } from '@/entities/post'
 import { routeComponent } from '../../helpers/tanstack'
@@ -1437,7 +1528,7 @@ describe('PostDetailPage', () => {
 
   it('未編集の投稿には「編集済み」を出さない', () => {
     renderPage()
-    expect(screen.queryByText('編集済み')).toBeNull()
+    expect(screen.queryByText('・編集済み')).toBeNull()
   })
 
   it('updated_at が created_at と違えば「編集済み」を出す', () => {
@@ -1446,7 +1537,7 @@ describe('PostDetailPage', () => {
       viewerId: null,
     }
     renderPage()
-    expect(screen.getByText('編集済み')).toBeInTheDocument()
+    expect(screen.getByText('・編集済み')).toBeInTheDocument()
   })
 })
 ```
@@ -1554,7 +1645,7 @@ function PostDetailPage() {
 ```tsx
             <div className="text-xs" style={{ color: 'var(--sea-ink-soft)' }}>
               {formatDate(post.created_at, { year: true })}
-              {isEdited && <span className="ml-1">編集済み</span>}
+              {isEdited && <span>・編集済み</span>}
             </div>
 ```
 
@@ -1575,6 +1666,8 @@ function PostDetailPage() {
 
 Run: `pnpm --filter @manna/pwa exec vitest run tests/pages/posts/id.test.tsx`
 Expected: 全 PASS（10件）
+
+なお Task 8 のテストは `@/entities/user` をモックしていないため、`invalidatePostLists` は本物が走る。`renderWithQueryClient` が張る QueryClient に対して空振りするだけで副作用はない。
 
 - [ ] **Step 5: 型チェックと全テスト**
 
@@ -1608,39 +1701,56 @@ git commit -m "feat(posts): 投稿詳細に編集・削除の導線を足す"
 
 Run: このリポジトリの `verify` スキルを呼ぶ（Supabase ローカル + Vite dev + Playwright MCP の起動手順が入っている）
 
-Expected: `http://127.0.0.1:3000` が開き、Google ログインが通る
+Expected: dev サーバーが起動してログインが通る。ポートは 3000 が空いていればそれ、埋まっていれば dev サーバーが実際に表示した番号を使う（`verify` スキルの指示どおり）
 
-- [ ] **Step 2: 編集を通す**
+- [ ] **Step 2: 検証用の投稿を3件作る**
 
-1. 適当な章から自分の投稿を1件作る
-2. フィードでその投稿をタップして詳細へ入る
-3. ヘッダー右の「…」→「編集」
-4. シートのタイトルが「投稿を編集」、本文が初期表示され、聖典参照がチップ（selector ではない）になっていること
-5. 何も変えない状態で「更新する」が押せないこと
-6. 本文を変えて「更新する」→ シートが閉じ、本文が更新され、日時の横に「編集済み」が出ること
+同じ章に対して自分の投稿を3件書いておく。以下ではこれを投稿A（編集用）、投稿B・投稿C（削除用）と呼ぶ。Step 7 と Step 8 でそれぞれ1件消えるため、1件では足りない。
 
-- [ ] **Step 3: 公開範囲の変更を確認する**
+- [ ] **Step 3: 編集を通す**
 
-1. 同じ投稿を編集し、公開範囲を「自分のみ」にして更新
+1. フィードで投稿Aをタップして詳細へ入る
+2. ヘッダー右の「…」→「編集」
+3. シートのタイトルが「投稿を編集」、本文が初期表示され、聖典参照がチップ（selector ではない）になっていること
+4. 何も変えない状態で「更新する」が押せないこと
+5. 本文を変えて「更新する」→ シートが閉じ、本文が更新され、日時の横に「・編集済み」が出ること
+
+- [ ] **Step 4: 編集のキャンセルで破棄されることを確認する**
+
+1. 投稿Aを再び「編集」で開く
+2. 本文を書き換える
+3. 確認を挟まずシートが閉じること（ブラウザバックでも同じ）
+4. 開き直すと Step 3 で保存した内容のままで、書き換えが残っていないこと
+
+- [ ] **Step 5: 書きかけの新規投稿が壊れないことを確認する**
+
+1. 同じ章の同じ節に対して新規投稿シートを開き、本文を数文字書いて閉じる（下書きが localStorage に残る）
+2. 投稿Aの編集シートを開いて閉じる
+3. 再び新規投稿シートを開き、1 で書いた下書きがそのまま残っていること
+
+- [ ] **Step 6: 公開範囲の変更を確認する**
+
+1. 投稿Aを編集し、公開範囲を「自分のみ」にして更新
 2. ブラウザのシークレットウィンドウで同じ URL を開き、404 になること
 
-- [ ] **Step 4: 章ページ経由の削除を確認する**
+- [ ] **Step 7: 章ページ経由の削除を確認する**
 
-1. 章ページを開き、節バブルから自分の投稿の節コメントシートを開く
-2. 投稿をタップして詳細へ入る
+1. 章ページを開き、節バブルから投稿Bの節コメントシートを開く
+2. 投稿Bをタップして詳細へ入る
 3. 「…」→「削除」→「削除する」
-4. トーストが出て**章ページに戻り**（フィードではない）、その投稿が節から消えていること
+4. トーストが出て**章ページに戻り**（フィードではない）、投稿Bが節から消えていること
+5. 404 の画面が一瞬でも出ないこと（`router.invalidate()` の filter が効いているかの確認）
 
-- [ ] **Step 5: 直リンクからの削除を確認する**
+- [ ] **Step 8: 直リンクからの削除を確認する**
 
-1. 新しいタブに投稿詳細の URL を直接貼って開く
+1. 新しいタブに投稿Cの詳細 URL を直接貼って開く
 2. 「…」→「削除」→「削除する」
-3. フィード（`/`）へ送られること
+3. フィード（`/`）へ送られ、一覧から投稿Cが消えていること
 
-- [ ] **Step 6: 他人の投稿にメニューが出ないことを確認する**
+- [ ] **Step 9: 他人の投稿にメニューが出ないことを確認する**
 
 別アカウントの投稿の詳細を開き、ヘッダーに「…」が無いこと
 
-- [ ] **Step 7: 確認結果を記録する**
+- [ ] **Step 10: 確認結果を記録する**
 
 通らなかった項目があれば、修正して該当タスクのテストを追加する。すべて通ったらこのタスクは完了。コミットは不要（コード変更が無ければ）
