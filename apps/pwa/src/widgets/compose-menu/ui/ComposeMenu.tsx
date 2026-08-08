@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { BookOpen, PenLine } from 'lucide-react'
 import { Button } from '@/shared/ui/button'
-import { ComposePostButton } from '@/shared/ui'
+import { ComposePostButton } from '@/shared/ui/ComposePostButton'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/shared/ui/sheet'
 import { Popover, PopoverContent, PopoverTrigger } from '@/shared/ui/popover'
 import { useIsMobile } from '@/shared/hooks/use-mobile'
