@@ -8,8 +8,12 @@ import { getScriptureLabel } from '@/entities/scripture'
 import { VisibilitySelector } from '@/features/choose-visibility'
 import { ScriptureSelector, type ScriptureRefPartial } from '@/features/select-scripture'
 
-const LEGACY_DRAFT_KEY = 'manna:post-draft'
-const DRAFT_KEY_PREFIX = 'manna:post-draft:'
+// 他の永続ストア（manna:bookmarks:v1 など）に揃えてバージョンを持たせる。
+// 下書きの形は一度変わっており、次に変えたとき古い値を新しい型として
+// 読んでしまわないよう、キーごと切り替えられるようにしておく
+const DRAFT_KEY_ROOT = 'manna:post-draft'
+const DRAFT_KEY_BASE = `${DRAFT_KEY_ROOT}:v2`
+const DRAFT_KEY_PREFIX = `${DRAFT_KEY_BASE}:`
 
 const TABS = [
   { id: 'edit' as const, label: '編集' },
@@ -33,7 +37,18 @@ function scriptureDraftKey(scripture: ScriptureRefPartial): string {
 }
 
 function draftKey(mode: 'page' | 'sheet', scripture: ScriptureRefPartial): string {
-  return mode === 'page' ? LEGACY_DRAFT_KEY : scriptureDraftKey(scripture)
+  return mode === 'page' ? DRAFT_KEY_BASE : scriptureDraftKey(scripture)
+}
+
+// 旧バージョンのキーは読まないので、残しておくと二度と回収されない
+function dropOutdatedDrafts() {
+  try {
+    for (const key of Object.keys(localStorage)) {
+      if (key.startsWith(DRAFT_KEY_ROOT) && !key.startsWith(DRAFT_KEY_BASE)) {
+        localStorage.removeItem(key)
+      }
+    }
+  } catch {}
 }
 
 function loadDraft(key: string): Draft {
@@ -69,6 +84,7 @@ export function PostEditor({ initialScripture, mode = 'page', post, onSuccess }:
   // ドラフトはサーバーで読めずハイドレーションがずれるため、こちらは effect のまま
   useEffect(() => {
     if (post) return
+    dropOutdatedDrafts()
     const key = draftKey(mode, initialScripture ?? {})
     const draft = loadDraft(key)
     setContent(draft.content)

@@ -75,11 +75,26 @@ describe('PostEditor', () => {
     await user.type(screen.getByPlaceholderText(/感じたこと/), '19節への感想')
 
     await waitFor(() =>
-      expect(localStorage.getItem('manna:post-draft:bofm:mosiah:3:19')).toContain('19節への感想'),
+      expect(localStorage.getItem('manna:post-draft:v2:bofm:mosiah:3:19')).toContain('19節への感想'),
     )
-    expect(localStorage.getItem('manna:post-draft:bofm:mosiah:3:20')).toBeNull()
-    expect(localStorage.getItem('manna:post-draft')).toBeNull()
+    expect(localStorage.getItem('manna:post-draft:v2:bofm:mosiah:3:20')).toBeNull()
+    expect(localStorage.getItem('manna:post-draft:v2')).toBeNull()
     unmount()
+  })
+
+  it('バージョンの合わない古い下書きを回収し、v2 のものは残す', async () => {
+    localStorage.setItem('manna:post-draft', '{"content":"旧ページ用"}')
+    localStorage.setItem('manna:post-draft:bofm:mosiah:3:19', '{"content":"旧シート用"}')
+    localStorage.setItem('manna:post-draft:v2:bofm:mosiah:3:20', '{"content":"v2 の下書き"}')
+    localStorage.setItem('manna:bookmarks:v1', '{"state":{}}')
+
+    render(<PostEditor mode="sheet" onSuccess={() => {}} />)
+
+    await waitFor(() => expect(localStorage.getItem('manna:post-draft')).toBeNull())
+    expect(localStorage.getItem('manna:post-draft:bofm:mosiah:3:19')).toBeNull()
+    // v2 と、そもそも下書きではないキーは触らない
+    expect(localStorage.getItem('manna:post-draft:v2:bofm:mosiah:3:20')).toBe('{"content":"v2 の下書き"}')
+    expect(localStorage.getItem('manna:bookmarks:v1')).toBe('{"state":{}}')
   })
 
   it('未ログイン時にエラーメッセージが表示される', async () => {
@@ -151,7 +166,7 @@ describe('PostEditor（編集モード）', () => {
 
   it('localStorage の下書きを読まない', () => {
     localStorage.setItem(
-      'manna:post-draft:bofm:mosiah:3:19',
+      'manna:post-draft:v2:bofm:mosiah:3:19',
       JSON.stringify({ content: '書きかけの新規投稿', visibility: 'public', scripture }),
     )
 
@@ -165,7 +180,7 @@ describe('PostEditor（編集モード）', () => {
   it('localStorage の下書きを書き換えない', async () => {
     const user = userEvent.setup()
     const draft = JSON.stringify({ content: '書きかけの新規投稿', visibility: 'public', scripture })
-    localStorage.setItem('manna:post-draft:bofm:mosiah:3:19', draft)
+    localStorage.setItem('manna:post-draft:v2:bofm:mosiah:3:19', draft)
 
     render(
       <PostEditor mode="sheet" post={editablePost} initialScripture={scripture} onSuccess={() => {}} />,
@@ -176,13 +191,13 @@ describe('PostEditor（編集モード）', () => {
     // 「まだ書いていないだけ」を「書かない」と誤判定する
     await new Promise((resolve) => setTimeout(resolve, 700))
 
-    expect(localStorage.getItem('manna:post-draft:bofm:mosiah:3:19')).toBe(draft)
+    expect(localStorage.getItem('manna:post-draft:v2:bofm:mosiah:3:19')).toBe(draft)
   })
 
   it('更新に成功しても下書きを消さない', async () => {
     const user = userEvent.setup()
     const draft = JSON.stringify({ content: '書きかけの新規投稿', visibility: 'public', scripture })
-    localStorage.setItem('manna:post-draft:bofm:mosiah:3:19', draft)
+    localStorage.setItem('manna:post-draft:v2:bofm:mosiah:3:19', draft)
     const onSuccess = vi.fn()
 
     render(
@@ -192,7 +207,7 @@ describe('PostEditor（編集モード）', () => {
     await user.click(screen.getByRole('button', { name: '更新する' }))
 
     await waitFor(() => expect(onSuccess).toHaveBeenCalledOnce())
-    expect(localStorage.getItem('manna:post-draft:bofm:mosiah:3:19')).toBe(draft)
+    expect(localStorage.getItem('manna:post-draft:v2:bofm:mosiah:3:19')).toBe(draft)
   })
 
   it('聖典参照は編集させず、ラベルだけ表示する', () => {
