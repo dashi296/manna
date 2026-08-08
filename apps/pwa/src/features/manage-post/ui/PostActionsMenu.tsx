@@ -31,7 +31,7 @@ export function PostActionsMenu({ postId, onEdit }: Props) {
         >
           <MoreHorizontal size={18} aria-hidden="true" />
         </PopoverTrigger>
-        <PopoverContent align="end" className="w-40">
+        <PopoverContent align="end">
           <div className="flex flex-col" role="menu">
             <MenuItem
               icon={<Pencil size={16} aria-hidden="true" />}

@@ -67,7 +67,7 @@ CREATE TRIGGER posts_protect_immutable
   FOR EACH ROW EXECUTE FUNCTION public.protect_post_immutable_cols();
 ```
 
-`updated_at` を検査対象に入れないこと。同じ `BEFORE UPDATE` の `posts_set_updated_at` が書き換える。トリガーは名前順に実行されるので `posts_protect_immutable` → `posts_set_updated_at` の順になり、この関数が見る `NEW.updated_at` はまだ古い値である。
+`updated_at` を検査対象に入れないこと。同じ `BEFORE UPDATE` の `posts_set_updated_at` が書き換えるためで、`updated_at` を検査対象に含めない以上、2つのトリガーがどちらの順で走っても問題にならない。
 
 - [ ] **Step 2: DB に適用する**
 
@@ -924,7 +924,7 @@ Task 7 の `useDeletePost` が `useRouter().history` を使う。`routerMock` �
 
 **Interfaces:**
 - Consumes: なし
-- Produces: `routerMock(...)` の戻りに `useRouter` が加わる。第5引数 `router` で `{ invalidate, canGoBack, back, routeId }` を差し替えられる。省略時は `invalidate` / `back` が no-op、`canGoBack()` は `true`、`state.matches` は `[{ routeId: '/' }]`
+- Produces: `routerMock(...)` の戻りに `useRouter` が加わる。第5引数 `router` で `{ invalidate, canGoBack, back }` を差し替えられる。省略時は `invalidate` / `back` が no-op、`canGoBack()` は `true`
 
 - [ ] **Step 1: `routerMock` に `useRouter` を足す**
 
@@ -937,13 +937,11 @@ export function routerMock(
   navigate: (opts: unknown) => void = () => {},
   // loader ではなく params/search からデータを組み立てるページ用。渡さなければ空を返す
   routeHooks: { useParams?: () => unknown; useSearch?: () => unknown } = {},
-  // 削除フローのように router.invalidate() / history.back() を叩くコンポーネント用
+  // 削除・編集フローのように router.invalidate() / history.back() を叩くコンポーネント用
   router: {
-    invalidate?: (opts?: { filter?: (match: { routeId: string }) => boolean }) => void
+    invalidate?: () => void
     canGoBack?: () => boolean
     back?: () => void
-    // invalidate の filter が「今いるルート」を除外できているか検証するための現在地
-    routeId?: string
   } = {},
 ) {
 ```
@@ -953,7 +951,6 @@ export function routerMock(
 ```ts
     useRouter: () => ({
       invalidate: router.invalidate ?? (() => {}),
-      state: { matches: [{ routeId: router.routeId ?? '/' }] },
       history: {
         canGoBack: router.canGoBack ?? (() => true),
         back: router.back ?? (() => {}),
@@ -1004,7 +1001,6 @@ import { renderWithQueryClient } from '../../helpers/query'
 const mockDelete = vi.fn()
 const mockDeleteEq = vi.fn()
 const mockDeleteResult = vi.fn()
-const mockInvalidate = vi.fn()
 const mockInvalidatePostLists = vi.fn()
 const mockBack = vi.fn()
 const mockCanGoBack = vi.fn()
@@ -1028,8 +1024,7 @@ vi.mock('@/shared/lib/supabase', () => ({
   },
 }))
 
-// 一覧を落とし忘れても router.invalidate() だけで動いてしまうため、
-// この呼び出し自体をスパイして削除フローから確実に通ることを見る
+// 削除フローが一覧キャッシュを確実に落とすことを見るためのスパイ
 vi.mock('@/entities/user', () => ({
   invalidatePostLists: () => {
     mockInvalidatePostLists()
@@ -1048,10 +1043,8 @@ vi.mock('@tanstack/react-router', async () =>
     (opts) => mockNavigate(opts),
     undefined,
     {
-      invalidate: (opts) => mockInvalidate(opts),
       canGoBack: () => mockCanGoBack(),
       back: () => mockBack(),
-      routeId: '/posts/$id',
     },
   ),
 )
@@ -1080,7 +1073,6 @@ describe('PostActionsMenu', () => {
     mockDelete.mockClear()
     mockDeleteEq.mockClear()
     mockDeleteResult.mockClear().mockResolvedValue({ data: [{ id: 'p1' }], error: null })
-    mockInvalidate.mockClear()
     mockInvalidatePostLists.mockClear()
     mockBack.mockClear()
     mockCanGoBack.mockClear().mockReturnValue(true)
@@ -1134,19 +1126,6 @@ describe('PostActionsMenu', () => {
     expect(mockToast).toHaveBeenCalledWith('投稿を削除しました')
     expect(mockInvalidatePostLists).toHaveBeenCalledOnce()
     expect(mockNavigate).not.toHaveBeenCalled()
-  })
-
-  it('ルート再取得から「今いる投稿詳細」を除外する', async () => {
-    renderMenu()
-    const sheet = await openConfirmSheet()
-
-    await userEvent.click(within(sheet).getByRole('button', { name: '削除する' }))
-
-    await waitFor(() => expect(mockInvalidate).toHaveBeenCalledOnce())
-    const { filter } = mockInvalidate.mock.calls[0][0]
-    // 削除済みの詳細を再取得すると loader が notFound() を投げる
-    expect(filter({ routeId: '/posts/$id' })).toBe(false)
-    expect(filter({ routeId: '/scriptures/$collection/$book/$chapter' })).toBe(true)
   })
 
   it('戻れる履歴が無ければフィードへ送る', async () => {
@@ -1235,11 +1214,6 @@ export function useDeletePost(postId: string) {
     toast(data && data.length > 0 ? '投稿を削除しました' : '投稿は既に削除されています')
 
     await invalidatePostLists(queryClient)
-
-    // 今いるルート（削除済み投稿の詳細）を除いて落とす。含めると load() が
-    // 走って loader が notFound() を投げ、戻る前に 404 が一瞬見える
-    const currentRouteId = router.state.matches.at(-1)?.routeId
-    router.invalidate({ filter: (match) => match.routeId !== currentRouteId })
 
     if (router.history.canGoBack()) router.history.back()
     else navigate({ to: '/' })
@@ -1332,7 +1306,7 @@ export function PostActionsMenu({ postId, onEdit }: Props) {
         >
           <MoreHorizontal size={18} aria-hidden="true" />
         </PopoverTrigger>
-        <PopoverContent align="end" className="w-40">
+        <PopoverContent align="end">
           <div className="flex flex-col" role="menu">
             <MenuItem
               icon={<Pencil size={16} aria-hidden="true" />}
@@ -1388,7 +1362,7 @@ export { PostActionsMenu } from './ui/PostActionsMenu'
 - [ ] **Step 7: テストを実行して通ることを確認する**
 
 Run: `pnpm --filter @manna/pwa exec vitest run tests/features/manage-post/PostActionsMenu.test.tsx`
-Expected: 全 PASS（9件）
+Expected: 全 PASS（8件）
 
 - [ ] **Step 8: 型チェック**
 
@@ -1739,7 +1713,7 @@ Expected: dev サーバーが起動してログインが通る。ポートは 30
 2. 投稿Bをタップして詳細へ入る
 3. 「…」→「削除」→「削除する」
 4. トーストが出て**章ページに戻り**（フィードではない）、投稿Bが節から消えていること
-5. 404 の画面が一瞬でも出ないこと（`router.invalidate()` の filter が効いているかの確認）
+5. 404 の画面が一瞬でも出ないこと
 
 - [ ] **Step 8: 直リンクからの削除を確認する**
 

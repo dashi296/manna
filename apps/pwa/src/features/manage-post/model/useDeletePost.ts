@@ -33,11 +33,6 @@ export function useDeletePost(postId: string) {
 
     await invalidatePostLists(queryClient)
 
-    // 今いるルート（削除済み投稿の詳細）を除いて落とす。含めると load() が
-    // 走って loader が notFound() を投げ、戻る前に 404 が一瞬見える
-    const currentRouteId = router.state.matches.at(-1)?.routeId
-    router.invalidate({ filter: (match) => match.routeId !== currentRouteId })
-
     if (router.history.canGoBack()) router.history.back()
     else navigate({ to: '/' })
   }

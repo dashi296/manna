@@ -137,7 +137,7 @@ CREATE TRIGGER posts_protect_immutable
   FOR EACH ROW EXECUTE FUNCTION public.protect_post_immutable_cols();
 ```
 
-`updated_at` はこのトリガーの検査対象に含めない。同じ `BEFORE UPDATE` の `posts_set_updated_at` が書き換えるためで、トリガーは名前順に実行されるので `posts_protect_immutable` → `posts_set_updated_at` の順になる。
+`updated_at` はこのトリガーの検査対象に含めない。同じ `BEFORE UPDATE` の `posts_set_updated_at` がどちらの順で走っても問題にならない。
 
 列単位の `GRANT UPDATE (content, visibility)` ではなくトリガーを選んだのは、既存の2つの不変列保護（`protect_family_immutable_cols` / `protect_notification_immutable_cols`）と手法を揃えるため。エラーメッセージが返る点も、権限エラーより原因が分かりやすい。
 

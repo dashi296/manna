@@ -25,7 +25,8 @@ const fetchPost = createServerFn({ method: 'POST' })
         .eq('id', ctx.data.id)
         .maybeSingle()
         .throwOnError(),
-      serverSupabase.auth.getUser(),
+      // 所有者判定は UI の出し分け専用なので、失敗しても投稿自体は表示させる
+      serverSupabase.auth.getUser().catch(() => ({ data: { user: null } })),
     ])
     return { post: post as PostWithUser | null, viewerId: user?.id ?? null }
   })

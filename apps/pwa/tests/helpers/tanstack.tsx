@@ -8,13 +8,11 @@ export function routerMock(
   navigate: (opts: unknown) => void = () => {},
   // loader ではなく params/search からデータを組み立てるページ用。渡さなければ空を返す
   routeHooks: { useParams?: () => unknown; useSearch?: () => unknown } = {},
-  // 削除フローのように router.invalidate() / history.back() を叩くコンポーネント用
+  // 削除・編集フローのように router.invalidate() / history.back() を叩くコンポーネント用
   router: {
-    invalidate?: (opts?: { filter?: (match: { routeId: string }) => boolean }) => void
+    invalidate?: () => void
     canGoBack?: () => boolean
     back?: () => void
-    // invalidate の filter が「今いるルート」を除外できているか検証するための現在地
-    routeId?: string
   } = {},
 ) {
   return {
@@ -64,7 +62,6 @@ export function routerMock(
     useNavigate: () => navigate,
     useRouter: () => ({
       invalidate: router.invalidate ?? (() => {}),
-      state: { matches: [{ routeId: router.routeId ?? '/' }] },
       history: {
         canGoBack: router.canGoBack ?? (() => true),
         back: router.back ?? (() => {}),

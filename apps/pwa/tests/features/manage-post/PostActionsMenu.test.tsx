@@ -7,7 +7,6 @@ import { renderWithQueryClient } from '../../helpers/query'
 const mockDelete = vi.fn()
 const mockDeleteEq = vi.fn()
 const mockDeleteResult = vi.fn()
-const mockInvalidate = vi.fn()
 const mockInvalidatePostLists = vi.fn()
 const mockBack = vi.fn()
 const mockCanGoBack = vi.fn()
@@ -31,8 +30,7 @@ vi.mock('@/shared/lib/supabase', () => ({
   },
 }))
 
-// 一覧を落とし忘れても router.invalidate() だけで動いてしまうため、
-// この呼び出し自体をスパイして削除フローから確実に通ることを見る
+// 削除フローが一覧キャッシュを確実に落とすことを見るためのスパイ
 vi.mock('@/entities/user', () => ({
   invalidatePostLists: () => {
     mockInvalidatePostLists()
@@ -51,10 +49,8 @@ vi.mock('@tanstack/react-router', async () =>
     (opts) => mockNavigate(opts),
     undefined,
     {
-      invalidate: (opts) => mockInvalidate(opts),
       canGoBack: () => mockCanGoBack(),
       back: () => mockBack(),
-      routeId: '/posts/$id',
     },
   ),
 )
@@ -83,7 +79,6 @@ describe('PostActionsMenu', () => {
     mockDelete.mockClear()
     mockDeleteEq.mockClear()
     mockDeleteResult.mockClear().mockResolvedValue({ data: [{ id: 'p1' }], error: null })
-    mockInvalidate.mockClear()
     mockInvalidatePostLists.mockClear()
     mockBack.mockClear()
     mockCanGoBack.mockClear().mockReturnValue(true)
@@ -137,19 +132,6 @@ describe('PostActionsMenu', () => {
     expect(mockToast).toHaveBeenCalledWith('投稿を削除しました')
     expect(mockInvalidatePostLists).toHaveBeenCalledOnce()
     expect(mockNavigate).not.toHaveBeenCalled()
-  })
-
-  it('ルート再取得から「今いる投稿詳細」を除外する', async () => {
-    renderMenu()
-    const sheet = await openConfirmSheet()
-
-    await userEvent.click(within(sheet).getByRole('button', { name: '削除する' }))
-
-    await waitFor(() => expect(mockInvalidate).toHaveBeenCalledOnce())
-    const { filter } = mockInvalidate.mock.calls[0][0]
-    // 削除済みの詳細を再取得すると loader が notFound() を投げる
-    expect(filter({ routeId: '/posts/$id' })).toBe(false)
-    expect(filter({ routeId: '/scriptures/$collection/$book/$chapter' })).toBe(true)
   })
 
   it('戻れる履歴が無ければフィードへ送る', async () => {
