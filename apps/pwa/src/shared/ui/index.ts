@@ -1,5 +1,6 @@
 export { AppSidebar } from './AppSidebar'
 export { type AvatarStackItem } from './avatarStackItem'
+export { ComposePostButton } from './ComposePostButton'
 export { EmptyState } from './EmptyState'
 export { LoadMoreButton } from './LoadMoreButton'
 export { LogoMark } from './LogoMark'

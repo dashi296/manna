@@ -23,6 +23,11 @@ function render(ui: React.ReactElement) {
   }
 }
 
+// useIsMobile は effect 内で innerWidth を読むため、render の前に設定する必要がある
+function setViewportWidth(width: number) {
+  Object.defineProperty(window, 'innerWidth', { writable: true, value: width })
+}
+
 type TestLoaderData = {
   book: {
     id: string
@@ -124,6 +129,7 @@ describe('ChapterPage', () => {
     const { useBilingualDisplayStore } = await import('@/entities/bilingual-display')
     useBilingualDisplayStore.setState({ enabled: false })
     queryClient.clear()
+    setViewportWidth(1024)
   })
 
   it('選択中でも「章に投稿」は節指定なしでシートを開く', async () => {
@@ -257,8 +263,7 @@ describe('ChapterPage', () => {
   })
 
   it('mode=select 中は選択ユーザーがあっても吹き出しを描画しない', async () => {
-    Object.defineProperty(window, 'innerWidth', { writable: true, value: 1440 })
-    window.dispatchEvent(new Event('resize'))
+    setViewportWidth(1440)
     const { useSelectedUserStore } = await import('@/features/select-verse-view')
     useSelectedUserStore.setState({ selectedUserId: 'u1' })
     loaderData = {
@@ -285,8 +290,7 @@ describe('ChapterPage', () => {
   })
 
   it('desktop 相当なら選択ユーザーの吹き出しが節横に描画される', async () => {
-    Object.defineProperty(window, 'innerWidth', { writable: true, value: 1440 })
-    window.dispatchEvent(new Event('resize'))
+    setViewportWidth(1440)
     const { useSelectedUserStore } = await import('@/features/select-verse-view')
     useSelectedUserStore.setState({ selectedUserId: 'u1' })
     loaderData = {
@@ -350,6 +354,17 @@ describe('ChapterPage', () => {
     loaderData = { ...baseChapterData, mode: 'verse', verses: [1] }
     render(<ChapterPage />)
     expect(screen.getByRole('button', { name: '栞に追加' })).toBeInTheDocument()
+  })
+
+  it('章表示のタイトルは書名を含まず「第◯章」だけを表示する', () => {
+    render(<ChapterPage />)
+    expect(screen.getByRole('heading', { name: '第1章' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: '第1ニーファイ書 第1章' })).toBeNull()
+  })
+
+  it('章表示の戻りリンクは書名を表示する', () => {
+    render(<ChapterPage />)
+    expect(screen.getByRole('link', { name: '第1ニーファイ書' })).toBeInTheDocument()
   })
 
   it('front matter の章表示ではタイトルに「第◯章」を付けず書名のみ表示する', () => {
@@ -485,5 +500,103 @@ describe('ChapterPage', () => {
     render(<ChapterPage />)
     expect(screen.getByText('一節の日本語')).toBeInTheDocument()
     expect(screen.queryByText('Verse one in English')).toBeNull()
+  })
+
+  it('モバイルの章表示では投稿導線をヘッダー外の FAB として表示する', async () => {
+    setViewportWidth(390)
+    render(<ChapterPage />)
+
+    const fab = await screen.findByRole('button', { name: '投稿する' })
+    expect(fab.className).toContain('fixed')
+    expect(fab.closest('header')).toBeNull()
+  })
+
+  it('モバイルの章表示の FAB を押すと投稿の2択メニューが開く', async () => {
+    setViewportWidth(390)
+    const user = userEvent.setup()
+    render(<ChapterPage />)
+
+    await user.click(await screen.findByRole('button', { name: '投稿する' }))
+
+    expect(await screen.findByRole('menuitem', { name: /章全体に投稿/ })).toBeInTheDocument()
+    expect(await screen.findByRole('menuitem', { name: /節を選んで投稿/ })).toBeInTheDocument()
+  })
+
+  it('モバイルの節選択モード中は FAB を表示しない', async () => {
+    setViewportWidth(390)
+    search = { mode: 'select', select: [1] }
+    render(<ChapterPage />)
+
+    expect(await screen.findByText('1節選択中')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '投稿する' })).toBeNull()
+  })
+
+  it('デスクトップの章表示では投稿ボタンがヘッダー内に残る', () => {
+    render(<ChapterPage />)
+    const trigger = screen.getByRole('button', { name: /投稿/ })
+    expect(trigger.closest('header')).not.toBeNull()
+    expect(trigger.className).not.toContain('fixed')
+  })
+
+  it('節表示のタイトルに絵文字を含めない', () => {
+    loaderData = { ...baseChapterData, mode: 'verse', verses: [1] }
+    render(<ChapterPage />)
+    expect(screen.getByRole('heading', { name: '第1ニーファイ書 1:1' })).toBeInTheDocument()
+  })
+
+  it('節表示の投稿リストは FAB に隠れないだけの下余白を持つ', () => {
+    loaderData = {
+      ...baseChapterData,
+      mode: 'verse',
+      verses: [1],
+      posts: [
+        {
+          id: 'p1',
+          content: '最後の投稿',
+          visibility: 'public' as const,
+          created_at: '2026-08-07T00:00:00.000Z',
+          scripture_collection: 'bofm',
+          scripture_book: '1-ne',
+          scripture_chapter: 1,
+          scripture_verses: [1],
+          user_id: 'u1',
+          users: { display_name: '中村さん', avatar_url: null },
+        },
+      ],
+    }
+    render(<ChapterPage />)
+
+    const list = screen.getByText('最後の投稿').closest('div.pb-\\[var\\(--fab-clearance\\)\\]')
+    expect(list).not.toBeNull()
+  })
+
+  it('モバイルの節表示では投稿導線をヘッダー外の FAB として表示する', async () => {
+    setViewportWidth(390)
+    loaderData = { ...baseChapterData, mode: 'verse', verses: [1] }
+    render(<ChapterPage />)
+
+    const fab = await screen.findByRole('button', { name: '投稿する' })
+    expect(fab.className).toContain('fixed')
+    expect(fab.closest('header')).toBeNull()
+  })
+
+  it('節表示の投稿導線は2択メニューを挟まず composer を直接開く', async () => {
+    setViewportWidth(390)
+    loaderData = { ...baseChapterData, mode: 'verse', verses: [1] }
+    const user = userEvent.setup()
+    render(<ChapterPage />)
+
+    await user.click(await screen.findByRole('button', { name: '投稿する' }))
+
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
+    expect(screen.queryByRole('menuitem')).toBeNull()
+  })
+
+  it('デスクトップの節表示では投稿ボタンがヘッダー内に残る', () => {
+    loaderData = { ...baseChapterData, mode: 'verse', verses: [1] }
+    render(<ChapterPage />)
+    const trigger = screen.getByRole('button', { name: '投稿する' })
+    expect(trigger.closest('header')).not.toBeNull()
+    expect(trigger.className).not.toContain('fixed')
   })
 })

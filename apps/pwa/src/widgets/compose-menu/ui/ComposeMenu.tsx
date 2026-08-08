@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import { BookOpen, PenLine } from 'lucide-react'
-import { Button } from '@/shared/ui/button'
+import { ComposePostButton } from '@/shared/ui/ComposePostButton'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/shared/ui/sheet'
 import { Popover, PopoverContent, PopoverTrigger } from '@/shared/ui/popover'
 import { useIsMobile } from '@/shared/hooks/use-mobile'
@@ -8,9 +8,10 @@ import { useIsMobile } from '@/shared/hooks/use-mobile'
 type Props = {
   onSelectChapter: () => void
   onSelectVerses: () => void
+  layout?: 'pill' | 'fab'
 }
 
-export function ComposeMenu({ onSelectChapter, onSelectVerses }: Props) {
+export function ComposeMenu({ onSelectChapter, onSelectVerses, layout = 'pill' }: Props) {
   const isMobile = useIsMobile()
   const [open, setOpen] = useState(false)
 
@@ -40,25 +41,16 @@ export function ComposeMenu({ onSelectChapter, onSelectVerses }: Props) {
     </div>
   )
 
-  const triggerContent = (
-    <>
-      <PenLine size={12} aria-hidden="true" className="mr-1" />
-      <span>投稿</span>
-    </>
-  )
-
-  if (isMobile) {
+  if (isMobile || layout === 'fab') {
     return (
       <>
-        <Button
-          variant="accent"
-          size="pill"
+        <ComposePostButton
+          layout={layout}
+          label="投稿する"
           onClick={() => setOpen(true)}
           aria-haspopup="menu"
           aria-expanded={open}
-        >
-          {triggerContent}
-        </Button>
+        />
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetContent
             side="bottom"
@@ -78,11 +70,7 @@ export function ComposeMenu({ onSelectChapter, onSelectVerses }: Props) {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
-        render={
-          <Button variant="accent" size="pill" aria-haspopup="menu">
-            {triggerContent}
-          </Button>
-        }
+        render={<ComposePostButton label="投稿する" aria-haspopup="menu" />}
       />
       <PopoverContent align="end" className="w-64">
         {menuItems}

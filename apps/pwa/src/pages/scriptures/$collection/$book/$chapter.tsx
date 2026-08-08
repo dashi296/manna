@@ -2,12 +2,11 @@ import { useEffect, useMemo, useState } from 'react'
 import { createFileRoute, notFound, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { useQuery } from '@tanstack/react-query'
-import { getBook, getCollection, buildScriptureUrl, getScriptureLabel } from '@/entities/scripture'
+import { getBook, getCollection, buildScriptureUrl, getChapterLabel, getScriptureLabel } from '@/entities/scripture'
 import { PostCard, POST_SELECT, CommenterBubble, type PostWithUser } from '@/entities/post'
 import { createSupabaseServer } from '@/shared/lib/auth'
 import { supabase } from '@/shared/lib/supabase'
-import { EmptyState, PageHeader, ScriptureText } from '@/shared/ui'
-import { Button } from '@/shared/ui/button'
+import { ComposePostButton, EmptyState, PageHeader, ScriptureText } from '@/shared/ui'
 import { PostComposerSheet } from '@/widgets/post-composer-sheet'
 import { ComposeMenu } from '@/widgets/compose-menu'
 import {
@@ -249,14 +248,6 @@ export const Route = createFileRoute('/scriptures/$collection/$book/$chapter')({
   component: ChapterPage,
 })
 
-function ComposeButton({ onClick, label }: { onClick: () => void; label: string }) {
-  return (
-    <Button variant="accent" size="pill" onClick={onClick}>
-      {label}
-    </Button>
-  )
-}
-
 function ChapterPage() {
   const data = Route.useLoaderData()
   const setReadingPosition = useBookmarkStore((s) => s.setReadingPosition)
@@ -304,6 +295,7 @@ function VerseView({ book, chapter, collection, verses, posts, verseTexts, canCo
   const loc = { collection, book: book.id, chapter }
   const scriptureLabel = getScriptureLabel({ ...loc, verses }, book)
   const officialUrl = buildScriptureUrl({ ...loc, verses }, book)
+  const isMobile = useIsMobile()
   const bilingual = useBilingualEnabled()
   const secondaryTexts = useSecondaryVerseTexts(loc, verses, bilingual)
 
@@ -315,17 +307,31 @@ function VerseView({ book, chapter, collection, verses, posts, verseTexts, canCo
   return (
     <div>
       <PageHeader
-        title={`📖 ${scriptureLabel}`}
+        title={scriptureLabel}
         backTo="/scriptures/$collection/$book/$chapter"
-        backLabel={book.isFrontMatter ? book.name : `第${chapter}章`}
+        backLabel={getChapterLabel(book, chapter)}
         action={
           <div className="flex items-center gap-2">
-            {canCompose && <ComposeButton onClick={() => setSheetOpen(true)} label="投稿する" />}
+            {canCompose && !isMobile && (
+              <ComposePostButton
+                label="投稿する"
+                onClick={() => setSheetOpen(true)}
+                aria-haspopup="dialog"
+              />
+            )}
             <BilingualToggleButton />
             <BookmarkButton loc={loc} />
           </div>
         }
       />
+      {canCompose && isMobile && (
+        <ComposePostButton
+          layout="fab"
+          label="投稿する"
+          onClick={() => setSheetOpen(true)}
+          aria-haspopup="dialog"
+        />
+      )}
       <div className="px-4 py-2 border-b" style={{ borderColor: 'var(--line)' }}>
         <a
           href={officialUrl}
@@ -355,7 +361,7 @@ function VerseView({ book, chapter, collection, verses, posts, verseTexts, canCo
       {posts.length === 0 ? (
         <EmptyState>この節への投稿はまだありません</EmptyState>
       ) : (
-        <div>
+        <div className="pb-[var(--fab-clearance)]">
           {posts.map((post) => (
             <PostCard key={post.id} post={post} />
           ))}
@@ -471,25 +477,30 @@ function ChapterView({
   const showBubbles = hasSelectedUser && !isMobile
   const showMarkers = hasSelectedUser && isMobile
 
+  const composeMenuProps = {
+    onSelectChapter: openComposerForChapter,
+    onSelectVerses: enterSelectMode,
+  }
+
   const headerAction = (
     <div className="flex items-center gap-2">
-      {canCompose && (
-        <ComposeMenu
-          onSelectChapter={openComposerForChapter}
-          onSelectVerses={enterSelectMode}
-        />
-      )}
+      {canCompose && !isMobile && <ComposeMenu {...composeMenuProps} />}
       <BilingualToggleButton />
       <BookmarkButton loc={loc} />
     </div>
   )
+
+  const composeFab =
+    canCompose && isMobile && mode !== 'select' ? (
+      <ComposeMenu {...composeMenuProps} layout="fab" />
+    ) : null
 
   const collectionName = book.isFrontMatter ? getCollection(collection)?.name : undefined
 
   const chapterHeader = (
     <>
       <PageHeader
-        title={getScriptureLabel(loc, book)}
+        title={getChapterLabel(book, chapter)}
         backTo={book.isFrontMatter ? '/scriptures/$collection' : '/scriptures/$collection/$book'}
         backLabel={collectionName ?? book.name}
         action={headerAction}
@@ -516,7 +527,7 @@ function ChapterView({
   )
 
   const verseList = (
-    <div className="p-4 pb-24">
+    <div className="p-4 pb-[var(--fab-clearance)]">
       <ul
         className={
           showBubbles
@@ -585,6 +596,7 @@ function ChapterView({
   return (
     <div>
       {mode === 'select' ? selectionHeader : chapterHeader}
+      {composeFab}
       {posts.length > 0 && (
         <div className="border-b" style={{ borderColor: 'var(--line)' }}>
           <p className="px-4 pt-3 pb-1 text-xs font-medium" style={{ color: 'var(--sea-ink-soft)' }}>
