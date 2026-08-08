@@ -45,4 +45,17 @@ describe('ComposeMenu (mobile)', () => {
     expect(await screen.findByRole('menuitem', { name: /章全体に投稿/ })).toBeInTheDocument()
     expect(await screen.findByRole('menuitem', { name: /節を選んで投稿/ })).toBeInTheDocument()
   })
+
+  it('layout="fab" ではトリガーが FAB になり、押すとメニューが開く', async () => {
+    render(<ComposeMenu onSelectChapter={vi.fn()} onSelectVerses={vi.fn()} layout="fab" />)
+    const fab = screen.getByRole('button', { name: '投稿する' })
+    expect(fab.className).toContain('fixed')
+    await userEvent.click(fab)
+    expect(await screen.findByRole('menuitem', { name: /章全体に投稿/ })).toBeInTheDocument()
+  })
+
+  it('layout 未指定なら従来どおりピル表示のまま', () => {
+    render(<ComposeMenu onSelectChapter={vi.fn()} onSelectVerses={vi.fn()} />)
+    expect(screen.getByRole('button', { name: /投稿/ }).className).not.toContain('fixed')
+  })
 })
