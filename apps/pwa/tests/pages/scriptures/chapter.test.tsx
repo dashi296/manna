@@ -264,7 +264,6 @@ describe('ChapterPage', () => {
 
   it('mode=select 中は選択ユーザーがあっても吹き出しを描画しない', async () => {
     setViewportWidth(1440)
-    window.dispatchEvent(new Event('resize'))
     const { useSelectedUserStore } = await import('@/features/select-verse-view')
     useSelectedUserStore.setState({ selectedUserId: 'u1' })
     loaderData = {
@@ -292,7 +291,6 @@ describe('ChapterPage', () => {
 
   it('desktop 相当なら選択ユーザーの吹き出しが節横に描画される', async () => {
     setViewportWidth(1440)
-    window.dispatchEvent(new Event('resize'))
     const { useSelectedUserStore } = await import('@/features/select-verse-view')
     useSelectedUserStore.setState({ selectedUserId: 'u1' })
     loaderData = {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { XIcon } from 'lucide-react'
 import { Button } from '@/shared/ui/button'
 import {
@@ -19,6 +19,25 @@ export function InstallPwaBanner() {
     useState<BeforeInstallPromptEvent | null>(null)
   const [visible, setVisible] = useState(false)
   const [iosDialogOpen, setIosDialogOpen] = useState(false)
+  const barRef = useRef<HTMLDivElement>(null)
+
+  // 同じ画面下部を使う FAB がバナーに隠れないよう、実測高さを CSS 変数で公開する
+  useEffect(() => {
+    const root = document.documentElement
+    const bar = barRef.current
+    if (!visible || !bar) {
+      root.style.setProperty('--install-banner-h', '0px')
+      return
+    }
+    const observer = new ResizeObserver(() => {
+      root.style.setProperty('--install-banner-h', `${bar.offsetHeight}px`)
+    })
+    observer.observe(bar)
+    return () => {
+      observer.disconnect()
+      root.style.setProperty('--install-banner-h', '0px')
+    }
+  }, [visible])
 
   useEffect(() => {
     if (isStandalone()) return
@@ -70,9 +89,12 @@ export function InstallPwaBanner() {
       <div
         role="region"
         aria-label="アプリのインストール案内"
-        className="fixed inset-x-0 bottom-[var(--bottom-nav-h)] z-40 lg:hidden"
+        className="fixed inset-x-0 bottom-[var(--bottom-nav-h)] z-40 lg:hidden pointer-events-none"
       >
-        <div className="mx-auto flex max-w-md items-center gap-3 border-t bg-background px-3 py-2">
+        <div
+          ref={barRef}
+          className="pointer-events-auto mx-auto flex max-w-md items-center gap-3 border-t bg-background px-3 py-2"
+        >
           <img
             src="/logo192.png"
             alt=""

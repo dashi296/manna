@@ -361,7 +361,7 @@ function VerseView({ book, chapter, collection, verses, posts, verseTexts, canCo
       {posts.length === 0 ? (
         <EmptyState>この節への投稿はまだありません</EmptyState>
       ) : (
-        <div>
+        <div className="pb-24">
           {posts.map((post) => (
             <PostCard key={post.id} post={post} />
           ))}

@@ -34,7 +34,7 @@ export function getScriptureLabel(ref: ScriptureRef, book: ScriptureBook = findB
   const bookName = book?.name ?? ref.book
   if (!ref.chapter) return bookName
   if (!ref.verses?.length) {
-    return book?.isFrontMatter ? bookName : `${bookName} 第${ref.chapter}章`
+    return book?.isFrontMatter ? bookName : `${bookName} ${getChapterLabel(book, ref.chapter)}`
   }
   const sorted = [...ref.verses].sort((a, b) => a - b)
   if (sorted.length === 1) return `${bookName} ${ref.chapter}:${sorted[0]}`

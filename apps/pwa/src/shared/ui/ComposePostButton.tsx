@@ -16,7 +16,7 @@ export function ComposePostButton({ layout = 'pill', label, className, ...rest }
         variant="accent"
         aria-label={label}
         className={cn(
-          'fixed right-4 bottom-[calc(var(--bottom-nav-h)+1rem)] z-30',
+          'fixed right-4 bottom-[calc(var(--bottom-nav-h)+var(--install-banner-h)+1rem)] z-30',
           'h-14 w-14 rounded-full p-0 shadow-lg [&_svg]:size-6',
           className,
         )}
