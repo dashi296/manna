@@ -1128,14 +1128,15 @@ describe('PostActionsMenu', () => {
     expect(mockNavigate).not.toHaveBeenCalled()
   })
 
-  it('戻れる履歴が無ければフィードへ送る', async () => {
+  it('戻れる履歴が無ければフィードへ送る（削除済み詳細を履歴に残さない）', async () => {
     mockCanGoBack.mockReturnValue(false)
     renderMenu()
     const sheet = await openConfirmSheet()
 
     await userEvent.click(within(sheet).getByRole('button', { name: '削除する' }))
 
-    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith({ to: '/' }))
+    // push すると削除済みの詳細が直前の履歴に残り、戻ると 404 になる
+    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith({ to: '/', replace: true }))
     expect(mockBack).not.toHaveBeenCalled()
   })
 
@@ -1215,8 +1216,9 @@ export function useDeletePost(postId: string) {
 
     await invalidatePostLists(queryClient)
 
+    // 直リンク流入では push すると削除済みの詳細が直前の履歴に残り、戻ると 404 になる
     if (router.history.canGoBack()) router.history.back()
-    else navigate({ to: '/' })
+    else navigate({ to: '/', replace: true })
   }
 
   return { remove, pending }
@@ -1720,6 +1722,7 @@ Expected: dev サーバーが起動してログインが通る。ポートは 30
 1. 新しいタブに投稿Cの詳細 URL を直接貼って開く
 2. 「…」→「削除」→「削除する」
 3. フィード（`/`）へ送られ、一覧から投稿Cが消えていること
+4. **そのままブラウザの「戻る」を押しても削除済みの詳細へ戻らないこと**（`replace: true` が効いているかの確認）
 
 - [ ] **Step 9: 他人の投稿にメニューが出ないことを確認する**
 

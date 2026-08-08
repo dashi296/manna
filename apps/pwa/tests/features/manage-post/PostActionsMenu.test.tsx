@@ -134,14 +134,15 @@ describe('PostActionsMenu', () => {
     expect(mockNavigate).not.toHaveBeenCalled()
   })
 
-  it('戻れる履歴が無ければフィードへ送る', async () => {
+  it('戻れる履歴が無ければフィードへ送る（削除済み詳細を履歴に残さない）', async () => {
     mockCanGoBack.mockReturnValue(false)
     renderMenu()
     const sheet = await openConfirmSheet()
 
     await userEvent.click(within(sheet).getByRole('button', { name: '削除する' }))
 
-    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith({ to: '/' }))
+    // push すると削除済みの詳細が直前の履歴に残り、戻ると 404 になる
+    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith({ to: '/', replace: true }))
     expect(mockBack).not.toHaveBeenCalled()
   })
 

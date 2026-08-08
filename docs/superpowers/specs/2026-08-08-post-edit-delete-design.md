@@ -235,12 +235,14 @@ type Props = {
 
 ```ts
 if (router.history.canGoBack()) router.history.back()
-else navigate({ to: '/' })
+else navigate({ to: '/', replace: true })
 ```
 
 `/` 固定にしないのは、章を読みながら節コメントシート経由で開いた投稿を削除したときに読書位置を失うため。章ページはルートローダーで投稿を引いており、戻ると再取得されて削除済みの投稿が消える。
 
 `canGoBack()` は `@tanstack/history` が提供する（`useRouter().history`）。実装は `location.state[stateIndexKey] !== 0` で、ブラウザ履歴の生の長さではなく **TanStack が自前で管理する index** を見ている。外部サイトからの流入や直リンクでは index が 0 なので `false` になり `/` へ送られる。アプリ外へ戻ることはないので、追加のフォールバックは不要。
+
+フォールバック側を `replace: true` にするのは、push だと削除済み詳細の URL が直前の履歴に残り、ブラウザの「戻る」で 404 に着いてしまうため。
 
 ### 確認 UI に Sheet を使う
 

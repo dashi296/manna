@@ -33,8 +33,9 @@ export function useDeletePost(postId: string) {
 
     await invalidatePostLists(queryClient)
 
+    // 直リンク流入では push すると削除済みの詳細が直前の履歴に残り、戻ると 404 になる
     if (router.history.canGoBack()) router.history.back()
-    else navigate({ to: '/' })
+    else navigate({ to: '/', replace: true })
   }
 
   return { remove, pending }
