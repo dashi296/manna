@@ -1,19 +1,32 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { BookOpen, PenLine } from 'lucide-react'
 import { ComposePostButton } from '@/shared/ui/ComposePostButton'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/shared/ui/sheet'
 import { Popover, PopoverContent, PopoverTrigger } from '@/shared/ui/popover'
-import { useIsMobile } from '@/shared/hooks/use-mobile'
+
+// Tailwind の lg（--breakpoint-lg: 64rem）と同じクエリ。1024px と書くと
+// ブラウザの既定フォントサイズを変えている環境で CSS 側の境界とずれる
+const LG_MEDIA_QUERY = '(min-width: 64rem)'
 
 type Props = {
   onSelectChapter: () => void
   onSelectVerses: () => void
   layout?: 'pill' | 'fab'
+  className?: string
 }
 
-export function ComposeMenu({ onSelectChapter, onSelectVerses, layout = 'pill' }: Props) {
-  const isMobile = useIsMobile()
+export function ComposeMenu({ onSelectChapter, onSelectVerses, layout = 'pill', className }: Props) {
   const [open, setOpen] = useState(false)
+
+  // トリガーは CSS のブレークポイントで隠れるが、開いている Sheet / Popover は
+  // portal 側にあり className が届かない。境界をまたいだ時点で閉じないと、
+  // 非表示側のメニューだけが画面に取り残される（スクロールロックも残る）。
+  useEffect(() => {
+    const mql = window.matchMedia(LG_MEDIA_QUERY)
+    const close = () => setOpen(false)
+    mql.addEventListener('change', close)
+    return () => mql.removeEventListener('change', close)
+  }, [])
 
   const handleChapter = () => {
     setOpen(false)
@@ -41,12 +54,13 @@ export function ComposeMenu({ onSelectChapter, onSelectVerses, layout = 'pill' }
     </div>
   )
 
-  if (isMobile || layout === 'fab') {
+  if (layout === 'fab') {
     return (
       <>
         <ComposePostButton
-          layout={layout}
+          layout="fab"
           label="投稿する"
+          className={className}
           onClick={() => setOpen(true)}
           aria-haspopup="menu"
           aria-expanded={open}
@@ -70,7 +84,7 @@ export function ComposeMenu({ onSelectChapter, onSelectVerses, layout = 'pill' }
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
-        render={<ComposePostButton label="投稿する" aria-haspopup="menu" />}
+        render={<ComposePostButton label="投稿する" className={className} aria-haspopup="menu" />}
       />
       <PopoverContent align="end" className="w-64">
         {menuItems}

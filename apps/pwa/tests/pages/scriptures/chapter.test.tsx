@@ -23,9 +23,25 @@ function render(ui: React.ReactElement) {
   }
 }
 
+// 吹き出し（showBubbles / showMarkers）は今も useIsMobile で切り替わる。
 // useIsMobile は effect 内で innerWidth を読むため、render の前に設定する必要がある
 function setViewportWidth(width: number) {
   Object.defineProperty(window, 'innerWidth', { writable: true, value: width })
+}
+
+// 投稿導線はヘッダー内のピルとヘッダー外の FAB を常に両方マウントし、
+// どちらを見せるかは CSS のブレークポイントが決める。jsdom はメディアクエリを
+// 評価しないため、両方が DOM に居る前提でどちらかを選び取る。
+const composeTriggers = () => screen.getAllByRole('button', { name: /投稿/ })
+const headerComposeTrigger = () => {
+  const found = composeTriggers().find((b) => b.closest('header') !== null)
+  if (!found) throw new Error('ヘッダー内の投稿トリガーが見つからない')
+  return found
+}
+const fabComposeTrigger = () => {
+  const found = composeTriggers().find((b) => b.className.includes('fixed'))
+  if (!found) throw new Error('FAB の投稿トリガーが見つからない')
+  return found
 }
 
 type TestLoaderData = {
@@ -136,7 +152,7 @@ describe('ChapterPage', () => {
     const user = userEvent.setup()
     render(<ChapterPage />)
 
-    await user.click(screen.getByRole('button', { name: /投稿/ }))
+    await user.click(headerComposeTrigger())
     await user.click(await screen.findByRole('menuitem', { name: /章全体に投稿/ }))
 
     expect(screen.getByRole('dialog')).toBeInTheDocument()
@@ -177,7 +193,7 @@ describe('ChapterPage', () => {
     const user = userEvent.setup()
     render(<ChapterPage />)
 
-    await user.click(screen.getByRole('button', { name: /投稿/ }))
+    await user.click(headerComposeTrigger())
     await user.click(await screen.findByRole('menuitem', { name: /節を選んで投稿/ }))
 
     expect(navigateSpy).toHaveBeenCalled()
@@ -502,40 +518,39 @@ describe('ChapterPage', () => {
     expect(screen.queryByText('Verse one in English')).toBeNull()
   })
 
-  it('モバイルの章表示では投稿導線をヘッダー外の FAB として表示する', async () => {
-    setViewportWidth(390)
+  it('章表示の投稿導線は初回描画からヘッダー外の FAB を持ち、lg 未満でのみ見せる', () => {
     render(<ChapterPage />)
 
-    const fab = await screen.findByRole('button', { name: '投稿する' })
-    expect(fab.className).toContain('fixed')
+    const fab = fabComposeTrigger()
     expect(fab.closest('header')).toBeNull()
+    expect(fab.className).toContain('lg:hidden')
   })
 
-  it('モバイルの章表示の FAB を押すと投稿の2択メニューが開く', async () => {
-    setViewportWidth(390)
+  it('章表示のヘッダー内ピルは lg 以上でのみ見せる', () => {
+    render(<ChapterPage />)
+
+    const pill = headerComposeTrigger()
+    expect(pill.className).not.toContain('fixed')
+    expect(pill.className).toContain('hidden')
+    expect(pill.className).toContain('lg:inline-flex')
+  })
+
+  it('章表示の FAB を押すと投稿の2択メニューが開く', async () => {
     const user = userEvent.setup()
     render(<ChapterPage />)
 
-    await user.click(await screen.findByRole('button', { name: '投稿する' }))
+    await user.click(fabComposeTrigger())
 
     expect(await screen.findByRole('menuitem', { name: /章全体に投稿/ })).toBeInTheDocument()
     expect(await screen.findByRole('menuitem', { name: /節を選んで投稿/ })).toBeInTheDocument()
   })
 
-  it('モバイルの節選択モード中は FAB を表示しない', async () => {
-    setViewportWidth(390)
+  it('節選択モード中は FAB を表示しない', async () => {
     search = { mode: 'select', select: [1] }
     render(<ChapterPage />)
 
     expect(await screen.findByText('1節選択中')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '投稿する' })).toBeNull()
-  })
-
-  it('デスクトップの章表示では投稿ボタンがヘッダー内に残る', () => {
-    render(<ChapterPage />)
-    const trigger = screen.getByRole('button', { name: /投稿/ })
-    expect(trigger.closest('header')).not.toBeNull()
-    expect(trigger.className).not.toContain('fixed')
   })
 
   it('節表示のタイトルに絵文字を含めない', () => {
@@ -570,33 +585,43 @@ describe('ChapterPage', () => {
     expect(list).not.toBeNull()
   })
 
-  it('モバイルの節表示では投稿導線をヘッダー外の FAB として表示する', async () => {
-    setViewportWidth(390)
+  it('節表示の投稿導線は初回描画からヘッダー外の FAB を持ち、lg 未満でのみ見せる', () => {
     loaderData = { ...baseChapterData, mode: 'verse', verses: [1] }
     render(<ChapterPage />)
 
-    const fab = await screen.findByRole('button', { name: '投稿する' })
-    expect(fab.className).toContain('fixed')
+    const fab = fabComposeTrigger()
     expect(fab.closest('header')).toBeNull()
+    expect(fab.className).toContain('lg:hidden')
+  })
+
+  it('節表示のヘッダー内ピルは lg 以上でのみ見せる', () => {
+    loaderData = { ...baseChapterData, mode: 'verse', verses: [1] }
+    render(<ChapterPage />)
+
+    const pill = headerComposeTrigger()
+    expect(pill.className).not.toContain('fixed')
+    expect(pill.className).toContain('hidden')
+    expect(pill.className).toContain('lg:inline-flex')
   })
 
   it('節表示の投稿導線は2択メニューを挟まず composer を直接開く', async () => {
-    setViewportWidth(390)
     loaderData = { ...baseChapterData, mode: 'verse', verses: [1] }
     const user = userEvent.setup()
     render(<ChapterPage />)
 
-    await user.click(await screen.findByRole('button', { name: '投稿する' }))
+    await user.click(fabComposeTrigger())
 
     expect(await screen.findByRole('dialog')).toBeInTheDocument()
     expect(screen.queryByRole('menuitem')).toBeNull()
   })
 
-  it('デスクトップの節表示では投稿ボタンがヘッダー内に残る', () => {
+  it('節表示のヘッダー内ピルからも同じ composer を開ける', async () => {
     loaderData = { ...baseChapterData, mode: 'verse', verses: [1] }
+    const user = userEvent.setup()
     render(<ChapterPage />)
-    const trigger = screen.getByRole('button', { name: '投稿する' })
-    expect(trigger.closest('header')).not.toBeNull()
-    expect(trigger.className).not.toContain('fixed')
+
+    await user.click(headerComposeTrigger())
+
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
   })
 })
