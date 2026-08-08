@@ -89,6 +89,8 @@
   --bottom-nav-h: calc(4rem + var(--safe-area-bottom));
   /* InstallPwaBanner が表示中に自身の実測高さを入れる。非表示なら 0px */
   --install-banner-h: 0px;
+  /* FAB に隠れないようリスト末尾に必要な余白。6rem は FAB の高さ(3.5rem)＋下オフセット(1rem)＋余裕 */
+  --fab-clearance: calc(6rem + var(--install-banner-h));
   /* 0.75rem は PageHeader の pb-3 と同じ値。変えたら両方合わせる */
   --page-header-pt: calc(0.75rem + var(--safe-area-top));
   /* 0.5rem は SelectionModeHeader の pb-2 と同じ値。変えたら両方合わせる */

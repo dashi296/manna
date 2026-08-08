@@ -361,7 +361,7 @@ function VerseView({ book, chapter, collection, verses, posts, verseTexts, canCo
       {posts.length === 0 ? (
         <EmptyState>この節への投稿はまだありません</EmptyState>
       ) : (
-        <div className="pb-24">
+        <div className="pb-[var(--fab-clearance)]">
           {posts.map((post) => (
             <PostCard key={post.id} post={post} />
           ))}
@@ -527,7 +527,7 @@ function ChapterView({
   )
 
   const verseList = (
-    <div className="p-4 pb-24">
+    <div className="p-4 pb-[var(--fab-clearance)]">
       <ul
         className={
           showBubbles

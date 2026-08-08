@@ -544,6 +544,32 @@ describe('ChapterPage', () => {
     expect(screen.getByRole('heading', { name: '第1ニーファイ書 1:1' })).toBeInTheDocument()
   })
 
+  it('節表示の投稿リストは FAB に隠れないだけの下余白を持つ', () => {
+    loaderData = {
+      ...baseChapterData,
+      mode: 'verse',
+      verses: [1],
+      posts: [
+        {
+          id: 'p1',
+          content: '最後の投稿',
+          visibility: 'public' as const,
+          created_at: '2026-08-07T00:00:00.000Z',
+          scripture_collection: 'bofm',
+          scripture_book: '1-ne',
+          scripture_chapter: 1,
+          scripture_verses: [1],
+          user_id: 'u1',
+          users: { display_name: '中村さん', avatar_url: null },
+        },
+      ],
+    }
+    render(<ChapterPage />)
+
+    const list = screen.getByText('最後の投稿').closest('div.pb-\\[var\\(--fab-clearance\\)\\]')
+    expect(list).not.toBeNull()
+  })
+
   it('モバイルの節表示では投稿導線をヘッダー外の FAB として表示する', async () => {
     setViewportWidth(390)
     loaderData = { ...baseChapterData, mode: 'verse', verses: [1] }
