@@ -55,6 +55,22 @@ describe('PostEditor', () => {
     await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith({ to: '/' }))
   })
 
+  // disabled={submitting} は React の再レンダー後にしか効かない。スマホで素早く
+  // 二度押しすると同じ投稿が2件できる
+  it('同じ tick に2回押されても insert は1回しか走らない', async () => {
+    const user = userEvent.setup()
+    render(<PostEditor mode="sheet" onSuccess={() => {}} />)
+    await user.type(screen.getByPlaceholderText(/感じたこと/), '二度押し')
+    const button = screen.getByRole('button', { name: '投稿する' })
+
+    // userEvent.click は毎回 act で再レンダーを流すので、生のイベントを続けて撃つ
+    button.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    button.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+
+    await waitFor(() => expect(mockInsert).toHaveBeenCalled())
+    expect(mockInsert).toHaveBeenCalledTimes(1)
+  })
+
   it('mode="sheet" + onSuccess で navigate せず onSuccess が呼ばれる', async () => {
     const user = userEvent.setup()
     const onSuccess = vi.fn()
@@ -224,6 +240,19 @@ describe('PostEditor（編集モード）', () => {
     expect(mockUpdateEq).toHaveBeenCalledWith('id', 'p1')
     expect(mockInsert).not.toHaveBeenCalled()
     expect(mockNavigate).not.toHaveBeenCalled()
+  })
+
+  it('同じ tick に2回押されても update は1回しか走らない', async () => {
+    const user = userEvent.setup()
+    render(<PostEditor mode="sheet" post={editablePost} onSuccess={() => {}} />)
+    await user.type(screen.getByPlaceholderText(/感じたこと/), 'を直した')
+    const button = screen.getByRole('button', { name: '更新する' })
+
+    button.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    button.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+
+    await waitFor(() => expect(mockUpdate).toHaveBeenCalled())
+    expect(mockUpdate).toHaveBeenCalledTimes(1)
   })
 
   it('更新が失敗したらエラーを出して onSuccess を呼ばない', async () => {

@@ -7,6 +7,7 @@ import type { EditablePost, Visibility } from '@/entities/post'
 import { getScriptureLabel } from '@/entities/scripture'
 import { VisibilitySelector } from '@/features/choose-visibility'
 import { ScriptureSelector, type ScriptureRefPartial } from '@/features/select-scripture'
+import { useSingleFlight } from '@/shared/hooks/use-single-flight'
 
 // 他の永続ストア（manna:bookmarks:v1 など）に揃えてバージョンを持たせる。
 // 下書きの形は一度変わっており、次に変えたとき古い値を新しい型として
@@ -77,7 +78,7 @@ export function PostEditor({ initialScripture, mode = 'page', post, onSuccess }:
   const [scripture, setScripture] = useState<ScriptureRefPartial>(() =>
     post ? (initialScripture ?? {}) : {},
   )
-  const [submitting, setSubmitting] = useState(false)
+  const { pending: submitting, begin, end } = useSingleFlight()
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const draftLoaded = useRef(false)
 
@@ -106,8 +107,9 @@ export function PostEditor({ initialScripture, mode = 'page', post, onSuccess }:
     post !== undefined && content === post.content && visibility === post.visibility
 
   const handleSubmit = async () => {
-    if (!content.trim() || submitting) return
-    setSubmitting(true)
+    if (!content.trim()) return
+    // begin() は ref なので同じ tick の2発目をここで止められる
+    if (!begin()) return
     setErrorMessage(null)
 
     if (post) {
@@ -119,7 +121,7 @@ export function PostEditor({ initialScripture, mode = 'page', post, onSuccess }:
 
       // RLS 違反はエラーではなく 0 行で返るため、行数でも判定する
       if (error || !data || data.length === 0) {
-        setSubmitting(false)
+        end()
         setErrorMessage('更新に失敗しました。もう一度お試しください。')
         return
       }
@@ -129,7 +131,7 @@ export function PostEditor({ initialScripture, mode = 'page', post, onSuccess }:
 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
-      setSubmitting(false)
+      end()
       setErrorMessage('投稿するにはログインが必要です。')
       return
     }
@@ -145,7 +147,7 @@ export function PostEditor({ initialScripture, mode = 'page', post, onSuccess }:
     })
 
     if (error) {
-      setSubmitting(false)
+      end()
       setErrorMessage('投稿に失敗しました。もう一度お試しください。')
       return
     }
