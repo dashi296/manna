@@ -136,7 +136,6 @@ describe('ChapterPage', () => {
     search = { select: [1, 2] }
     clientVerseTexts = []
     clientVerseFetchCount = 0
-    navigateSpy.mockClear()
     localStorage.clear()
     const { useSelectedUserStore } = await import('@/features/select-verse-view')
     useSelectedUserStore.setState({ selectedUserId: null })

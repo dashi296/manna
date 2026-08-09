@@ -75,16 +75,10 @@ const openConfirmSheet = async () => {
 }
 
 describe('PostActionsMenu', () => {
+  // 呼び出し履歴は vitest.config.ts の clearMocks が消す。ここは戻り値の再スタブだけ
   beforeEach(() => {
-    mockDelete.mockClear()
-    mockDeleteEq.mockClear()
-    mockDeleteResult.mockClear().mockResolvedValue({ data: [{ id: 'p1' }], error: null })
-    mockInvalidatePostLists.mockClear()
-    mockBack.mockClear()
-    mockCanGoBack.mockClear().mockReturnValue(true)
-    mockNavigate.mockClear()
-    mockToast.mockClear()
-    mockToastError.mockClear()
+    mockDeleteResult.mockResolvedValue({ data: [{ id: 'p1' }], error: null })
+    mockCanGoBack.mockReturnValue(true)
   })
 
   it('開くまでメニュー項目は出ない', () => {

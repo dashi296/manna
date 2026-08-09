@@ -36,14 +36,11 @@ vi.mock('@tanstack/react-router', () => ({
 
 // describe をまたいで共有する。Vitest のフックは兄弟 describe に継承されないため、
 // describe 内に置くと各 describe で複製することになる
+// 呼び出し履歴は vitest.config.ts の clearMocks が消す。ここは戻り値の再スタブだけ
 beforeEach(() => {
   localStorage.clear()
-  mockInsert.mockClear()
-  mockNavigate.mockClear()
   mockGetUser.mockResolvedValue({ data: { user: { id: 'u1' } } })
-  mockUpdate.mockClear()
-  mockUpdateEq.mockClear()
-  mockUpdateResult.mockClear().mockResolvedValue({ data: [{ id: 'p1' }], error: null })
+  mockUpdateResult.mockResolvedValue({ data: [{ id: 'p1' }], error: null })
 })
 
 describe('PostEditor', () => {
