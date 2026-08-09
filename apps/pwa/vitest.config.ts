@@ -9,9 +9,7 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./tests/setup.ts'],
-    // 各テスト前に全モックの呼び出し履歴を消す。beforeEach で mockClear を
-    // 手書きで並べると、モックを足したとき追記を忘れて履歴がテスト間に漏れる。
-    // 実装（mockResolvedValue などの戻り値）は消えないので、再スタブは各自で行う
+    // 呼び出し履歴の一括クリア。実装と Once キューは残るので必要な側は mockReset する
     clearMocks: true,
   },
 })

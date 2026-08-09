@@ -3,14 +3,14 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { PostEditor } from '@/widgets/post-editor'
 
-const mockInsert = vi.fn().mockResolvedValue({ error: null })
-const mockGetUser = vi.fn().mockResolvedValue({ data: { user: { id: 'u1' } } })
+const mockInsert = vi.fn()
+const mockGetUser = vi.fn()
 const mockNavigate = vi.fn()
 
 // update は .eq('id', ...).select('id') で終わる。引数を検証したいので eq もスパイする
 const mockUpdate = vi.fn()
 const mockUpdateEq = vi.fn()
-const mockUpdateResult = vi.fn().mockResolvedValue({ data: [{ id: 'p1' }], error: null })
+const mockUpdateResult = vi.fn()
 
 vi.mock('@/shared/lib/supabase', () => ({
   supabase: {
@@ -34,13 +34,13 @@ vi.mock('@tanstack/react-router', () => ({
   useNavigate: () => mockNavigate,
 }))
 
-// describe をまたいで共有する。Vitest のフックは兄弟 describe に継承されないため、
-// describe 内に置くと各 describe で複製することになる
-// 呼び出し履歴は vitest.config.ts の clearMocks が消す。ここは戻り値の再スタブだけ
+// トップレベルに置くのは兄弟 describe にフックが継承されないため。mockReset なのは
+// mockResolvedValueOnce のキューが clearMocks では排出されず次のテストへ漏れるため
 beforeEach(() => {
   localStorage.clear()
-  mockGetUser.mockResolvedValue({ data: { user: { id: 'u1' } } })
-  mockUpdateResult.mockResolvedValue({ data: [{ id: 'p1' }], error: null })
+  mockInsert.mockReset().mockResolvedValue({ error: null })
+  mockGetUser.mockReset().mockResolvedValue({ data: { user: { id: 'u1' } } })
+  mockUpdateResult.mockReset().mockResolvedValue({ data: [{ id: 'p1' }], error: null })
 })
 
 describe('PostEditor', () => {

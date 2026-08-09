@@ -75,7 +75,7 @@ const openConfirmSheet = async () => {
 }
 
 describe('PostActionsMenu', () => {
-  // 呼び出し履歴は vitest.config.ts の clearMocks が消す。ここは戻り値の再スタブだけ
+  // 履歴は clearMocks が消す。ここは個別のテストが恒久上書きする戻り値の張り直し
   beforeEach(() => {
     mockDeleteResult.mockResolvedValue({ data: [{ id: 'p1' }], error: null })
     mockCanGoBack.mockReturnValue(true)
