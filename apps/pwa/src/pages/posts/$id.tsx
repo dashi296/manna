@@ -1,7 +1,12 @@
-import { createFileRoute, Link, notFound } from '@tanstack/react-router'
+import { useState } from 'react'
+import { createFileRoute, Link, notFound, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
+import { useQueryClient } from '@tanstack/react-query'
 import { POST_SELECT, toScriptureRef, type PostWithUser } from '@/entities/post'
 import { getScriptureLabel, buildScriptureUrl, getBook } from '@/entities/scripture'
+import { invalidatePostLists } from '@/entities/user'
+import { PostActionsMenu } from '@/features/manage-post'
+import { PostComposerSheet } from '@/widgets/post-composer-sheet'
 import { MarkdownRenderer, PageHeader, UserAvatar } from '@/shared/ui'
 import { resolveUserIdentity } from '@/shared/lib/constants'
 import { formatDate } from '@/shared/lib/date'
@@ -13,36 +18,62 @@ const fetchPost = createServerFn({ method: 'POST' })
     const serverSupabase = await createSupabaseServer()
     // maybeSingle は0件を null で返すので loader が 404 にできる。single だと0件も
     // error になり、throwOnError と併せると 404 が 500 に化ける
-    const { data: post } = await serverSupabase
-      .from('posts')
-      .select(POST_SELECT)
-      .eq('id', ctx.data.id)
-      .maybeSingle()
-      .throwOnError()
-    return post as PostWithUser | null
+    const [{ data: post }, { data: { user } }] = await Promise.all([
+      serverSupabase
+        .from('posts')
+        .select(POST_SELECT)
+        .eq('id', ctx.data.id)
+        .maybeSingle()
+        .throwOnError(),
+      // 所有者判定は UI の出し分け専用なので、失敗しても投稿自体は表示させる
+      serverSupabase.auth.getUser().catch(() => ({ data: { user: null } })),
+    ])
+    return { post: post as PostWithUser | null, viewerId: user?.id ?? null }
   })
 
 export const Route = createFileRoute('/posts/$id')({
   loader: async ({ params }) => {
-    const post = await fetchPost({ data: { id: params.id } })
+    const { post, viewerId } = await fetchPost({ data: { id: params.id } })
     if (!post) throw notFound()
-    return { post }
+    return { post, viewerId }
   },
   component: PostDetailPage,
 })
 
 function PostDetailPage() {
-  const { post } = Route.useLoaderData()
+  const { post, viewerId } = Route.useLoaderData()
   const { displayName, avatarUrl } = resolveUserIdentity(post.users)
+  const router = useRouter()
+  const queryClient = useQueryClient()
+  const [editing, setEditing] = useState(false)
+
+  const isOwner = viewerId !== null && viewerId === post.user_id
+  const isEdited = post.updated_at !== post.created_at
 
   const scriptureRef = toScriptureRef(post)
   const scriptureBook = scriptureRef ? getBook(scriptureRef.collection, scriptureRef.book) : undefined
   const scriptureLabel = scriptureRef ? getScriptureLabel(scriptureRef, scriptureBook) : null
   const officialUrl = scriptureRef ? buildScriptureUrl(scriptureRef, scriptureBook) : null
 
+  // PostEditor は更新成功時もキャンセル時も onOpenChange(false) を通るため、
+  // 閉じたら常に取り直す。キャンセル時の1回は無駄になるが、更新の取りこぼしより安い
+  const handleEditorOpenChange = (open: boolean) => {
+    setEditing(open)
+    if (open) return
+    invalidatePostLists(queryClient)
+    router.invalidate()
+  }
+
   return (
     <div>
-      <PageHeader title="投稿" backTo="/" backLabel="フィード" />
+      <PageHeader
+        title="投稿"
+        backTo="/"
+        backLabel="フィード"
+        action={
+          isOwner ? <PostActionsMenu postId={post.id} onEdit={() => setEditing(true)} /> : undefined
+        }
+      />
       <div className="p-4">
         <div className="flex items-center gap-3 mb-4">
           <UserAvatar name={displayName} url={avatarUrl} size="md" />
@@ -52,6 +83,7 @@ function PostDetailPage() {
             </span>
             <div className="text-xs" style={{ color: 'var(--sea-ink-soft)' }}>
               {formatDate(post.created_at, { year: true })}
+              {isEdited && <span>・編集済み</span>}
             </div>
           </div>
         </div>
@@ -86,6 +118,15 @@ function PostDetailPage() {
         )}
 
         <MarkdownRenderer content={post.content} />
+
+        {isOwner && (
+          <PostComposerSheet
+            open={editing}
+            onOpenChange={handleEditorOpenChange}
+            post={{ id: post.id, content: post.content, visibility: post.visibility }}
+            initialScripture={scriptureRef ?? undefined}
+          />
+        )}
       </div>
     </div>
   )

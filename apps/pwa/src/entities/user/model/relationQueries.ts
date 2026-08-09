@@ -21,3 +21,11 @@ export function invalidateRelationQueries(queryClient: QueryClient) {
     ),
   )
 }
+
+// 投稿の作成・編集・削除で古くなる一覧。tab / userId を知らなくて済むよう
+// プレフィックスで落とす。フォロー関係は変わらないので profile / connections は残す
+export function invalidatePostLists(queryClient: QueryClient) {
+  return Promise.all(
+    [USER_POSTS, FEED].map((key) => queryClient.invalidateQueries({ queryKey: [key] })),
+  )
+}

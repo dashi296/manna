@@ -6,6 +6,7 @@ export const makePost = (overrides: Partial<PostWithUser> = {}): PostWithUser =>
   content: '投稿',
   visibility: 'public',
   created_at: '2026-07-25T10:00:00+00:00',
+  updated_at: '2026-07-25T10:00:00+00:00',
   scripture_collection: null,
   scripture_book: null,
   scripture_chapter: null,

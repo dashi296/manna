@@ -8,6 +8,7 @@ export type PostWithUser = {
   content: string
   visibility: Visibility
   created_at: string
+  updated_at: string
   scripture_collection: string | null
   scripture_book: string | null
   scripture_chapter: number | null
@@ -16,8 +17,10 @@ export type PostWithUser = {
   users: UserSummary | null
 }
 
+export type EditablePost = { id: string; content: string; visibility: Visibility }
+
 export const POST_SELECT = `
-  id, content, visibility, created_at,
+  id, content, visibility, created_at, updated_at,
   scripture_collection, scripture_book, scripture_chapter,
   scripture_verses, user_id,
   users!posts_user_id_fkey ( display_name, avatar_url )

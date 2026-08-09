@@ -6,7 +6,10 @@ const mockInsert = vi.fn().mockResolvedValue({ error: null })
 
 vi.mock('@/shared/lib/supabase', () => ({
   supabase: {
-    from: () => ({ insert: mockInsert }),
+    from: () => ({
+      insert: mockInsert,
+      update: () => ({ eq: () => ({ select: async () => ({ data: [{ id: 'p1' }], error: null }) }) }),
+    }),
     auth: { getUser: async () => ({ data: { user: { id: 'u1' } } }) },
   },
 }))
@@ -62,5 +65,31 @@ describe('PostComposerSheet', () => {
 
     await waitFor(() => expect(screen.getByRole('dialog')).toHaveAttribute('data-side', 'bottom'))
     expect(screen.getByRole('dialog')).toHaveClass('h-[70dvh]')
+  })
+
+  it('post があるとタイトルが「投稿を編集」になる', () => {
+    render(
+      <PostComposerSheet
+        open
+        onOpenChange={() => {}}
+        post={{ id: 'p1', content: '元の本文', visibility: 'public' }}
+        initialScripture={{ collection: 'bofm', book: 'mosiah', chapter: 3, verses: [19] }}
+      />,
+    )
+
+    expect(screen.getByText('投稿を編集')).toBeInTheDocument()
+    expect(screen.queryByText('新しい投稿')).toBeNull()
+  })
+
+  it('post を PostEditor に渡す（本文が初期表示される）', () => {
+    render(
+      <PostComposerSheet
+        open
+        onOpenChange={() => {}}
+        post={{ id: 'p1', content: '元の本文', visibility: 'public' }}
+      />,
+    )
+
+    expect(screen.getByPlaceholderText(/感じたこと/)).toHaveValue('元の本文')
   })
 })

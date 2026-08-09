@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { toScriptureRef, type PostWithUser } from '@/entities/post/model'
+import { toScriptureRef, POST_SELECT, type PostWithUser } from '@/entities/post/model'
 
 function makePost(overrides: Partial<PostWithUser> = {}): PostWithUser {
   return {
@@ -7,6 +7,7 @@ function makePost(overrides: Partial<PostWithUser> = {}): PostWithUser {
     content: 'test',
     visibility: 'public',
     created_at: '2026-01-01T00:00:00Z',
+    updated_at: '2026-01-01T00:00:00Z',
     scripture_collection: null,
     scripture_book: null,
     scripture_chapter: null,
@@ -62,5 +63,11 @@ describe('toScriptureRef', () => {
 
   it('聖典参照が全てnullの場合はnullを返す', () => {
     expect(toScriptureRef(makePost())).toBeNull()
+  })
+})
+
+describe('POST_SELECT', () => {
+  it('updated_at を含む（「編集済み」表示が created_at との比較に使う）', () => {
+    expect(POST_SELECT).toContain('updated_at')
   })
 })

@@ -8,6 +8,12 @@ export function routerMock(
   navigate: (opts: unknown) => void = () => {},
   // loader ではなく params/search からデータを組み立てるページ用。渡さなければ空を返す
   routeHooks: { useParams?: () => unknown; useSearch?: () => unknown } = {},
+  // 削除・編集フローのように router.invalidate() / history.back() を叩くコンポーネント用
+  router: {
+    invalidate?: () => void
+    canGoBack?: () => boolean
+    back?: () => void
+  } = {},
 ) {
   return {
     createFileRoute: () => (config: Record<string, unknown>) => ({
@@ -54,6 +60,13 @@ export function routerMock(
       return opts?.select ? opts.select(state) : state
     },
     useNavigate: () => navigate,
+    useRouter: () => ({
+      invalidate: router.invalidate ?? (() => {}),
+      history: {
+        canGoBack: router.canGoBack ?? (() => true),
+        back: router.back ?? (() => {}),
+      },
+    }),
   }
 }
 
