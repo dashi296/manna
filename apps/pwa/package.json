@@ -11,7 +11,8 @@
     "preview": "vite preview",
     "cf:deploy": "vite build && wrangler deploy",
     "cf-typegen": "wrangler types",
-    "test": "vitest run"
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",

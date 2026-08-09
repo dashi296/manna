@@ -1,12 +1,56 @@
-name: Deploy to Cloudflare Workers
+name: CI / Deploy to Cloudflare Workers
 
 on:
   push:
     branches:
       - main
+  pull_request:
+
+# 同じ ref に新しい push が来たら古い実行は打ち切る。main では打ち切らない
+# （デプロイの途中で止めると、どの版が本番に載っているか分からなくなる）
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Vitest は型を見ず vite build も型チェックをしないため、これが唯一の検出手段
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+      # 本番に載せる成果物ではないので固定のダミー値を使う。
+      # secrets に依存させないことで fork からの PR でも動く
+      - name: Build
+        run: pnpm build
+        env:
+          VITE_SUPABASE_URL: http://127.0.0.1:55321
+          VITE_SUPABASE_KEY: ci-dummy-key
+
   deploy:
+    needs: check
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
       contents: read
