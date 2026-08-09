@@ -21,7 +21,7 @@
 - 新規 FSD スライスには必ず `index.ts` を作る
 - UI 実装は TDD（失敗テスト → 実装 → 通過）
 - 編集可能なフィールドは `content` と `visibility` のみ。聖典参照は不変
-- DB リセットは `npx supabase db reset` ではなく `bash scripts/db-reset.sh` を使う（節データ 41,959 行が消えるため）
+- DB リセットは `npx supabase db reset` ではなく `bash scripts/db-reset.sh` を使う（節データ 84,052 行が消えるため）
 
 ---
 
@@ -71,7 +71,7 @@ CREATE TRIGGER posts_protect_immutable
 
 - [ ] **Step 2: DB に適用する**
 
-未適用のマイグレーションだけを流す。フルリセットは手元の投稿と 41,959 行の節データを作り直すことになるので避ける。
+未適用のマイグレーションだけを流す。フルリセットは手元の投稿と 84,052 行の節データを作り直すことになるので避ける。
 
 Run: `npx supabase migration up --local`
 Expected: `20260808000001_protect_post_immutable_cols` が適用される

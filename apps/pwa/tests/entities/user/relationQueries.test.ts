@@ -53,4 +53,16 @@ describe('invalidatePostLists', () => {
     expect(heads).not.toContain('profile')
     expect(heads).not.toContain('connections')
   })
+
+  // 投稿一覧のキーを増やしたとき、片方だけ直して drift するのを防ぐ。
+  // 実装は POST_LIST_KEYS を RELATION_KEYS に含めているので、この関係は常に成り立つはず
+  it('落とすプレフィックスは invalidateRelationQueries の部分集合になっている', async () => {
+    const postHeads = (await invalidatedPostPrefixes()).map(([head]) => head)
+    const relationHeads = (await invalidatedPrefixes()).map(([head]) => head)
+
+    expect(postHeads.length).toBeGreaterThan(0)
+    for (const head of postHeads) {
+      expect(relationHeads, `${head} が invalidateRelationQueries に入っていない`).toContain(head)
+    }
+  })
 })

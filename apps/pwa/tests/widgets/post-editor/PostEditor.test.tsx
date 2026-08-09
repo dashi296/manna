@@ -34,23 +34,41 @@ vi.mock('@tanstack/react-router', () => ({
   useNavigate: () => mockNavigate,
 }))
 
-describe('PostEditor', () => {
-  beforeEach(() => {
-    localStorage.clear()
-    mockInsert.mockClear()
-    mockNavigate.mockClear()
-    mockGetUser.mockResolvedValue({ data: { user: { id: 'u1' } } })
-    mockUpdate.mockClear()
-    mockUpdateEq.mockClear()
-    mockUpdateResult.mockClear().mockResolvedValue({ data: [{ id: 'p1' }], error: null })
-  })
+// describe をまたいで共有する。Vitest のフックは兄弟 describe に継承されないため、
+// describe 内に置くと各 describe で複製することになる
+beforeEach(() => {
+  localStorage.clear()
+  mockInsert.mockClear()
+  mockNavigate.mockClear()
+  mockGetUser.mockResolvedValue({ data: { user: { id: 'u1' } } })
+  mockUpdate.mockClear()
+  mockUpdateEq.mockClear()
+  mockUpdateResult.mockClear().mockResolvedValue({ data: [{ id: 'p1' }], error: null })
+})
 
+describe('PostEditor', () => {
   it('mode="page" 時、投稿成功で navigate({to:"/"}) される', async () => {
     const user = userEvent.setup()
     render(<PostEditor />)
     await user.type(screen.getByPlaceholderText(/感じたこと/), 'テスト投稿')
     await user.click(screen.getByRole('button', { name: '投稿する' }))
     await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith({ to: '/' }))
+  })
+
+  // disabled={submitting} は React の再レンダー後にしか効かない。スマホで素早く
+  // 二度押しすると同じ投稿が2件できる
+  it('同じ tick に2回押されても insert は1回しか走らない', async () => {
+    const user = userEvent.setup()
+    render(<PostEditor mode="sheet" onSuccess={() => {}} />)
+    await user.type(screen.getByPlaceholderText(/感じたこと/), '二度押し')
+    const button = screen.getByRole('button', { name: '投稿する' })
+
+    // userEvent.click は毎回 act で再レンダーを流すので、生のイベントを続けて撃つ
+    button.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    button.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+
+    await waitFor(() => expect(mockInsert).toHaveBeenCalled())
+    expect(mockInsert).toHaveBeenCalledTimes(1)
   })
 
   it('mode="sheet" + onSuccess で navigate せず onSuccess が呼ばれる', async () => {
@@ -119,16 +137,6 @@ describe('PostEditor', () => {
 })
 
 describe('PostEditor（編集モード）', () => {
-  beforeEach(() => {
-    localStorage.clear()
-    mockInsert.mockClear()
-    mockNavigate.mockClear()
-    mockGetUser.mockResolvedValue({ data: { user: { id: 'u1' } } })
-    mockUpdate.mockClear()
-    mockUpdateEq.mockClear()
-    mockUpdateResult.mockClear().mockResolvedValue({ data: [{ id: 'p1' }], error: null })
-  })
-
   const editablePost = { id: 'p1', content: '元の本文', visibility: 'public' as const }
   const scripture = { collection: 'bofm', book: 'mosiah', chapter: 3, verses: [19] }
 
@@ -232,6 +240,19 @@ describe('PostEditor（編集モード）', () => {
     expect(mockUpdateEq).toHaveBeenCalledWith('id', 'p1')
     expect(mockInsert).not.toHaveBeenCalled()
     expect(mockNavigate).not.toHaveBeenCalled()
+  })
+
+  it('同じ tick に2回押されても update は1回しか走らない', async () => {
+    const user = userEvent.setup()
+    render(<PostEditor mode="sheet" post={editablePost} onSuccess={() => {}} />)
+    await user.type(screen.getByPlaceholderText(/感じたこと/), 'を直した')
+    const button = screen.getByRole('button', { name: '更新する' })
+
+    button.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    button.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+
+    await waitFor(() => expect(mockUpdate).toHaveBeenCalled())
+    expect(mockUpdate).toHaveBeenCalledTimes(1)
   })
 
   it('更新が失敗したらエラーを出して onSuccess を呼ばない', async () => {

@@ -1,19 +1,18 @@
-import { useState } from 'react'
 import { useNavigate, useRouter } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { invalidatePostLists } from '@/entities/user'
 import { supabase } from '@/shared/lib/supabase'
 import { toast } from '@/shared/ui/sonner'
+import { useSingleFlight } from '@/shared/hooks/use-single-flight'
 
 export function useDeletePost(postId: string) {
-  const [pending, setPending] = useState(false)
+  const { pending, begin, end } = useSingleFlight()
   const router = useRouter()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
 
   const remove = async () => {
-    if (pending) return
-    setPending(true)
+    if (!begin()) return
 
     const { data, error } = await supabase
       .from('posts')
@@ -22,7 +21,7 @@ export function useDeletePost(postId: string) {
       .select('id')
 
     if (error) {
-      setPending(false)
+      end()
       toast.error('削除に失敗しました')
       return
     }
