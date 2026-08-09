@@ -134,6 +134,21 @@ describe('PostActionsMenu', () => {
     expect(mockNavigate).not.toHaveBeenCalled()
   })
 
+  // disabled={pending} は React の再レンダー後にしか効かない。同じ tick に2発届くと
+  // state を見るガードでは両方とも false を読むため、ref で止める必要がある
+  it('同じ tick に2回押されても削除は1回しか走らない', async () => {
+    renderMenu()
+    const sheet = await openConfirmSheet()
+    const confirm = within(sheet).getByRole('button', { name: '削除する' })
+
+    // userEvent.click は毎回 act で再レンダーを流してしまうので、生のイベントを続けて撃つ
+    confirm.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    confirm.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+
+    await waitFor(() => expect(mockBack).toHaveBeenCalled())
+    expect(mockDelete).toHaveBeenCalledTimes(1)
+  })
+
   it('戻れる履歴が無ければフィードへ送る（削除済み詳細を履歴に残さない）', async () => {
     mockCanGoBack.mockReturnValue(false)
     renderMenu()

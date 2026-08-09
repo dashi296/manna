@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useNavigate, useRouter } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { invalidatePostLists } from '@/entities/user'
@@ -7,12 +7,16 @@ import { toast } from '@/shared/ui/sonner'
 
 export function useDeletePost(postId: string) {
   const [pending, setPending] = useState(false)
+  // state は再レンダーまで更新されないため、同じ tick に2回押されると両方 false を読む。
+  // ボタンの disabled も同じ理由で間に合わない
+  const running = useRef(false)
   const router = useRouter()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
 
   const remove = async () => {
-    if (pending) return
+    if (running.current) return
+    running.current = true
     setPending(true)
 
     const { data, error } = await supabase
@@ -22,6 +26,7 @@ export function useDeletePost(postId: string) {
       .select('id')
 
     if (error) {
+      running.current = false
       setPending(false)
       toast.error('削除に失敗しました')
       return

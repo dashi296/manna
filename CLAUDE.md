@@ -120,7 +120,7 @@ node scripts/export-verses-seed.mjs
 ```
 
 - `supabase/seed.sql` — コレクション・書のメタデータ（git管理）
-- `supabase/seed-verses.sql` — 節テキスト 41,959行（`.gitignore`、ローカルのみ）
+- `supabase/seed-verses.sql` — 節テキスト 84,052行（日本語 42,010 + 英語 42,042。`.gitignore`、ローカルのみ）
 - `npx supabase db reset` を直接実行すると節データが消えるため、代わりに `bash scripts/db-reset.sh` を使う
 
 ### ローカル Supabase のポート

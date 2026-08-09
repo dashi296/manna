@@ -34,17 +34,19 @@ vi.mock('@tanstack/react-router', () => ({
   useNavigate: () => mockNavigate,
 }))
 
-describe('PostEditor', () => {
-  beforeEach(() => {
-    localStorage.clear()
-    mockInsert.mockClear()
-    mockNavigate.mockClear()
-    mockGetUser.mockResolvedValue({ data: { user: { id: 'u1' } } })
-    mockUpdate.mockClear()
-    mockUpdateEq.mockClear()
-    mockUpdateResult.mockClear().mockResolvedValue({ data: [{ id: 'p1' }], error: null })
-  })
+// describe をまたいで共有する。Vitest のフックは兄弟 describe に継承されないため、
+// describe 内に置くと各 describe で複製することになる
+beforeEach(() => {
+  localStorage.clear()
+  mockInsert.mockClear()
+  mockNavigate.mockClear()
+  mockGetUser.mockResolvedValue({ data: { user: { id: 'u1' } } })
+  mockUpdate.mockClear()
+  mockUpdateEq.mockClear()
+  mockUpdateResult.mockClear().mockResolvedValue({ data: [{ id: 'p1' }], error: null })
+})
 
+describe('PostEditor', () => {
   it('mode="page" 時、投稿成功で navigate({to:"/"}) される', async () => {
     const user = userEvent.setup()
     render(<PostEditor />)
@@ -119,16 +121,6 @@ describe('PostEditor', () => {
 })
 
 describe('PostEditor（編集モード）', () => {
-  beforeEach(() => {
-    localStorage.clear()
-    mockInsert.mockClear()
-    mockNavigate.mockClear()
-    mockGetUser.mockResolvedValue({ data: { user: { id: 'u1' } } })
-    mockUpdate.mockClear()
-    mockUpdateEq.mockClear()
-    mockUpdateResult.mockClear().mockResolvedValue({ data: [{ id: 'p1' }], error: null })
-  })
-
   const editablePost = { id: 'p1', content: '元の本文', visibility: 'public' as const }
   const scripture = { collection: 'bofm', book: 'mosiah', chapter: 3, verses: [19] }
 
