@@ -150,6 +150,17 @@
   }
 }
 
+@utility verse-item {
+  content-visibility: auto;
+  /* auto 非対応の環境向けフォールバック。対応環境では下が勝つ */
+  contain-intrinsic-size: 0 81px;
+  contain-intrinsic-size: auto 81px;
+  /* 画面外の節が印刷から落ちないようにする */
+  @media print {
+    content-visibility: visible;
+  }
+}
+
 * {
   box-sizing: border-box;
 }
