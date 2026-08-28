@@ -7,52 +7,26 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 // PostgREST が返す timestamptz。小数秒は桁数可変、末尾は 'Z' かオフセット。
 const ISO_TS_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/
 
-// カーソルはクライアントから送られてくるうえ、supabase-js の .or() が生文字列しか
-// 受け取らない都合でフィルタ式に補間される。PostgREST は '.' と ',' を区切りに使うため、
-// 値にこれらや '"' が混ざると条件式を書き換えられる。
+// カーソルはクライアントから送られてくる。RPC のパラメータとして渡すので値そのものが
+// フィルタ式に補間されることはもう無いが（#92 で .or() 文字列補間から行比較 RPC に移行）、
+// 壊れた値をそのまま SQL 関数に渡さないための入力チェックとして残す。
 //
 // 特定のページの都合ではなくデータアクセス層の制約なので、使う場所の隣ではなくここに置く。
 // 同種の補間は entities/family と entities/user にもある（#71 を参照）。
 //
-// 検証に Date.parse は使えない。'Jan 1, 2026' のような非 ISO 形式を通すため、カンマが
-// 残ったまま補間される。toISOString での正規化も使えない。JS の Date はミリ秒精度しかなく、
-// timestamptz のマイクロ秒が落ちて keyset 条件が一致しなくなる。
+// 検証に Date.parse は使えない。'Jan 1, 2026' のような非 ISO 形式を通してしまう。
+// toISOString での正規化も使えない。JS の Date はミリ秒精度しかなく、timestamptz の
+// マイクロ秒が落ちて keyset 条件が一致しなくなる。
 export function isValidCursor(cursor: Cursor): boolean {
   return UUID_RE.test(cursor.id) && ISO_TS_RE.test(cursor.createdAt)
 }
 
-const PAGE_SIZE = 20
-
-type OrderedQuery<Q> = {
-  order: (column: string, options: { ascending: boolean }) => Q
-  limit: (count: number) => Q
-  or: (filters: string) => Q
-}
-
-// (created_at, idColumn) DESC の並びで「カーソルより古い行」を PAGE_SIZE + 1 件取る。
+// RPC 呼び出し側は必ずこれを page_size として渡す（SQL 側のデフォルトに頼らない）。
 // +1 件は次ページの有無を見るためで、takePage が切り落とす。
-//
-// or() の値は上の isValidCursor を通っている前提。PostgREST は '.' と ',' を区切りに
-// 使うため、小数秒を含む timestamptz はダブルクォートで囲む。
-export function withKeyset<Q extends OrderedQuery<Q>>(
-  query: Q,
-  cursor: Cursor | null,
-  idColumn = 'id',
-): Q {
-  const ordered = query
-    .order('created_at', { ascending: false })
-    .order(idColumn, { ascending: false })
-    .limit(PAGE_SIZE + 1)
+export const PAGE_SIZE = 20
 
-  if (!cursor) return ordered
-  return ordered.or(
-    `created_at.lt."${cursor.createdAt}",` +
-      `and(created_at.eq."${cursor.createdAt}",${idColumn}.lt."${cursor.id}")`,
-  )
-}
-
-// withKeyset が余分に取った1件を落とし、次ページのカーソルを組み立てる。
-// idColumn は withKeyset に渡したものと必ず同じにすること（別の列だと行が飛ぶ）
+// RPC が余分に取った1件を落とし、次ページのカーソルを組み立てる。
+// idColumn は RPC 呼び出し側の同点カーソル列と必ず同じにすること（別の列だと行が飛ぶ）
 export function takePage<T extends { created_at: string }>(
   rows: T[],
   idColumn = 'id',

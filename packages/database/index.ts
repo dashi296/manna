@@ -358,7 +358,106 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      connections_followers: {
+        Args: {
+          cursor_created_at?: string
+          cursor_other_id?: string
+          page_size: number
+          target_user_id: string
+        }
+        Returns: {
+          created_at: string
+          other_id: string
+        }[]
+      }
+      connections_following: {
+        Args: {
+          cursor_created_at?: string
+          cursor_other_id?: string
+          page_size: number
+          target_user_id: string
+        }
+        Returns: {
+          created_at: string
+          other_id: string
+        }[]
+      }
+      posts_by_user: {
+        Args: {
+          cursor_created_at?: string
+          cursor_id?: string
+          page_size: number
+          target_user_id: string
+        }
+        Returns: {
+          content: string
+          created_at: string
+          id: string
+          scripture_book: string | null
+          scripture_chapter: number | null
+          scripture_collection: string | null
+          scripture_verses: number[] | null
+          updated_at: string
+          user_id: string
+          visibility: Database["public"]["Enums"]["visibility_type"]
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "posts"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      posts_feed_following: {
+        Args: {
+          cursor_created_at?: string
+          cursor_id?: string
+          page_size: number
+        }
+        Returns: {
+          content: string
+          created_at: string
+          id: string
+          scripture_book: string | null
+          scripture_chapter: number | null
+          scripture_collection: string | null
+          scripture_verses: number[] | null
+          updated_at: string
+          user_id: string
+          visibility: Database["public"]["Enums"]["visibility_type"]
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "posts"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      posts_feed_public: {
+        Args: {
+          cursor_created_at?: string
+          cursor_id?: string
+          page_size: number
+        }
+        Returns: {
+          content: string
+          created_at: string
+          id: string
+          scripture_book: string | null
+          scripture_chapter: number | null
+          scripture_collection: string | null
+          scripture_verses: number[] | null
+          updated_at: string
+          user_id: string
+          visibility: Database["public"]["Enums"]["visibility_type"]
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "posts"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
     }
     Enums: {
       notification_type:
