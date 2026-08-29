@@ -152,14 +152,19 @@ export const Route = createFileRoute('/profile/$userId/')({
   // 入れる。invalidateRelationQueries 経由の背後再取得は fetchProfileData /
   // fetchUserPosts のまま個別に軽く保つ
   loader: async ({ params, context }) => {
-    // 投稿側の打ち切りは待たずに先に投げる（プロフィール取得を待たせないため）。
-    // 「もっと見る」が飛んでいる最中の再訪でも、後から解決したそちらが下の
-    // setQueryData を上書きしないよう、播種の直前で待ち合わせる
+    // 両クエリの打ち切りは待たずに先に投げる（プロフィール取得を待たせないため）。
+    // フォロー操作や invalidateRelationQueries 由来の再取得が飛んでいる最中の
+    // 再訪でも、後から解決したそちらが下の setQueryData を上書きしないよう、
+    // 播種の直前で待ち合わせる
+    const cancelProfile = context.queryClient.cancelQueries({
+      queryKey: profileQueryOptions(params.userId).queryKey,
+    })
     const cancelPosts = context.queryClient.cancelQueries({
       queryKey: userPostsQueryOptions(params.userId).queryKey,
     })
     const data = await fetchProfileInitial({ data: { userId: params.userId } })
     if (!data) throw notFound()
+    await cancelProfile
     context.queryClient.setQueryData(profileQueryOptions(params.userId).queryKey, data.profile)
     await cancelPosts
     context.queryClient.setQueryData(userPostsQueryOptions(params.userId).queryKey, {
