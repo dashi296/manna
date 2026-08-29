@@ -548,7 +548,7 @@ function ChapterView({
           return (
             <li key={verse} className={showBubbles ? 'lg:contents' : ''}>
               <div
-                className={`verse-item ${isLast ? '' : 'border-b'}`}
+                className={isLast ? '' : 'border-b'}
                 style={{ borderColor: 'var(--line)' }}
               >
                 <VerseRow
