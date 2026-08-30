@@ -60,7 +60,6 @@ export function ComposeMenu({ onSelectChapter, onSelectVerses, layout = 'pill', 
           label="投稿する"
           className={className}
           onClick={() => setOpen(true)}
-          aria-haspopup="menu"
           aria-expanded={open}
         />
         <Sheet open={open} onOpenChange={setOpen}>
@@ -72,7 +71,9 @@ export function ComposeMenu({ onSelectChapter, onSelectVerses, layout = 'pill', 
             <SheetHeader bordered>
               <SheetTitle>投稿する</SheetTitle>
             </SheetHeader>
-            <div className="flex flex-col" role="menu">
+            {/* 矢印キー移動・ロービングタブインデックスを実装していないため
+                role="menu" は名乗らない。ボトムシート内の単純なボタン列 */}
+            <div className="flex flex-col">
               {entries.map((entry) => (
                 <SheetEntry key={entry.label} {...entry} />
               ))}
@@ -121,12 +122,11 @@ function EntryBody({ icon, label, description }: Omit<EntryProps, 'onClick'>) {
 }
 
 // ボトムシート（dialog）側は Base UI の Menu コンテキストを持たないため、
-// role="menuitem" を手動で付けた button のまま
+// 素の button のまま（role="menuitem" は矢印キー移動を伴わない限り名乗らない）
 function SheetEntry({ onClick, ...body }: EntryProps) {
   return (
     <button
       type="button"
-      role="menuitem"
       onClick={onClick}
       className="w-full flex items-start gap-3 px-4 py-3 hover:bg-muted transition-colors text-left"
     >

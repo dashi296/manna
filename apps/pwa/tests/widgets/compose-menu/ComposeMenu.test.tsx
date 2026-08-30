@@ -132,12 +132,12 @@ describe('ComposeMenu', () => {
     it('開いていたボトムシートを閉じる', async () => {
       render(<ComposeMenu onSelectChapter={vi.fn()} onSelectVerses={vi.fn()} layout="fab" />)
       await userEvent.click(screen.getByRole('button', { name: '投稿する' }))
-      expect(await screen.findByRole('menuitem', { name: /章全体に投稿/ })).toBeInTheDocument()
+      expect(await screen.findByRole('button', { name: /章全体に投稿/ })).toBeInTheDocument()
 
       media.crossBreakpoint()
 
       await waitFor(() => {
-        expect(screen.queryByRole('menuitem', { name: /章全体に投稿/ })).toBeNull()
+        expect(screen.queryByRole('button', { name: /章全体に投稿/ })).toBeNull()
       })
     })
 
@@ -157,7 +157,7 @@ describe('ComposeMenu', () => {
   it('FAB を押すとボトムシートで同じ2択が開く', async () => {
     render(<ComposeMenu onSelectChapter={vi.fn()} onSelectVerses={vi.fn()} layout="fab" />)
     await userEvent.click(screen.getByRole('button', { name: '投稿する' }))
-    expect(await screen.findByRole('menuitem', { name: /章全体に投稿/ })).toBeInTheDocument()
-    expect(await screen.findByRole('menuitem', { name: /節を選んで投稿/ })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: /章全体に投稿/ })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: /節を選んで投稿/ })).toBeInTheDocument()
   })
 })

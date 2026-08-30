@@ -1,8 +1,11 @@
 import { Menu as MenuPrimitive } from '@base-ui/react/menu'
 import { cn } from '@/shared/lib/utils'
 
-function Menu({ ...props }: MenuPrimitive.Root.Props) {
-  return <MenuPrimitive.Root {...props} />
+// Base UI の既定は modal: true（開いている間ページのスクロールをロックし、
+// 外部へのポインター操作を抑止する）。Popover 由来の呼び出し元はこの挙動を
+// 前提にしていないため、false を既定にして揃える
+function Menu({ modal = false, ...props }: MenuPrimitive.Root.Props) {
+  return <MenuPrimitive.Root modal={modal} {...props} />
 }
 
 function MenuTrigger({ ...props }: MenuPrimitive.Trigger.Props) {

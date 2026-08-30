@@ -112,12 +112,18 @@ describe('PostActionsMenu', () => {
     const [editItem, deleteItem] = await screen.findAllByRole('menuitem')
 
     await waitFor(() => expect(editItem).toHaveFocus())
+    // ロービングタブインデックス: フォーカス中の項目だけが tabindex="0"
+    expect(editItem).toHaveAttribute('tabindex', '0')
+    expect(deleteItem).toHaveAttribute('tabindex', '-1')
 
     await userEvent.keyboard('{ArrowDown}')
     expect(deleteItem).toHaveFocus()
+    expect(deleteItem).toHaveAttribute('tabindex', '0')
+    expect(editItem).toHaveAttribute('tabindex', '-1')
 
     await userEvent.keyboard('{ArrowUp}')
     expect(editItem).toHaveFocus()
+    expect(editItem).toHaveAttribute('tabindex', '0')
   })
 
   // MenuItem は button ではなく div を描画するため、Enter/Space の発火は
