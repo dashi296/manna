@@ -4,7 +4,7 @@ import { useInfiniteQuery } from '@tanstack/react-query'
 import { PostCard, POST_SELECT, type PostWithUser } from '@/entities/post'
 import { EmptyState, LoadMoreButton, PageHeader, TabBar } from '@/shared/ui'
 import { createSupabaseServer } from '@/shared/lib/auth'
-import { isValidCursor, takePage, withKeyset, type Cursor } from '@/shared/lib/cursor'
+import { isValidCursor, takePage, PAGE_SIZE, type Cursor } from '@/shared/lib/cursor'
 import { keysetInfiniteOptions, loadFirstPage } from '@/shared/lib/keysetQuery'
 import { feedKey } from '@/entities/user'
 
@@ -31,26 +31,19 @@ const fetchFeed = createServerFn({ method: 'POST' })
     const { tab, cursor } = ctx.data
     const serverSupabase = await createSupabaseServer()
 
-    let query = serverSupabase.from('posts').select(POST_SELECT)
+    // #92: .or() の OR 形式カーソルは (created_at, id) の Index Cond にならず、
+    // フォロー中タブは毎ページ follows を引き直して .in() の URL に載せていた
+    // （フォロー数が多いと 414 になりうる）。(created_at, id) の行比較と
+    // follows×posts の結合を SQL 関数に寄せ、未認証は関数内で空になる
+    const rpcName = tab === 'public' ? 'posts_feed_public' : 'posts_feed_following'
+    const { data } = await serverSupabase
+      .rpc(rpcName, {
+        page_size: PAGE_SIZE + 1,
+        ...(cursor && { cursor_created_at: cursor.createdAt, cursor_id: cursor.id }),
+      })
+      .select(POST_SELECT)
+      .throwOnError()
 
-    if (tab === 'public') {
-      query = query.eq('visibility', 'public')
-    } else {
-      const { data: { user } } = await serverSupabase.auth.getUser()
-      if (!user) return { posts: [] as PostWithUser[], nextCursor: null }
-      // ページごとに引き直す。PostgREST はサブクエリを書けないので、避けるには RPC が要る
-      const { data: following } = await serverSupabase
-        .from('follows')
-        .select('following_id')
-        .eq('follower_id', user.id)
-        .throwOnError()
-      const ids = following.map((f) => f.following_id)
-      if (ids.length === 0) return { posts: [] as PostWithUser[], nextCursor: null }
-      // followers/family の投稿が混じるかは RLS が決めるので、ここでは visibility を絞らない
-      query = query.in('user_id', ids)
-    }
-
-    const { data } = await withKeyset(query, cursor).throwOnError()
     const { rows: posts, nextCursor } = takePage(data as PostWithUser[])
     return { posts, nextCursor }
   })

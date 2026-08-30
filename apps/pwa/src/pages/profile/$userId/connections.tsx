@@ -6,7 +6,7 @@ import { EmptyState, LoadMoreButton, PageHeader, TabBar, UserAvatar } from '@/sh
 import { connectionsKey, type CircleUserRow } from '@/entities/user'
 import { resolveUserIdentity } from '@/shared/lib/constants'
 import { createSupabaseServer } from '@/shared/lib/auth'
-import { isValidCursor, takePage, withKeyset, type Cursor } from '@/shared/lib/cursor'
+import { isValidCursor, takePage, PAGE_SIZE, type Cursor } from '@/shared/lib/cursor'
 import { keysetInfiniteOptions, loadFirstPage } from '@/shared/lib/keysetQuery'
 
 type Tab = 'followers' | 'following'
@@ -23,27 +23,27 @@ export const fetchConnections = createServerFn({ method: 'POST' })
   .handler(async (ctx) => {
     const { userId, tab, cursor } = ctx.data
     const serverSupabase = await createSupabaseServer()
-    const otherIdColumn = tab === 'followers' ? 'follower_id' : 'following_id'
-    const ownIdColumn = tab === 'followers' ? 'following_id' : 'follower_id'
+    // #92: tab ごとに絞る列（follower_id / following_id）が入れ替わるだけの違いを
+    // 動的 SQL にせず、RPC を2本に分けて表現している（connections_followers /
+    // connections_following）。どちらも { created_at, other_id } の同じ形で返る
+    const rpcName = tab === 'followers' ? 'connections_followers' : 'connections_following'
 
     // フォロー行の取得結果に依存しないので、待たずに先に走らせる
     const userPromise = serverSupabase.auth.getUser()
 
-    const query = serverSupabase
-      .from('follows')
-      .select(`created_at, ${otherIdColumn}`)
-      .eq(ownIdColumn, userId)
-
     const [{ data: followData }, { data: { user: currentUser } }] = await Promise.all([
-      withKeyset(query, cursor, otherIdColumn).throwOnError(),
+      serverSupabase
+        .rpc(rpcName, {
+          target_user_id: userId,
+          page_size: PAGE_SIZE + 1,
+          ...(cursor && { cursor_created_at: cursor.createdAt, cursor_other_id: cursor.id }),
+        })
+        .throwOnError(),
       userPromise,
     ])
 
-    // 同点を割るのは相手の id なので、カーソルもその列で組む
-    const { rows: page, nextCursor } = takePage(
-      followData as (Record<string, string> & { created_at: string })[],
-      otherIdColumn,
-    )
+    // 同点を割るのは相手の id（other_id）なので、カーソルもその列で組む
+    const { rows: page, nextCursor } = takePage(followData, 'other_id')
     if (page.length === 0) {
       // フォロー行が1件でもあれば FK により対象ユーザーは存在する。0件のときだけ、
       // 存在しないプロフィールと本当に0件とを区別する（loader が 404 にする）
@@ -61,7 +61,7 @@ export const fetchConnections = createServerFn({ method: 'POST' })
       return { userId, tab, currentUserId: currentUser?.id ?? null, rows: [], nextCursor: null }
     }
 
-    const otherIds = page.map((r) => r[otherIdColumn])
+    const otherIds = page.map((r) => r.other_id)
 
     const [{ data: users }, myFollowsRes] = await Promise.all([
       serverSupabase
@@ -87,7 +87,7 @@ export const fetchConnections = createServerFn({ method: 'POST' })
       tab,
       currentUserId: currentUser?.id ?? null,
       rows: page.flatMap((r) => {
-        const user = usersById.get(r[otherIdColumn])
+        const user = usersById.get(r.other_id)
         return user ? [{ user, isFollowingByMe: followingSet.has(user.id) }] : []
       }),
       nextCursor,

@@ -9,71 +9,96 @@ import { SignOutButton } from '@/features/sign-out'
 import { EmptyState, LoadMoreButton, PageHeader, UserAvatar } from '@/shared/ui'
 import { resolveUserIdentity } from '@/shared/lib/constants'
 import { createSupabaseServer } from '@/shared/lib/auth'
-import { isValidCursor, takePage, withKeyset, type Cursor } from '@/shared/lib/cursor'
-import { keysetInfiniteOptions, loadFirstPage } from '@/shared/lib/keysetQuery'
+import { isValidCursor, takePage, PAGE_SIZE, type Cursor } from '@/shared/lib/cursor'
+import { keysetInfiniteOptions } from '@/shared/lib/keysetQuery'
 import { profileKey, userPostsKey } from '@/entities/user'
+
+type SupabaseServer = Awaited<ReturnType<typeof createSupabaseServer>>
+
+// fetchProfileData（プロフィール単体、invalidateRelationQueries での再取得に使う）と
+// fetchProfileInitial（#93: 初回ナビゲーション専用、投稿1ページ目込み）の両方から呼ぶ
+async function queryProfileData(serverSupabase: SupabaseServer, userId: string) {
+  const userPromise = serverSupabase.auth.getUser()
+  const relationsPromise = userPromise.then(async ({ data: { user } }) => {
+    if (!user || user.id === userId) return null
+    const [{ data: followData }, { data: familyData }] = await Promise.all([
+      serverSupabase
+        .from('follows')
+        .select('follower_id')
+        .eq('follower_id', user.id)
+        .eq('following_id', userId)
+        .maybeSingle(),
+      filterFamilyPair(
+        serverSupabase.from('family_relationships').select('*'),
+        user.id,
+        userId,
+      ).maybeSingle(),
+    ])
+    return { isFollowing: !!followData, familyData }
+  })
+
+  const [
+    { data: profile },
+    {
+      data: { user: currentUser },
+    },
+    { count: followerCount },
+    { count: followingCount },
+    relations,
+  ] = await Promise.all([
+    // maybeSingle は0件を null で返すので loader が 404 にできる。single だと0件も
+    // error になり、throwOnError と併せると 404 が 500 に化ける
+    serverSupabase.from('users').select('*').eq('id', userId).maybeSingle().throwOnError(),
+    userPromise,
+    serverSupabase
+      .from('follows')
+      .select('*', { count: 'exact', head: true })
+      .eq('following_id', userId)
+      .throwOnError(),
+    serverSupabase
+      .from('follows')
+      .select('*', { count: 'exact', head: true })
+      .eq('follower_id', userId)
+      .throwOnError(),
+    relationsPromise,
+  ])
+
+  if (!profile) return null
+
+  return {
+    profile,
+    currentUserId: currentUser?.id ?? null,
+    isFollowing: relations?.isFollowing ?? false,
+    familyStatus: resolveFamilyStatus(relations?.familyData, currentUser?.id ?? ''),
+    followerCount: followerCount ?? 0,
+    followingCount: followingCount ?? 0,
+  }
+}
+
+// fetchUserPosts（2ページ目以降）と fetchProfileInitial（1ページ目）の両方から呼ぶ。
+// #92: user_id 単一の (created_at, id) 行比較ページングを RPC に寄せている
+async function queryUserPostsPage(
+  serverSupabase: SupabaseServer,
+  userId: string,
+  cursor: Cursor | null,
+) {
+  const { data } = await serverSupabase
+    .rpc('posts_by_user', {
+      target_user_id: userId,
+      page_size: PAGE_SIZE + 1,
+      ...(cursor && { cursor_created_at: cursor.createdAt, cursor_id: cursor.id }),
+    })
+    .select(POST_SELECT)
+    .throwOnError()
+  const { rows: posts, nextCursor } = takePage(data as PostWithUser[])
+  return { posts, nextCursor }
+}
 
 const fetchProfileData = createServerFn({ method: 'POST' })
   .inputValidator((data: { userId: string }) => data)
   .handler(async (ctx) => {
-    const { userId } = ctx.data
     const serverSupabase = await createSupabaseServer()
-
-    const userPromise = serverSupabase.auth.getUser()
-    const relationsPromise = userPromise.then(async ({ data: { user } }) => {
-      if (!user || user.id === userId) return null
-      const [{ data: followData }, { data: familyData }] = await Promise.all([
-        serverSupabase
-          .from('follows')
-          .select('follower_id')
-          .eq('follower_id', user.id)
-          .eq('following_id', userId)
-          .maybeSingle(),
-        filterFamilyPair(
-          serverSupabase.from('family_relationships').select('*'),
-          user.id,
-          userId,
-        ).maybeSingle(),
-      ])
-      return { isFollowing: !!followData, familyData }
-    })
-
-    const [
-      { data: profile },
-      {
-        data: { user: currentUser },
-      },
-      { count: followerCount },
-      { count: followingCount },
-      relations,
-    ] = await Promise.all([
-      // maybeSingle は0件を null で返すので loader が 404 にできる。single だと0件も
-      // error になり、throwOnError と併せると 404 が 500 に化ける
-      serverSupabase.from('users').select('*').eq('id', userId).maybeSingle().throwOnError(),
-      userPromise,
-      serverSupabase
-        .from('follows')
-        .select('*', { count: 'exact', head: true })
-        .eq('following_id', userId)
-        .throwOnError(),
-      serverSupabase
-        .from('follows')
-        .select('*', { count: 'exact', head: true })
-        .eq('follower_id', userId)
-        .throwOnError(),
-      relationsPromise,
-    ])
-
-    if (!profile) return null
-
-    return {
-      profile,
-      currentUserId: currentUser?.id ?? null,
-      isFollowing: relations?.isFollowing ?? false,
-      familyStatus: resolveFamilyStatus(relations?.familyData, currentUser?.id ?? ''),
-      followerCount: followerCount ?? 0,
-      followingCount: followingCount ?? 0,
-    }
+    return queryProfileData(serverSupabase, ctx.data.userId)
   })
 
 const fetchUserPosts = createServerFn({ method: 'POST' })
@@ -82,13 +107,26 @@ const fetchUserPosts = createServerFn({ method: 'POST' })
     return data
   })
   .handler(async (ctx) => {
-    const { userId, cursor } = ctx.data
     const serverSupabase = await createSupabaseServer()
+    return queryUserPostsPage(serverSupabase, ctx.data.userId, ctx.data.cursor)
+  })
 
-    const query = serverSupabase.from('posts').select(POST_SELECT).eq('user_id', userId)
-    const { data } = await withKeyset(query, cursor).throwOnError()
-    const { rows: posts, nextCursor } = takePage(data as PostWithUser[])
-    return { posts, nextCursor }
+// #93: 初回ナビゲーション専用。プロフィールと投稿1ページ目を1回の server function
+// 往復にまとめる（loader だけが呼ぶ。fetchProfileData / fetchUserPosts は
+// invalidateRelationQueries / 「もっと見る」から個別に叩かれるので、あえて分けたまま
+// にしている — こちらに寄せると、関係の変更のたびに使われない投稿20件を無駄に
+// 運ぶことになる）
+const fetchProfileInitial = createServerFn({ method: 'POST' })
+  .inputValidator((data: { userId: string }) => data)
+  .handler(async (ctx) => {
+    const { userId } = ctx.data
+    const serverSupabase = await createSupabaseServer()
+    const [profile, postsPage] = await Promise.all([
+      queryProfileData(serverSupabase, userId),
+      queryUserPostsPage(serverSupabase, userId, null),
+    ])
+    if (!profile) return null
+    return { profile, postsPage }
   })
 
 // フォロー/ファミリー操作から invalidateQueries で落とせるよう、loader ではなく
@@ -108,18 +146,31 @@ const userPostsQueryOptions = (userId: string) =>
   )
 
 export const Route = createFileRoute('/profile/$userId/')({
-  // SSR で埋めてクライアントへ引き継ぐ（ローディングのちらつきを避ける）。staleTime を 0 に
-  // するのは、loader だった頃と同じく他人の変更も訪問のたびに拾うため
+  // #93: 以前は fetchProfileData と fetchUserPosts の1ページ目取得が別々の
+  // server function 往復になっていた（cookie パース・セッション解決が2回）。
+  // fetchProfileInitial 1回にまとめ、両方のクエリキーへ setQueryData で種を
+  // 入れる。invalidateRelationQueries 経由の背後再取得は fetchProfileData /
+  // fetchUserPosts のまま個別に軽く保つ
   loader: async ({ params, context }) => {
-    // 投稿側の cancelQueries を待つ前に投げる。進行中の「もっと見る」があるとき、
-    // プロフィール本体の取得までその完了待ちにしないため
-    const profilePromise = context.queryClient.fetchQuery({
-      ...profileQueryOptions(params.userId),
-      staleTime: 0,
+    // 両クエリの打ち切りは待たずに先に投げる（プロフィール取得を待たせないため）。
+    // フォロー操作や invalidateRelationQueries 由来の再取得が飛んでいる最中の
+    // 再訪でも、後から解決したそちらが下の setQueryData を上書きしないよう、
+    // 播種の直前で待ち合わせる
+    const cancelProfile = context.queryClient.cancelQueries({
+      queryKey: profileQueryOptions(params.userId).queryKey,
     })
-    const postsPromise = loadFirstPage(context.queryClient, userPostsQueryOptions(params.userId))
-    const [data] = await Promise.all([profilePromise, postsPromise])
+    const cancelPosts = context.queryClient.cancelQueries({
+      queryKey: userPostsQueryOptions(params.userId).queryKey,
+    })
+    const data = await fetchProfileInitial({ data: { userId: params.userId } })
     if (!data) throw notFound()
+    await cancelProfile
+    context.queryClient.setQueryData(profileQueryOptions(params.userId).queryKey, data.profile)
+    await cancelPosts
+    context.queryClient.setQueryData(userPostsQueryOptions(params.userId).queryKey, {
+      pages: [data.postsPage],
+      pageParams: [null],
+    })
   },
   component: ProfilePage,
 })
