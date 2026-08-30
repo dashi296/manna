@@ -120,6 +120,20 @@ describe('PostActionsMenu', () => {
     expect(editItem).toHaveFocus()
   })
 
+  // MenuItem は button ではなく div を描画するため、Enter/Space の発火は
+  // ブラウザ標準ではなく Base UI 側のキーハンドラに依存する
+  it('フォーカスした項目を Enter で実行する', async () => {
+    const onEdit = renderMenu()
+    screen.getByRole('button', { name: '投稿の操作' }).focus()
+    await userEvent.keyboard('{Enter}')
+    await screen.findAllByRole('menuitem')
+
+    await userEvent.keyboard('{Enter}')
+
+    expect(onEdit).toHaveBeenCalledOnce()
+    await waitFor(() => expect(screen.queryByRole('menu')).toBeNull())
+  })
+
   it('Escape でメニューを閉じてトリガーへフォーカスを戻す', async () => {
     renderMenu()
     const trigger = screen.getByRole('button', { name: '投稿の操作' })
