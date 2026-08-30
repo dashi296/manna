@@ -71,6 +71,18 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # フロントエンドより先に適用する。逆順だと、新しい RPC 呼び出しを含む
+      # フロントエンドが先に出て DB 側の関数がまだ無い、という状態が生まれる
+      # （#127 で実際に発生した本番障害）
+      - name: Push Supabase migrations
+        run: |
+          npx supabase link --project-ref "$SUPABASE_PROJECT_REF"
+          npx supabase db push
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+
       - name: Deploy to Cloudflare Workers
         run: pnpm --filter @manna/pwa run cf:deploy
         env:
