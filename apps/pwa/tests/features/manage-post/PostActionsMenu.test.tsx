@@ -93,6 +93,45 @@ describe('PostActionsMenu', () => {
     expect(screen.queryByRole('menuitem', { name: '編集' })).toBeNull()
   })
 
+  // Popover を流用すると Popup が role="dialog" を持ち、内側の role="menu" を
+  // 包んでしまう。スクリーンリーダーが「メニュー」ではなく「ダイアログ」と
+  // 読み上げるため、menu 専用プリミティブでは dialog に包まれてはいけない
+  it('メニューが role="dialog" に包まれない', async () => {
+    renderMenu()
+    const menu = await openMenu()
+
+    expect(menu.closest('[role="dialog"]')).toBeNull()
+  })
+
+  it('矢印キーで項目間をロービングタブインデックスで移動できる', async () => {
+    renderMenu()
+    // マウスクリックで開いた場合はハイライトのみでフォーカス移動しないため、
+    // キーボードでの実利用経路（トリガーにフォーカス→Enter で開く）で検証する
+    screen.getByRole('button', { name: '投稿の操作' }).focus()
+    await userEvent.keyboard('{Enter}')
+    const [editItem, deleteItem] = await screen.findAllByRole('menuitem')
+
+    await waitFor(() => expect(editItem).toHaveFocus())
+
+    await userEvent.keyboard('{ArrowDown}')
+    expect(deleteItem).toHaveFocus()
+
+    await userEvent.keyboard('{ArrowUp}')
+    expect(editItem).toHaveFocus()
+  })
+
+  it('Escape でメニューを閉じてトリガーへフォーカスを戻す', async () => {
+    renderMenu()
+    const trigger = screen.getByRole('button', { name: '投稿の操作' })
+    await userEvent.click(trigger)
+    await screen.findByRole('menu')
+
+    await userEvent.keyboard('{Escape}')
+
+    await waitFor(() => expect(screen.queryByRole('menu')).toBeNull())
+    expect(trigger).toHaveFocus()
+  })
+
   it('「編集」で onEdit を呼ぶ（削除はしない）', async () => {
     const onEdit = renderMenu()
     const menu = await openMenu()

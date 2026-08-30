@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { BookOpen, PenLine } from 'lucide-react'
 import { ComposePostButton } from '@/shared/ui/ComposePostButton'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/shared/ui/sheet'
-import { Popover, PopoverContent, PopoverTrigger } from '@/shared/ui/popover'
+import { Menu, MenuContent, MenuItem, MenuTrigger } from '@/shared/ui/menu'
 
 // Tailwind の lg（--breakpoint-lg: 64rem）と同じクエリ。1024px と書くと
 // ブラウザの既定フォントサイズを変えている環境で CSS 側の境界とずれる
@@ -37,22 +37,20 @@ export function ComposeMenu({ onSelectChapter, onSelectVerses, layout = 'pill', 
     onSelectVerses()
   }
 
-  const menuItems = (
-    <div className="flex flex-col" role="menu">
-      <MenuItem
-        icon={<BookOpen size={18} aria-hidden="true" />}
-        label="章全体に投稿"
-        description="この章全体への感想を書く"
-        onClick={handleChapter}
-      />
-      <MenuItem
-        icon={<PenLine size={18} aria-hidden="true" />}
-        label="節を選んで投稿"
-        description="複数の節にまたがる投稿を書く"
-        onClick={handleVerses}
-      />
-    </div>
-  )
+  const entries: EntryProps[] = [
+    {
+      icon: <BookOpen size={18} aria-hidden="true" />,
+      label: '章全体に投稿',
+      description: 'この章全体への感想を書く',
+      onClick: handleChapter,
+    },
+    {
+      icon: <PenLine size={18} aria-hidden="true" />,
+      label: '節を選んで投稿',
+      description: '複数の節にまたがる投稿を書く',
+      onClick: handleVerses,
+    },
+  ]
 
   if (layout === 'fab') {
     return (
@@ -74,7 +72,11 @@ export function ComposeMenu({ onSelectChapter, onSelectVerses, layout = 'pill', 
             <SheetHeader bordered>
               <SheetTitle>投稿する</SheetTitle>
             </SheetHeader>
-            {menuItems}
+            <div className="flex flex-col" role="menu">
+              {entries.map((entry) => (
+                <SheetEntry key={entry.label} {...entry} />
+              ))}
+            </div>
           </SheetContent>
         </Sheet>
       </>
@@ -82,32 +84,27 @@ export function ComposeMenu({ onSelectChapter, onSelectVerses, layout = 'pill', 
   }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger
-        render={<ComposePostButton label="投稿する" className={className} aria-haspopup="menu" />}
-      />
-      <PopoverContent align="end" className="w-64">
-        {menuItems}
-      </PopoverContent>
-    </Popover>
+    <Menu open={open} onOpenChange={setOpen}>
+      <MenuTrigger render={<ComposePostButton label="投稿する" className={className} />} />
+      <MenuContent align="end" className="w-64">
+        {entries.map((entry) => (
+          <MenuEntry key={entry.label} {...entry} />
+        ))}
+      </MenuContent>
+    </Menu>
   )
 }
 
-type MenuItemProps = {
+type EntryProps = {
   icon: ReactNode
   label: string
   description: string
   onClick: () => void
 }
 
-function MenuItem({ icon, label, description, onClick }: MenuItemProps) {
+function EntryBody({ icon, label, description }: Omit<EntryProps, 'onClick'>) {
   return (
-    <button
-      type="button"
-      role="menuitem"
-      onClick={onClick}
-      className="w-full flex items-start gap-3 px-4 py-3 hover:bg-muted transition-colors text-left"
-    >
+    <>
       <span className="shrink-0 mt-0.5" style={{ color: 'var(--lagoon-deep)' }}>
         {icon}
       </span>
@@ -119,6 +116,29 @@ function MenuItem({ icon, label, description, onClick }: MenuItemProps) {
           {description}
         </span>
       </span>
+    </>
+  )
+}
+
+// ボトムシート（dialog）側は Base UI の Menu コンテキストを持たないため、
+// role="menuitem" を手動で付けた button のまま
+function SheetEntry({ onClick, ...body }: EntryProps) {
+  return (
+    <button
+      type="button"
+      role="menuitem"
+      onClick={onClick}
+      className="w-full flex items-start gap-3 px-4 py-3 hover:bg-muted transition-colors text-left"
+    >
+      <EntryBody {...body} />
     </button>
+  )
+}
+
+function MenuEntry({ onClick, ...body }: EntryProps) {
+  return (
+    <MenuItem onClick={onClick} className="items-start px-4 py-3">
+      <EntryBody {...body} />
+    </MenuItem>
   )
 }

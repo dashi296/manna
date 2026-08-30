@@ -83,6 +83,16 @@ describe('ComposeMenu', () => {
     expect(trigger.className).toContain('lg:inline-flex')
   })
 
+  // Popover を流用すると Popup が role="dialog" を持ち、内側の role="menu" を
+  // 包んでしまう。fab レイアウトは Sheet（dialog）なので対象外、pill だけの話
+  it('ピルのメニューが role="dialog" に包まれない', async () => {
+    render(<ComposeMenu onSelectChapter={vi.fn()} onSelectVerses={vi.fn()} />)
+    await userEvent.click(screen.getByRole('button', { name: /投稿/ }))
+    const menu = await screen.findByRole('menu')
+
+    expect(menu.closest('[role="dialog"]')).toBeNull()
+  })
+
   it('ピルのトリガーから「章全体に投稿」で onSelectChapter が呼ばれる', async () => {
     const onSelectChapter = vi.fn()
     render(<ComposeMenu onSelectChapter={onSelectChapter} onSelectVerses={vi.fn()} />)
