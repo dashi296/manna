@@ -93,6 +93,65 @@ describe('PostActionsMenu', () => {
     expect(screen.queryByRole('menuitem', { name: '編集' })).toBeNull()
   })
 
+  // Popover を流用すると Popup が role="dialog" を持ち、内側の role="menu" を
+  // 包んでしまう。スクリーンリーダーが「メニュー」ではなく「ダイアログ」と
+  // 読み上げるため、menu 専用プリミティブでは dialog に包まれてはいけない
+  it('メニューが role="dialog" に包まれない', async () => {
+    renderMenu()
+    const menu = await openMenu()
+
+    expect(menu.closest('[role="dialog"]')).toBeNull()
+  })
+
+  it('矢印キーで項目間をロービングタブインデックスで移動できる', async () => {
+    renderMenu()
+    // マウスクリックで開いた場合はハイライトのみでフォーカス移動しないため、
+    // キーボードでの実利用経路（トリガーにフォーカス→Enter で開く）で検証する
+    screen.getByRole('button', { name: '投稿の操作' }).focus()
+    await userEvent.keyboard('{Enter}')
+    const [editItem, deleteItem] = await screen.findAllByRole('menuitem')
+
+    await waitFor(() => expect(editItem).toHaveFocus())
+    // ロービングタブインデックス: フォーカス中の項目だけが tabindex="0"
+    expect(editItem).toHaveAttribute('tabindex', '0')
+    expect(deleteItem).toHaveAttribute('tabindex', '-1')
+
+    await userEvent.keyboard('{ArrowDown}')
+    expect(deleteItem).toHaveFocus()
+    expect(deleteItem).toHaveAttribute('tabindex', '0')
+    expect(editItem).toHaveAttribute('tabindex', '-1')
+
+    await userEvent.keyboard('{ArrowUp}')
+    expect(editItem).toHaveFocus()
+    expect(editItem).toHaveAttribute('tabindex', '0')
+  })
+
+  // MenuItem は button ではなく div を描画するため、Enter/Space の発火は
+  // ブラウザ標準ではなく Base UI 側のキーハンドラに依存する
+  it('フォーカスした項目を Enter で実行する', async () => {
+    const onEdit = renderMenu()
+    screen.getByRole('button', { name: '投稿の操作' }).focus()
+    await userEvent.keyboard('{Enter}')
+    await screen.findAllByRole('menuitem')
+
+    await userEvent.keyboard('{Enter}')
+
+    expect(onEdit).toHaveBeenCalledOnce()
+    await waitFor(() => expect(screen.queryByRole('menu')).toBeNull())
+  })
+
+  it('Escape でメニューを閉じてトリガーへフォーカスを戻す', async () => {
+    renderMenu()
+    const trigger = screen.getByRole('button', { name: '投稿の操作' })
+    await userEvent.click(trigger)
+    await screen.findByRole('menu')
+
+    await userEvent.keyboard('{Escape}')
+
+    await waitFor(() => expect(screen.queryByRole('menu')).toBeNull())
+    expect(trigger).toHaveFocus()
+  })
+
   it('「編集」で onEdit を呼ぶ（削除はしない）', async () => {
     const onEdit = renderMenu()
     const menu = await openMenu()

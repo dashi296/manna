@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
-import { Popover, PopoverContent, PopoverTrigger } from '@/shared/ui/popover'
+import { Menu, MenuContent, MenuItem, MenuTrigger } from '@/shared/ui/menu'
 import { DeletePostSheet } from './DeletePostSheet'
 
 type Props = {
@@ -23,54 +23,46 @@ export function PostActionsMenu({ postId, onEdit }: Props) {
 
   return (
     <>
-      <Popover open={menuOpen} onOpenChange={setMenuOpen}>
-        <PopoverTrigger
+      <Menu open={menuOpen} onOpenChange={setMenuOpen}>
+        <MenuTrigger
           className="flex items-center justify-center size-8 rounded-full hover:bg-muted transition-colors"
           aria-label="投稿の操作"
-          aria-haspopup="menu"
         >
           <MoreHorizontal size={18} aria-hidden="true" />
-        </PopoverTrigger>
-        <PopoverContent align="end">
-          <div className="flex flex-col" role="menu">
-            <MenuItem
-              icon={<Pencil size={16} aria-hidden="true" />}
-              label="編集"
-              onClick={handleEdit}
-            />
-            <MenuItem
-              icon={<Trash2 size={16} aria-hidden="true" />}
-              label="削除"
-              onClick={handleDelete}
-              className="text-destructive"
-            />
-          </div>
-        </PopoverContent>
-      </Popover>
+        </MenuTrigger>
+        <MenuContent align="end">
+          <ActionItem
+            icon={<Pencil size={16} aria-hidden="true" />}
+            label="編集"
+            onClick={handleEdit}
+          />
+          <ActionItem
+            icon={<Trash2 size={16} aria-hidden="true" />}
+            label="削除"
+            onClick={handleDelete}
+            className="text-destructive"
+          />
+        </MenuContent>
+      </Menu>
 
-      {/* Popover の中に置くと、閉じた瞬間に unmount されてシートごと消える */}
+      {/* Menu の中に置くと、閉じた瞬間に unmount されてシートごと消える */}
       <DeletePostSheet postId={postId} open={confirmOpen} onOpenChange={setConfirmOpen} />
     </>
   )
 }
 
-type MenuItemProps = {
+type ActionItemProps = {
   icon: ReactNode
   label: string
   onClick: () => void
   className?: string
 }
 
-function MenuItem({ icon, label, onClick, className }: MenuItemProps) {
+function ActionItem({ icon, label, onClick, className }: ActionItemProps) {
   return (
-    <button
-      type="button"
-      role="menuitem"
-      onClick={onClick}
-      className={`w-full flex items-center gap-2 px-3 py-2 rounded-sm text-sm hover:bg-muted transition-colors text-left ${className ?? ''}`}
-    >
+    <MenuItem onClick={onClick} className={className}>
       <span className="shrink-0">{icon}</span>
       <span>{label}</span>
-    </button>
+    </MenuItem>
   )
 }

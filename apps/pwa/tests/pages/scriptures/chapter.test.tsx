@@ -543,8 +543,8 @@ describe('ChapterPage', () => {
 
     await user.click(fabComposeTrigger())
 
-    expect(await screen.findByRole('menuitem', { name: /章全体に投稿/ })).toBeInTheDocument()
-    expect(await screen.findByRole('menuitem', { name: /節を選んで投稿/ })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: /章全体に投稿/ })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: /節を選んで投稿/ })).toBeInTheDocument()
   })
 
   it('節選択モード中は FAB を表示しない', async () => {

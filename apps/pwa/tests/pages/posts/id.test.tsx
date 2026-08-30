@@ -97,7 +97,8 @@ describe('PostDetailPage', () => {
     renderPage()
 
     await userEvent.click(screen.getByRole('button', { name: '投稿の操作' }))
-    await userEvent.click(within(screen.getByRole('menu')).getByRole('menuitem', { name: '編集' }))
+    const menu = await screen.findByRole('menu')
+    await userEvent.click(within(menu).getByRole('menuitem', { name: '編集' }))
 
     expect(screen.getByText('投稿を編集')).toBeInTheDocument()
     expect(screen.getByPlaceholderText(/感じたこと/)).toHaveValue('これは試験投稿の本文です。')
