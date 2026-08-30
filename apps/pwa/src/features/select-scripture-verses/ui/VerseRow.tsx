@@ -119,7 +119,7 @@ export function VerseRow({
         aria-checked={selected}
         aria-label={`${verse}節を選択`}
         onClick={() => onSelect(verse)}
-        className="w-full text-left"
+        className="verse-item w-full text-left"
         style={containerStyle}
       >
         {inner}
@@ -129,11 +129,15 @@ export function VerseRow({
 
   return (
     <div className="relative" style={containerStyle}>
+      {/* content-visibility は本文（Link）だけに絞る。コメント投稿者マーカーは
+          この relative div 直下の兄弟要素で、行の右端からはみ出す位置に絶対配置
+          されている。verse-item を relative div 側にかけると、content-visibility
+          が常時付与する paint containment がマーカーのはみ出し分を切り取ってしまう */}
       <Link
         to="/scriptures/$collection/$book/$chapter"
         params={{ collection, book, chapter: String(chapter) }}
         search={{ verses: [verse] }}
-        className="block"
+        className="verse-item block"
       >
         {inner}
       </Link>
