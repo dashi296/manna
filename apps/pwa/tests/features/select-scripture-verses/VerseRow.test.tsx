@@ -86,41 +86,6 @@ describe('VerseRow', () => {
       expect(container.querySelector('span.font-scripture')).not.toBeNull()
     })
   })
-
-})
-
-describe('VerseRow commenterMarker', () => {
-  const marker = { userId: 'u1', name: '中村さん', avatarUrl: null }
-
-  it('commenterMarker があるとマーカーボタンを出し、押下で onMarkerClick を呼ぶ', async () => {
-    const onMarkerClick = vi.fn()
-    renderInRouter(
-      <VerseRow
-        {...baseProps}
-        mode="read"
-        selected={false}
-        onSelect={vi.fn()}
-        commenterMarker={marker}
-        onMarkerClick={onMarkerClick}
-      />,
-    )
-    const btn = await screen.findByRole('button', {
-      name: '中村さん の 19節 コメントを見る',
-    })
-    await userEvent.click(btn)
-    expect(onMarkerClick).toHaveBeenCalledWith(19)
-  })
-
-  it('commenterMarker 無しならマーカーは出さない', async () => {
-    renderInRouter(
-      <VerseRow {...baseProps} mode="read" selected={false} onSelect={vi.fn()} />,
-    )
-    await waitFor(() => {
-      expect(
-        screen.queryByRole('button', { name: /コメントを見る/ }),
-      ).toBeNull()
-    })
-  })
 })
 
 describe('VerseRow showNumber', () => {

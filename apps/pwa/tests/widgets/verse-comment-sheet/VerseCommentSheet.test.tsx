@@ -25,6 +25,19 @@ const posts: PostWithUser[] = [
     user_id: 'u1',
     users: { display_name: '中村さん', avatar_url: null },
   },
+  {
+    id: 'p2',
+    content: '節5-7 への B の投稿',
+    visibility: 'public',
+    created_at: '2026-07-18T00:00:00.000Z',
+    updated_at: '2026-07-18T00:00:00.000Z',
+    scripture_collection: 'bofm',
+    scripture_book: '1-ne',
+    scripture_chapter: 3,
+    scripture_verses: [5, 6, 7],
+    user_id: 'u2',
+    users: { display_name: '田中さん', avatar_url: null },
+  },
 ]
 
 function renderInRouter(ui: React.ReactNode) {
@@ -43,46 +56,44 @@ function renderInRouter(ui: React.ReactNode) {
 }
 
 describe('VerseCommentSheet', () => {
-  it('open=true でヘッダーに節と選択ユーザー名を出す', async () => {
+  it('open=true でヘッダーに節と件数を出す', async () => {
     renderInRouter(
-      <VerseCommentSheet
-        open={true}
-        verse={7}
-        selectedUserName="中村さん"
-        posts={posts}
-        onOpenChange={vi.fn()}
-      />,
+      <VerseCommentSheet open={true} verse={7} posts={posts} onOpenChange={vi.fn()} />,
     )
     await waitFor(() => {
-      expect(
-        screen.getByRole('heading', { name: /節7.*中村さん/ }),
-      ).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: /7節.*2件/ })).toBeInTheDocument()
+    })
+  })
+
+  it('その節に関わる投稿を投稿者を問わず並べる', async () => {
+    renderInRouter(
+      <VerseCommentSheet open={true} verse={7} posts={posts} onOpenChange={vi.fn()} />,
+    )
+    await waitFor(() => {
       expect(screen.getByText('節7 への A の投稿')).toBeInTheDocument()
+      expect(screen.getByText('節5-7 への B の投稿')).toBeInTheDocument()
+    })
+  })
+
+  it('複数節の投稿には範囲ラベルを出す', async () => {
+    renderInRouter(
+      <VerseCommentSheet open={true} verse={7} posts={posts} onOpenChange={vi.fn()} />,
+    )
+    await waitFor(() => {
+      expect(screen.getByText(/3:5–7/)).toBeInTheDocument()
     })
   })
 
   it('open=false では中身を出さない', () => {
     renderInRouter(
-      <VerseCommentSheet
-        open={false}
-        verse={7}
-        selectedUserName="中村さん"
-        posts={posts}
-        onOpenChange={vi.fn()}
-      />,
+      <VerseCommentSheet open={false} verse={7} posts={posts} onOpenChange={vi.fn()} />,
     )
     expect(screen.queryByText('節7 への A の投稿')).toBeNull()
   })
 
   it('内側の投稿リスト container に max-h と overflow-y-auto を持つ', async () => {
     const { container } = renderInRouter(
-      <VerseCommentSheet
-        open={true}
-        verse={7}
-        selectedUserName="中村さん"
-        posts={posts}
-        onOpenChange={vi.fn()}
-      />,
+      <VerseCommentSheet open={true} verse={7} posts={posts} onOpenChange={vi.fn()} />,
     )
     await waitFor(() => {
       const scroller = container.ownerDocument.body.querySelector(

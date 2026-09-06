@@ -1,30 +1,26 @@
 import { CompactPostCard, type PostWithUser } from '@/entities/post'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/shared/ui/sheet'
+import { useIsMobile } from '@/shared/hooks/use-mobile'
 
 type Props = {
   open: boolean
   verse: number
-  selectedUserName: string
   posts: PostWithUser[]
   onOpenChange: (open: boolean) => void
 }
 
-export function VerseCommentSheet({
-  open,
-  verse,
-  selectedUserName,
-  posts,
-  onOpenChange,
-}: Props) {
+export function VerseCommentSheet({ open, verse, posts, onOpenChange }: Props) {
+  const isMobile = useIsMobile()
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
-        side="bottom"
+        side={isMobile ? 'bottom' : 'right'}
         overlayClassName="supports-backdrop-filter:backdrop-blur-none"
       >
         <SheetHeader>
           <SheetTitle>
-            📖 節{verse} — {selectedUserName}
+            📖 {verse}節のコメント {posts.length}件
           </SheetTitle>
         </SheetHeader>
         <div className="flex flex-col gap-2 px-4 pb-4 max-h-[70vh] overflow-y-auto">

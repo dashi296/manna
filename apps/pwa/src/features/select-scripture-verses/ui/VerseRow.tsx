@@ -1,8 +1,7 @@
 import type { CSSProperties } from 'react'
 import { Link } from '@tanstack/react-router'
 import { Check } from 'lucide-react'
-import { SanitizedVerseHtml, UserAvatar } from '@/shared/ui'
-import type { AvatarStackItem } from '@/shared/ui'
+import { SanitizedVerseHtml } from '@/shared/ui'
 
 const ROW_TRANSITION = 'background-color 200ms, border-color 200ms'
 const ROW_SELECTED_STYLE: CSSProperties = {
@@ -27,8 +26,6 @@ type Props = {
   mode: 'read' | 'select'
   selected: boolean
   onSelect: (verse: number) => void
-  commenterMarker?: AvatarStackItem
-  onMarkerClick?: (verse: number) => void
   showNumber?: boolean
 }
 
@@ -43,8 +40,6 @@ export function VerseRow({
   mode,
   selected,
   onSelect,
-  commenterMarker,
-  onMarkerClick,
   showNumber = true,
 }: Props) {
   const containerStyle = selected ? ROW_SELECTED_STYLE : ROW_UNSELECTED_STYLE
@@ -128,11 +123,7 @@ export function VerseRow({
   }
 
   return (
-    <div className="relative" style={containerStyle}>
-      {/* content-visibility は本文（Link）だけに絞る。コメント投稿者マーカーは
-          この relative div 直下の兄弟要素で、行の右端からはみ出す位置に絶対配置
-          されている。verse-item を relative div 側にかけると、content-visibility
-          が常時付与する paint containment がマーカーのはみ出し分を切り取ってしまう */}
+    <div style={containerStyle}>
       <Link
         to="/scriptures/$collection/$book/$chapter"
         params={{ collection, book, chapter: String(chapter) }}
@@ -141,21 +132,6 @@ export function VerseRow({
       >
         {inner}
       </Link>
-      {commenterMarker && (
-        <button
-          type="button"
-          aria-label={`${commenterMarker.name} の ${verse}節 コメントを見る`}
-          onClick={() => onMarkerClick?.(verse)}
-          className="absolute z-10 rounded-full"
-          style={{ top: 12, right: -4 }}
-        >
-          <UserAvatar
-            name={commenterMarker.name}
-            url={commenterMarker.avatarUrl}
-            size="xs"
-          />
-        </button>
-      )}
     </div>
   )
 }

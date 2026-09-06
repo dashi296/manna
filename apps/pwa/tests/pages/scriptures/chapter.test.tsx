@@ -278,65 +278,128 @@ describe('ChapterPage', () => {
     ).toBeNull()
   })
 
-  it('mode=select 中は選択ユーザーがあっても吹き出しを描画しない', async () => {
-    setViewportWidth(1440)
-    const { useSelectedUserStore } = await import('@/features/select-verse-view')
-    useSelectedUserStore.setState({ selectedUserId: 'u1' })
+  const circlePost = (
+    id: string,
+    userId: string,
+    name: string,
+    verses: number[],
+    content = `${id} の本文`,
+  ): PostWithUser =>
+    ({
+      id,
+      content,
+      visibility: 'public' as const,
+      created_at: '2026-07-19T00:00:00.000Z',
+      updated_at: '2026-07-19T00:00:00.000Z',
+      scripture_collection: 'bofm',
+      scripture_book: '1-ne',
+      scripture_chapter: 1,
+      scripture_verses: verses,
+      user_id: userId,
+      users: { display_name: name, avatar_url: null },
+    }) as PostWithUser
+
+  it('複数節の投稿の印はアンカー節にだけ出る', async () => {
     loaderData = {
       ...baseChapterData,
       chapterCommenters: [{ userId: 'u1', name: '中村さん', avatarUrl: null }],
-      circlePosts: [
-        {
-          id: 'p1',
-          content: 'コメ',
-          visibility: 'public' as const,
-          created_at: '2026-07-19T00:00:00.000Z',
-          updated_at: '2026-07-19T00:00:00.000Z',
-          scripture_collection: 'bofm',
-          scripture_book: '1-ne',
-          scripture_chapter: 1,
-          scripture_verses: [1],
-          user_id: 'u1',
-          users: { display_name: '中村さん', avatar_url: null },
-        },
-      ],
+      circlePosts: [circlePost('p1', 'u1', '中村さん', [3, 4, 5])],
     }
-    search = { mode: 'select', select: [1] }
+    search = {}
     render(<ChapterPage />)
-    expect(screen.queryByRole('group', { name: /中村さんの吹き出し/ })).toBeNull()
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: /3節から始まるコメント/ }),
+      ).toBeInTheDocument()
+    })
+    expect(screen.queryByRole('button', { name: /4節から始まるコメント/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /5節から始まるコメント/ })).toBeNull()
+    expect(screen.getByRole('button', { name: /4節を含むコメント/ })).toBeInTheDocument()
   })
 
-  it('desktop 相当なら選択ユーザーの吹き出しが節横に描画される', async () => {
-    setViewportWidth(1440)
+  it('ユーザー未選択でも身内全員の印が出る', async () => {
     const { useSelectedUserStore } = await import('@/features/select-verse-view')
-    useSelectedUserStore.setState({ selectedUserId: 'u1' })
+    useSelectedUserStore.setState({ selectedUserId: null })
     loaderData = {
       ...baseChapterData,
-      chapterCommenters: [{ userId: 'u1', name: '中村さん', avatarUrl: null }],
+      chapterCommenters: [
+        { userId: 'u1', name: '中村さん', avatarUrl: null },
+        { userId: 'u2', name: '田中さん', avatarUrl: null },
+      ],
       circlePosts: [
-        {
-          id: 'p1',
-          content: '節1 吹き出しテスト',
-          visibility: 'public' as const,
-          created_at: '2026-07-19T00:00:00.000Z',
-          updated_at: '2026-07-19T00:00:00.000Z',
-          scripture_collection: 'bofm',
-          scripture_book: '1-ne',
-          scripture_chapter: 1,
-          scripture_verses: [1],
-          user_id: 'u1',
-          users: { display_name: '中村さん', avatar_url: null },
-        },
+        circlePost('p1', 'u1', '中村さん', [1]),
+        circlePost('p2', 'u2', '田中さん', [2]),
       ],
     }
     search = {}
     render(<ChapterPage />)
+
     await waitFor(() => {
-      expect(screen.getByText('節1 吹き出しテスト')).toBeInTheDocument()
-      expect(
-        screen.getByRole('group', { name: /中村さんの吹き出し/ }),
-      ).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /1節から始まるコメント/ })).toBeInTheDocument()
     })
+    expect(screen.getByRole('button', { name: /2節から始まるコメント/ })).toBeInTheDocument()
+  })
+
+  it('ユーザーを選ぶとその人の印だけに絞られる', async () => {
+    const { useSelectedUserStore } = await import('@/features/select-verse-view')
+    useSelectedUserStore.setState({ selectedUserId: 'u1' })
+    loaderData = {
+      ...baseChapterData,
+      chapterCommenters: [
+        { userId: 'u1', name: '中村さん', avatarUrl: null },
+        { userId: 'u2', name: '田中さん', avatarUrl: null },
+      ],
+      circlePosts: [
+        circlePost('p1', 'u1', '中村さん', [1]),
+        circlePost('p2', 'u2', '田中さん', [2]),
+      ],
+    }
+    search = {}
+    render(<ChapterPage />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /1節から始まるコメント/ })).toBeInTheDocument()
+    })
+    expect(screen.queryByRole('button', { name: /2節から始まるコメント/ })).toBeNull()
+  })
+
+  it('mode=select 中は印を描画しない', async () => {
+    const { useSelectedUserStore } = await import('@/features/select-verse-view')
+    useSelectedUserStore.setState({ selectedUserId: null })
+    loaderData = {
+      ...baseChapterData,
+      chapterCommenters: [{ userId: 'u1', name: '中村さん', avatarUrl: null }],
+      circlePosts: [circlePost('p1', 'u1', '中村さん', [1])],
+    }
+    search = { mode: 'select', select: [1] }
+    render(<ChapterPage />)
+
+    expect(screen.queryByRole('button', { name: /コメント.*件を見る/ })).toBeNull()
+  })
+
+  it('継続節の印を押すとその節に関わるコメントが全件シートに出る', async () => {
+    const { useSelectedUserStore } = await import('@/features/select-verse-view')
+    useSelectedUserStore.setState({ selectedUserId: null })
+    loaderData = {
+      ...baseChapterData,
+      chapterCommenters: [
+        { userId: 'u1', name: '中村さん', avatarUrl: null },
+        { userId: 'u2', name: '田中さん', avatarUrl: null },
+      ],
+      circlePosts: [
+        circlePost('p1', 'u1', '中村さん', [3, 4, 5], 'またぐ投稿'),
+        circlePost('p2', 'u2', '田中さん', [4], '節4だけの投稿'),
+      ],
+    }
+    search = {}
+    const user = userEvent.setup()
+    render(<ChapterPage />)
+
+    await user.click(await screen.findByRole('button', { name: /4節から始まるコメント/ }))
+
+    expect(await screen.findByText('またぐ投稿')).toBeInTheDocument()
+    expect(screen.getByText('節4だけの投稿')).toBeInTheDocument()
   })
 
   it('章ページを開くと続きを読む位置が記録される', async () => {

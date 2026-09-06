@@ -3,7 +3,7 @@ import { createFileRoute, notFound, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { useQuery } from '@tanstack/react-query'
 import { getBook, getCollection, buildScriptureUrl, getChapterLabel, getScriptureLabel } from '@/entities/scripture'
-import { PostCard, POST_SELECT, CommenterBubble, type PostWithUser } from '@/entities/post'
+import { PostCard, POST_SELECT, type PostWithUser } from '@/entities/post'
 import { createSupabaseServer } from '@/shared/lib/auth'
 import { supabase } from '@/shared/lib/supabase'
 import { ComposePostButton, EmptyState, PageHeader, ScriptureText } from '@/shared/ui'
@@ -17,12 +17,13 @@ import {
   type SelectionMode,
 } from '@/features/select-scripture-verses'
 import {
+  buildVerseCommentIndex,
   ChapterCommentersRow,
+  VerseCommentGutter,
   useSelectedUserId,
   useSelectedUserStore,
 } from '@/features/select-verse-view'
 import { VerseCommentSheet } from '@/widgets/verse-comment-sheet'
-import { useIsMobile } from '@/shared/hooks/use-mobile'
 import { getCircleUserIds } from '@/entities/user'
 import type { AvatarStackItem } from '@/shared/ui'
 import { useBookmarkStore } from '@/entities/bookmark'
@@ -395,7 +396,6 @@ function ChapterView({
   chapterCommenters, circlePosts,
 }: ChapterViewProps) {
   const router = useRouter()
-  const isMobile = useIsMobile()
   const [sheetOpen, setSheetOpen] = useState(false)
   const [composerVerses, setComposerVerses] = useState<number[] | undefined>()
   const [openVerseSheet, setOpenVerseSheet] = useState<number | null>(null)
@@ -411,26 +411,18 @@ function ChapterView({
   const clearUser = useSelectedUserStore((s) => s.clear)
   const selectedUser =
     chapterCommenters.find((c) => c.userId === storedUserId) ?? null
-  const selectedUserPosts = useMemo(
+  // ユーザー未選択なら身内全員分を出す。選択は絞り込みであってゲートではない
+  const visiblePosts = useMemo(
     () =>
       selectedUser
         ? circlePosts.filter((p) => p.user_id === selectedUser.userId)
-        : [],
+        : circlePosts,
     [circlePosts, selectedUser],
   )
-  const { versesWithMarker, postsByVerse } = useMemo(() => {
-    const verses = new Set<number>()
-    const byVerse = new Map<number, PostWithUser[]>()
-    for (const p of selectedUserPosts) {
-      p.scripture_verses?.forEach((v) => {
-        verses.add(v)
-        const arr = byVerse.get(v) ?? []
-        arr.push(p)
-        byVerse.set(v, arr)
-      })
-    }
-    return { versesWithMarker: verses, postsByVerse: byVerse }
-  }, [selectedUserPosts])
+  const commentIndex = useMemo(
+    () => buildVerseCommentIndex(visiblePosts),
+    [visiblePosts],
+  )
 
   const verseTextMap = useMemo(
     () => new Map(verseTexts.map((vt) => [vt.verse, vt.text_html])),
@@ -474,9 +466,7 @@ function ChapterView({
   }
 
   const showCommenters = canCompose && mode !== 'select'
-  const hasSelectedUser = mode !== 'select' && selectedUser !== null
-  const showBubbles = hasSelectedUser && !isMobile
-  const showMarkers = hasSelectedUser && isMobile
+  const showGutter = mode !== 'select' && circlePosts.length > 0
 
   const composeMenuProps = {
     onSelectChapter: openComposerForChapter,
@@ -529,28 +519,19 @@ function ChapterView({
 
   const verseList = (
     <div className="p-4 pb-[var(--fab-clearance)]">
-      <ul
-        className={
-          showBubbles
-            ? 'lg:grid lg:grid-cols-[minmax(0,1fr)_18rem] lg:gap-x-3'
-            : ''
-        }
-      >
+      <ul>
         {verseNumbers.map((verse, i) => {
           const textHtml = verseTextMap.get(verse)
           const isSelected = mode === 'select' && selection.includes(verse)
-          const marker =
-            showMarkers && versesWithMarker.has(verse) && selectedUser
-              ? selectedUser
-              : undefined
-          const bubblePosts = showBubbles ? postsByVerse.get(verse) ?? [] : []
+          const entry = commentIndex.get(verse)
           const isLast = i === verseNumbers.length - 1
           return (
-            <li key={verse} className={showBubbles ? 'lg:contents' : ''}>
-              <div
-                className={isLast ? '' : 'border-b'}
-                style={{ borderColor: 'var(--line)' }}
-              >
+            <li
+              key={verse}
+              className={`flex items-stretch ${isLast ? '' : 'border-b'}`}
+              style={{ borderColor: 'var(--line)' }}
+            >
+              <div className="flex-1 min-w-0">
                 <VerseRow
                   collection={collection}
                   book={book.id}
@@ -562,17 +543,22 @@ function ChapterView({
                   mode={mode}
                   selected={isSelected}
                   onSelect={(v) => setSelection(toggleVerse(selection, v))}
-                  commenterMarker={marker}
-                  onMarkerClick={(v) => setOpenVerseSheet(v)}
                   showNumber={!book.isFrontMatter}
                 />
               </div>
-              {showBubbles && (
-                <div className="hidden lg:flex lg:flex-col lg:gap-2 lg:py-2">
-                  {bubblePosts.map((p) => (
-                    <CommenterBubble key={p.id} post={p} />
-                  ))}
-                </div>
+              {showGutter && (
+                <VerseCommentGutter
+                  verse={verse}
+                  entry={
+                    entry && {
+                      anchoredCount: entry.anchored.length,
+                      coveredCount: entry.covered.length,
+                      commenters: entry.commenters,
+                      spanning: entry.spanning,
+                    }
+                  }
+                  onOpen={setOpenVerseSheet}
+                />
               )}
             </li>
           )
@@ -582,12 +568,11 @@ function ChapterView({
   )
 
   const activeVerseSheet =
-    mode !== 'select' && openVerseSheet !== null && selectedUser ? (
+    mode !== 'select' && openVerseSheet !== null ? (
       <VerseCommentSheet
         open
         verse={openVerseSheet}
-        selectedUserName={selectedUser.name}
-        posts={postsByVerse.get(openVerseSheet) ?? []}
+        posts={commentIndex.get(openVerseSheet)?.covered ?? []}
         onOpenChange={(open) => {
           if (!open) setOpenVerseSheet(null)
         }}
