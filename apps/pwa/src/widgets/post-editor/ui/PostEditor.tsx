@@ -66,7 +66,10 @@ type Props = {
   post?: EditablePost
   /**
    * 章ページなど参照元が確定している画面から開いたとき、聖典集・書籍・章を
-   * 選び直せないようにする。initialScripture の中身からは推測しない
+   * 選び直せないようにする。ロックには collection / book / chapter の揃った
+   * initialScripture が必要で、欠けている場合はセレクタに戻る（隠したままだと
+   * 参照を設定する手段がなくなるため）。
+   * ロックするかどうか自体は initialScripture の中身からは推測しない
    * （章を渡すだけの呼び出し元の挙動が黙って変わるため）
    */
   lockScripture?: boolean
