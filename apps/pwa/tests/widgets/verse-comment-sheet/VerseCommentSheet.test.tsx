@@ -127,6 +127,39 @@ describe('VerseCommentSheet', () => {
     expect(onHighlight).toHaveBeenCalledWith(null)
   })
 
+  it('モバイル幅では一度もデスクトップ配置（side=right）で描画しない', async () => {
+    // useIsMobile は effect で確定するため、素朴に使うと初回描画が必ず false に
+    // なり、モバイルでも一瞬 side=right で出てしまう
+    Object.defineProperty(window, 'innerWidth', { writable: true, value: 390 })
+    const seen: (string | null)[] = []
+    const observer = new MutationObserver(() => {
+      const el = document.body.querySelector('[data-slot="sheet-content"]')
+      if (el) seen.push(el.getAttribute('data-side'))
+    })
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['data-side'],
+    })
+
+    renderInRouter(
+      <VerseCommentSheet open={true} verse={7} posts={posts} onOpenChange={vi.fn()} />,
+    )
+    await waitFor(() => {
+      expect(document.body.querySelector('[data-slot="sheet-content"]')).not.toBeNull()
+    })
+    observer.disconnect()
+    Object.defineProperty(window, 'innerWidth', { writable: true, value: 1024 })
+
+    // useIsMobile の effect が Base UI の Portal マウントより先に走るため、
+    // right で描画される瞬間は存在しない。Base UI 側の実装に依存するので固定する
+    expect(seen).not.toContain('right')
+    expect(
+      document.body.querySelector('[data-slot="sheet-content"]')?.getAttribute('data-side'),
+    ).toBe('bottom')
+  })
+
   it('open=false では中身を出さない', () => {
     renderInRouter(
       <VerseCommentSheet open={false} verse={7} posts={posts} onOpenChange={vi.fn()} />,

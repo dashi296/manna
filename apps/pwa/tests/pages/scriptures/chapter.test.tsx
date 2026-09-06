@@ -478,7 +478,37 @@ describe('ChapterPage', () => {
     expect(screen.queryByRole('button', { name: /5節のコメントを見る/ })).toBeNull()
   })
 
-  it('シートを閉じるときは履歴を積まず、戻れるなら戻る', async () => {
+  it('印を押して開いたシートを閉じるときは、積んだ履歴を back で戻す', async () => {
+    canGoBack = true
+    historyBackSpy.mockClear()
+    const { useSelectedUserStore } = await import('@/features/select-verse-view')
+    useSelectedUserStore.setState({ selectedUserId: null })
+    loaderData = {
+      ...baseChapterData,
+      chapterCommenters: [{ userId: 'u1', name: '中村さん', avatarUrl: null }],
+      circlePosts: [circlePost('p1', 'u1', '中村さん', [3], '節3のコメント')],
+    }
+    search = {}
+    const user = userEvent.setup()
+    const { rerender } = render(<ChapterPage />)
+
+    await user.click(await screen.findByRole('button', { name: /3節のコメントを見る/ }))
+    search = { comment: 3 }
+    rerender(<ChapterPage />)
+    await screen.findByText('節3のコメント')
+
+    navigateSpy.mockClear()
+    await user.keyboard('{Escape}')
+
+    await waitFor(() => {
+      expect(historyBackSpy).toHaveBeenCalled()
+    })
+    expect(navigateSpy).not.toHaveBeenCalled()
+  })
+
+  it('直リンクで開いたシートは、戻れる履歴があっても back せず comment を消す', async () => {
+    // 履歴に何かあれば canGoBack は true になるが、そのエントリはシートを開いた
+    // ものではない。back すると章ページから離脱してしまう
     canGoBack = true
     historyBackSpy.mockClear()
     navigateSpy.mockClear()
@@ -496,12 +526,14 @@ describe('ChapterPage', () => {
     await userEvent.keyboard('{Escape}')
 
     await waitFor(() => {
-      expect(historyBackSpy).toHaveBeenCalled()
+      expect(navigateSpy.mock.calls.at(-1)![0].search({})).toMatchObject({
+        comment: undefined,
+      })
     })
-    expect(navigateSpy).not.toHaveBeenCalled()
+    expect(historyBackSpy).not.toHaveBeenCalled()
   })
 
-  it('直リンクで開いて戻れないときは comment を消して閉じる', async () => {
+  it('戻れず直リンクでもないときも comment を消して閉じる', async () => {
     canGoBack = false
     historyBackSpy.mockClear()
     navigateSpy.mockClear()

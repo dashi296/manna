@@ -15,7 +15,6 @@ describe('VerseCommentGutter 長押し', () => {
 
   const anchorEntry = {
     anchoredCount: 1,
-    coveredCount: 1,
     commenters: [alice],
     highlightVerses: [3, 4, 5],
   }
@@ -104,6 +103,27 @@ describe('VerseCommentGutter 長押し', () => {
     expect(onOpen).toHaveBeenCalledWith(3)
   })
 
+  it('塗る範囲が無い印は長押しでもシートを開く（無操作にしない）', () => {
+    vi.useFakeTimers()
+    const onOpen = vi.fn()
+    // 同じ節に複数投稿がアンカーされると highlightVerses は空になる
+    render(
+      <VerseCommentGutter
+        verse={3}
+        entry={{ anchoredCount: 2, commenters: [alice, bob], highlightVerses: [] }}
+        onOpen={onOpen}
+      />,
+    )
+
+    const btn = screen.getByRole('button', { name: /3節/ })
+    fireEvent.pointerDown(btn)
+    vi.advanceTimersByTime(800)
+    fireEvent.pointerUp(btn)
+    fireEvent.click(btn)
+
+    expect(onOpen).toHaveBeenCalledWith(3)
+  })
+
   it('長押しの後でも次の短い押下ならシートが開く', () => {
     vi.useFakeTimers()
     const onOpen = vi.fn()
@@ -164,7 +184,7 @@ describe('VerseCommentGutter', () => {
     render(
       <VerseCommentGutter
         verse={3}
-        entry={{ anchoredCount: 1, coveredCount: 1, commenters: [alice] }}
+        entry={{ anchoredCount: 1, commenters: [alice] }}
         onOpen={vi.fn()}
       />,
     )
@@ -177,7 +197,7 @@ describe('VerseCommentGutter', () => {
     render(
       <VerseCommentGutter
         verse={3}
-        entry={{ anchoredCount: 4, coveredCount: 4, commenters: [alice, bob, carol, dave] }}
+        entry={{ anchoredCount: 4, commenters: [alice, bob, carol, dave] }}
         onOpen={vi.fn()}
       />,
     )
@@ -192,7 +212,7 @@ describe('VerseCommentGutter', () => {
     render(
       <VerseCommentGutter
         verse={5}
-        entry={{ anchoredCount: 0, coveredCount: 3, commenters: [] }}
+        entry={{ anchoredCount: 0, commenters: [] }}
         onOpen={vi.fn()}
       />,
     )
@@ -208,7 +228,6 @@ describe('VerseCommentGutter', () => {
         verse={3}
         entry={{
           anchoredCount: 1,
-          coveredCount: 1,
           commenters: [alice],
           highlightVerses: [3, 4, 5],
         }}
@@ -230,7 +249,7 @@ describe('VerseCommentGutter', () => {
     const { container } = render(
       <VerseCommentGutter
         verse={5}
-        entry={{ anchoredCount: 0, coveredCount: 1, commenters: [], highlightVerses: [] }}
+        entry={{ anchoredCount: 0, commenters: [], highlightVerses: [] }}
         onOpen={vi.fn()}
         onHighlight={onHighlight}
       />,
@@ -245,7 +264,7 @@ describe('VerseCommentGutter', () => {
     render(
       <VerseCommentGutter
         verse={7}
-        entry={{ anchoredCount: 1, coveredCount: 3, commenters: [alice] }}
+        entry={{ anchoredCount: 1, commenters: [alice] }}
         onOpen={vi.fn()}
       />,
     )
@@ -258,7 +277,7 @@ describe('VerseCommentGutter', () => {
     render(
       <VerseCommentGutter
         verse={3}
-        entry={{ anchoredCount: 3, coveredCount: 3, commenters: [alice] }}
+        entry={{ anchoredCount: 3, commenters: [alice] }}
         onOpen={vi.fn()}
       />,
     )
@@ -270,7 +289,7 @@ describe('VerseCommentGutter', () => {
     render(
       <VerseCommentGutter
         verse={3}
-        entry={{ anchoredCount: 1, coveredCount: 1, commenters: [alice] }}
+        entry={{ anchoredCount: 1, commenters: [alice] }}
         onOpen={vi.fn()}
       />,
     )
@@ -283,7 +302,7 @@ describe('VerseCommentGutter', () => {
     render(
       <VerseCommentGutter
         verse={5}
-        entry={{ anchoredCount: 1, coveredCount: 2, commenters: [alice] }}
+        entry={{ anchoredCount: 1, commenters: [alice] }}
         onOpen={onOpen}
       />,
     )

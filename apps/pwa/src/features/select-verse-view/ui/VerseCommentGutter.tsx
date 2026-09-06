@@ -13,7 +13,6 @@ export const VERSE_GUTTER_WIDTH = 'w-12 lg:w-20'
 
 export type VerseGutterEntry = {
   anchoredCount: number
-  coveredCount: number
   commenters: AvatarStackItem[]
   highlightVerses?: number[]
 }
@@ -37,8 +36,8 @@ export function VerseCommentGutter({ verse, entry, onOpen, onHighlight }: Props)
     return <div className={`${VERSE_GUTTER_WIDTH} shrink-0`} aria-hidden="true" />
   }
 
-  // 件数はラベルに入れない。視覚表示はこの節から始まる件数（anchoredCount）だが、
-  // シートに出るのはこの節に関わる全件（coveredCount）で、両者は一致しない
+  // 件数はラベルに入れない。視覚表示はこの節から始まる件数だが、シートに出るのは
+  // この節に関わる全件で、両者は一致しない
   const label = `${verse}節のコメントを見る`
   const avatars = entry.commenters.slice(0, MAX_AVATARS)
   const highlight = entry.highlightVerses?.length ? entry.highlightVerses : null
@@ -53,7 +52,11 @@ export function VerseCommentGutter({ verse, entry, onOpen, onHighlight }: Props)
           // その場合は長押しではないものとして扱う
           const heldFor = lastPressDuration.current
           lastPressDuration.current = null
-          if (heldFor === null || heldFor < LONG_PRESS_MS) onOpen(verse)
+          // 塗る範囲が無い印（同じ節に複数アンカー）では長押しに見せるものが無い。
+          // 抑止すると押しても何も起きない印になるため、通常のタップとして扱う
+          if (highlight === null || heldFor === null || heldFor < LONG_PRESS_MS) {
+            onOpen(verse)
+          }
         }}
         onPointerDown={() => {
           pressStartedAt.current = Date.now()

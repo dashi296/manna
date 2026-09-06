@@ -454,6 +454,8 @@ function ChapterView({
       ? search.comment
       : undefined
   const scrolledVerse = useRef<number | undefined>(undefined)
+  // このページで印を押してシートの履歴エントリを積んだか
+  const pushedSheetEntry = useRef(false)
   const isMounted = useRef(false)
   // 併記表示の英文はクライアント側で後から届き、全節の高さが増える。secondaryTexts を
   // 依存に含めて、届いた後にもう一度位置を合わせ直す（含めないと 300px 以上ずれる）
@@ -497,12 +499,22 @@ function ChapterView({
     patchSearch({ select: next.length ? next : undefined })
   // mode=select と同じく push する。戻る操作でシートを閉じられるようにするため。
   // シートはモーダルで背景が inert になるため、開いたまま別の印を押す経路はない
-  const openVerseSheet = (verse: number) => patchSearch({ comment: verse }, false)
+  const openVerseSheet = (verse: number) => {
+    pushedSheetEntry.current = true
+    patchSearch({ comment: verse }, false)
+  }
   const closeVerseSheet = () => {
-    // 開いたときの push を戻して履歴を元の長さに保つ。replace で消すと同じ章 URL が
-    // 履歴に2件残り、戻るを押しても画面が変わらなくなる
-    if (router.history.canGoBack()) router.history.back()
-    else patchSearch({ comment: undefined })
+    // 自分が push したエントリがあるときだけ戻す。replace で消すと同じ章 URL が
+    // 履歴に2件残り、戻るを押しても画面が変わらなくなる。
+    // canGoBack だけで判定すると、?comment= の直リンクを閉じたときに前のサイトへ
+    // 離脱してしまう（そのエントリはシートを開いたものではない）
+    if (pushedSheetEntry.current && router.history.canGoBack()) {
+      pushedSheetEntry.current = false
+      router.history.back()
+      return
+    }
+    pushedSheetEntry.current = false
+    patchSearch({ comment: undefined })
   }
   const enterSelectMode = () => patchSearch({ mode: 'select' }, false)
   const exitSelectMode = () => patchSearch({ mode: undefined, select: undefined })
@@ -613,7 +625,6 @@ function ChapterView({
                   entry={
                     entry && {
                       anchoredCount: entry.anchored.length,
-                      coveredCount: entry.covered.length,
                       commenters: entry.commenters,
                       highlightVerses: entry.highlightVerses,
                     }
