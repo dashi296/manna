@@ -106,6 +106,15 @@ const needsAuth =
 
 ---
 
+## 本番環境
+
+- **URL**: https://manna.falcon0296.workers.dev/
+- **ホスティング**: Cloudflare Workers（Worker 名 `manna`。静的アセットは `apps/pwa/dist/client` を `[assets]` で配信）
+- **デプロイ**: `pnpm --filter @manna/pwa cf:deploy`（`vite build && wrangler deploy`）
+- `wrangler deployments list` などの CLI 操作には `npx wrangler login` が必要（未ログインだと 400 で失敗する）
+
+---
+
 ## ローカル DB 操作
 
 ```bash
