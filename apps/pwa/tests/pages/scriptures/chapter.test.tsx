@@ -23,12 +23,6 @@ function render(ui: React.ReactElement) {
   }
 }
 
-// 吹き出し（showBubbles / showMarkers）は今も useIsMobile で切り替わる。
-// useIsMobile は effect 内で innerWidth を読むため、render の前に設定する必要がある
-function setViewportWidth(width: number) {
-  Object.defineProperty(window, 'innerWidth', { writable: true, value: width })
-}
-
 // 投稿導線はヘッダー内のピルとヘッダー外の FAB を常に両方マウントし、
 // どちらを見せるかは CSS のブレークポイントが決める。jsdom はメディアクエリを
 // 評価しないため、両方が DOM に居る前提でどちらかを選び取る。
@@ -150,7 +144,8 @@ describe('ChapterPage', () => {
     const { useBilingualDisplayStore } = await import('@/entities/bilingual-display')
     useBilingualDisplayStore.setState({ enabled: false })
     queryClient.clear()
-    setViewportWidth(1024)
+    // テストごとに innerWidth を書き換えるものがあるため既定へ戻す（useIsMobile が読む）
+    Object.defineProperty(window, 'innerWidth', { writable: true, value: 1024 })
   })
 
   it('選択中でも「章に投稿」は節指定なしでシートを開く', async () => {
@@ -380,7 +375,7 @@ describe('ChapterPage', () => {
     search = { mode: 'select', select: [1] }
     render(<ChapterPage />)
 
-    expect(screen.queryByRole('button', { name: /コメント.*件を見る/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /節のコメントを見る/ })).toBeNull()
   })
 
   it('印にホバーするとその投稿の対象節だけがハイライトされる', async () => {
@@ -697,6 +692,39 @@ describe('ChapterPage', () => {
         expect.objectContaining({ behavior: 'smooth' }),
       )
     })
+  })
+
+  it('視差効果を減らす設定なら印を押してもスムーズにしない', async () => {
+    const scrollIntoView = vi.fn()
+    Element.prototype.scrollIntoView = scrollIntoView
+    const originalMatchMedia = window.matchMedia
+    window.matchMedia = ((query: string) =>
+      ({
+        matches: query.includes('prefers-reduced-motion'),
+        media: query,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+      })) as unknown as typeof window.matchMedia
+
+    const { useSelectedUserStore } = await import('@/features/select-verse-view')
+    useSelectedUserStore.setState({ selectedUserId: null })
+    loaderData = {
+      ...baseChapterData,
+      chapterCommenters: [{ userId: 'u1', name: '中村さん', avatarUrl: null }],
+      circlePosts: [circlePost('p1', 'u1', '中村さん', [15])],
+    }
+    search = {}
+    const { rerender } = render(<ChapterPage />)
+    search = { comment: 15 }
+    rerender(<ChapterPage />)
+
+    await waitFor(() => {
+      expect(scrollIntoView).toHaveBeenCalled()
+    })
+    expect(scrollIntoView).not.toHaveBeenCalledWith(
+      expect.objectContaining({ behavior: 'smooth' }),
+    )
+    window.matchMedia = originalMatchMedia
   })
 
   it('シートを開いていないときはスクロールしない', async () => {

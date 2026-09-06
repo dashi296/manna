@@ -493,11 +493,14 @@ function ChapterView({
     const target = document.querySelector(`li[data-verse="${commentVerseForScroll}"]`)
     if (!target) return
 
-    // 印を押して別の節に移ったときだけスムーズに動かす。直リンクで開いた初回の位置決めと、
+    // 印を押して別の節に移ったときだけスムーズに動かす（視差効果を減らす設定なら
+    // それも行わない）。直リンクで開いた初回の位置決めと、
     // 英文が届いた後の再調整は即時にする。どちらも動く様子に意味がないうえ、'smooth' は
     // 開始時点の座標を目標に据えるため、移動中に高さが変わるとずれた位置で止まる
     const isNewSelection = scrolledVerse.current !== commentVerseForScroll
-    const behavior = isMounted.current && isNewSelection ? 'smooth' : 'auto'
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const behavior =
+      !reduceMotion && isMounted.current && isNewSelection ? 'smooth' : 'auto'
     scrolledVerse.current = commentVerseForScroll
 
     target.scrollIntoView({ behavior, block: 'start' })

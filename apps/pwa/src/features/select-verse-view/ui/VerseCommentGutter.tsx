@@ -82,7 +82,7 @@ export function VerseCommentGutter({ verse, entry, onOpen, onHighlight }: Props)
         onFocus={() => onHighlight?.(highlight)}
         onBlur={() => onHighlight?.(null)}
         onContextMenu={(e) => e.preventDefault()}
-        className="w-full h-full flex items-start justify-start gap-1 pl-1 pt-3 select-none"
+        className="w-full h-full flex items-start justify-start gap-1 pl-1 pt-3 select-none rounded-md transition-colors hover:bg-[var(--verse-highlight)] active:bg-[var(--verse-highlight)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lagoon)]"
         style={{ WebkitTouchCallout: 'none', touchAction: 'manipulation' }}
       >
         {avatars.map((c, i) => (

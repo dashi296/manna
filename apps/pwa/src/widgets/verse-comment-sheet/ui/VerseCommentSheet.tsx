@@ -50,6 +50,8 @@ export function VerseCommentSheet({
               key={p.id}
               onPointerEnter={() => onHighlight?.(p.scripture_verses ?? null)}
               onPointerLeave={() => onHighlight?.(null)}
+              // 触れたままスクロールに移ると pointerleave が来ず cancel だけ発生する
+              onPointerCancel={() => onHighlight?.(null)}
               onFocus={() => onHighlight?.(p.scripture_verses ?? null)}
               onBlur={() => onHighlight?.(null)}
             >

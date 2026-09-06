@@ -108,6 +108,30 @@ describe('VerseCommentSheet', () => {
     expect(onHighlight).toHaveBeenLastCalledWith(null)
   })
 
+  it('カードに触れたままスクロールに移ってもハイライトが残らない', async () => {
+    // 押したままスクロールに移ると pointerleave が来ず pointercancel だけが発生する
+    const onHighlight = vi.fn()
+    renderInRouter(
+      <VerseCommentSheet
+        open={true}
+        verse={7}
+        posts={posts}
+        onOpenChange={vi.fn()}
+        onHighlight={onHighlight}
+      />,
+    )
+
+    const card = await screen.findByText('節5-7 への B の投稿')
+    const wrapper = card.closest('a')!.parentElement!
+
+    fireEvent.pointerOver(wrapper)
+    expect(onHighlight).toHaveBeenLastCalledWith([5, 6, 7])
+
+    fireEvent.pointerCancel(wrapper)
+
+    expect(onHighlight).toHaveBeenLastCalledWith(null)
+  })
+
   it('シートを閉じるときにハイライトを解除する', async () => {
     const onHighlight = vi.fn()
     const { rerender } = renderInRouter(
