@@ -127,6 +127,8 @@ export function VerseRow({
         aria-label={`${verse}節を選択`}
         onClick={() => onSelect(verse)}
         className="verse-item w-full text-left"
+        // 画面外の節の高さ見積もりを併記の有無で切り替えるため（styles.css の verse-item）
+        data-bilingual={textHtmlSecondary ? '' : undefined}
         style={containerStyle}
       >
         {inner}
@@ -141,6 +143,7 @@ export function VerseRow({
         params={{ collection, book, chapter: String(chapter) }}
         search={{ verses: [verse] }}
         className="verse-item block"
+        data-bilingual={textHtmlSecondary ? '' : undefined}
       >
         {inner}
       </Link>
