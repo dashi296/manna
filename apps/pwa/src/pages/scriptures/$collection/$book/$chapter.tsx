@@ -205,6 +205,13 @@ type ChapterSearch = {
   verses?: number[]
   select?: number[]
   mode?: SelectionMode
+  // 開いているコメントシートの節。戻る操作で閉じられるよう URL に載せる
+  comment?: number
+}
+
+function parseCommentVerse(input: unknown): number | undefined {
+  const verse = Number(input)
+  return Number.isInteger(verse) && verse > 0 ? verse : undefined
 }
 
 export const Route = createFileRoute('/scriptures/$collection/$book/$chapter')({
@@ -212,6 +219,7 @@ export const Route = createFileRoute('/scriptures/$collection/$book/$chapter')({
     verses: search.verses !== undefined ? parseSelection(search.verses) : undefined,
     select: search.select !== undefined ? parseSelection(search.select) : undefined,
     mode: search.mode === 'select' ? 'select' : undefined,
+    comment: parseCommentVerse(search.comment),
   }),
   loaderDeps: ({ search }) => ({
     verses: search.verses,
@@ -398,7 +406,6 @@ function ChapterView({
   const router = useRouter()
   const [sheetOpen, setSheetOpen] = useState(false)
   const [composerVerses, setComposerVerses] = useState<number[] | undefined>()
-  const [openVerseSheet, setOpenVerseSheet] = useState<number | null>(null)
   const [highlightedVerses, setHighlightedVerses] = useState<Set<number> | null>(null)
   const search = Route.useSearch()
   const navigate = Route.useNavigate()
@@ -449,6 +456,9 @@ function ChapterView({
 
   const setSelection = (next: number[]) =>
     patchSearch({ select: next.length ? next : undefined })
+  // mode=select と同じく push する。戻る操作でシートを閉じられるようにするため
+  const openVerseSheet = (verse: number) => patchSearch({ comment: verse }, false)
+  const closeVerseSheet = () => patchSearch({ comment: undefined })
   const enterSelectMode = () => patchSearch({ mode: 'select' }, false)
   const exitSelectMode = () => patchSearch({ mode: undefined, select: undefined })
 
@@ -561,7 +571,7 @@ function ChapterView({
                       highlightVerses: entry.highlightVerses,
                     }
                   }
-                  onOpen={setOpenVerseSheet}
+                  onOpen={openVerseSheet}
                   onHighlight={onHighlight}
                 />
               )}
@@ -572,15 +582,17 @@ function ChapterView({
     </div>
   )
 
+  const commentVerse = mode !== 'select' ? search.comment : undefined
   const activeVerseSheet =
-    mode !== 'select' && openVerseSheet !== null ? (
+    commentVerse !== undefined ? (
       <VerseCommentSheet
         open
-        verse={openVerseSheet}
-        posts={commentIndex.get(openVerseSheet)?.covered ?? []}
+        verse={commentVerse}
+        posts={commentIndex.get(commentVerse)?.covered ?? []}
         onOpenChange={(open) => {
-          if (!open) setOpenVerseSheet(null)
+          if (!open) closeVerseSheet()
         }}
+        onHighlight={onHighlight}
       />
     ) : null
 

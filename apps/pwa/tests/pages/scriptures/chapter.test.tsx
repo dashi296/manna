@@ -1,5 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { render as rtlRender, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render as rtlRender, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClientProvider } from '@tanstack/react-query'
 import type { PostWithUser } from '@/entities/post'
@@ -85,7 +85,7 @@ const baseChapterData: TestLoaderData = {
 }
 
 let loaderData: TestLoaderData
-let search: { select?: number[]; mode?: 'select' } = { select: [1, 2] }
+let search: { select?: number[]; mode?: 'select'; comment?: number } = { select: [1, 2] }
 const navigateSpy = vi.fn()
 
 // 併記表示ONのときにクライアント側で取得する第2言語の節本文（テストごとに差し替える）
@@ -422,6 +422,74 @@ describe('ChapterPage', () => {
     expect(screen.queryByRole('button', { name: /4節/ })).toBeNull()
   })
 
+  it('印を押すと comment を push（replace: false）して戻るで閉じられるようにする', async () => {
+    const { useSelectedUserStore } = await import('@/features/select-verse-view')
+    useSelectedUserStore.setState({ selectedUserId: null })
+    loaderData = {
+      ...baseChapterData,
+      chapterCommenters: [{ userId: 'u1', name: '中村さん', avatarUrl: null }],
+      circlePosts: [circlePost('p1', 'u1', '中村さん', [3, 4, 5])],
+    }
+    search = {}
+    navigateSpy.mockClear()
+    const user = userEvent.setup()
+    render(<ChapterPage />)
+
+    await user.click(await screen.findByRole('button', { name: /3節から始まるコメント/ }))
+
+    const call = navigateSpy.mock.calls.at(-1)![0]
+    expect(call.replace).toBe(false)
+    expect(call.search({})).toMatchObject({ comment: 3 })
+  })
+
+  it('search.comment があるとその節のシートを開く', async () => {
+    const { useSelectedUserStore } = await import('@/features/select-verse-view')
+    useSelectedUserStore.setState({ selectedUserId: null })
+    loaderData = {
+      ...baseChapterData,
+      chapterCommenters: [{ userId: 'u1', name: '中村さん', avatarUrl: null }],
+      circlePosts: [circlePost('p1', 'u1', '中村さん', [3, 4, 5], '節3のコメント')],
+    }
+    search = { comment: 3 }
+    render(<ChapterPage />)
+
+    expect(await screen.findByText('節3のコメント')).toBeInTheDocument()
+  })
+
+  it('シート内のコメントにホバーするとその投稿の対象節だけがハイライトされる', async () => {
+    const { useSelectedUserStore } = await import('@/features/select-verse-view')
+    useSelectedUserStore.setState({ selectedUserId: null })
+    loaderData = {
+      ...baseChapterData,
+      chapterCommenters: [{ userId: 'u1', name: '中村さん', avatarUrl: null }],
+      circlePosts: [
+        circlePost('p1', 'u1', '中村さん', [3, 4, 5], 'またぐ投稿'),
+        circlePost('p2', 'u1', '中村さん', [5], '節5だけの投稿'),
+      ],
+    }
+    search = { comment: 5 }
+    const { container } = render(<ChapterPage />)
+
+    const card = await screen.findByText('またぐ投稿')
+    fireEvent.pointerOver(card.closest('a')!.parentElement!)
+
+    await waitFor(() => {
+      expect(container.querySelectorAll('[data-highlighted="true"]')).toHaveLength(3)
+    })
+  })
+
+  it('mode=select 中は search.comment があってもシートを開かない', async () => {
+    loaderData = {
+      ...baseChapterData,
+      chapterCommenters: [{ userId: 'u1', name: '中村さん', avatarUrl: null }],
+      circlePosts: [circlePost('p1', 'u1', '中村さん', [3], '節3のコメント')],
+    }
+    search = { mode: 'select', comment: 3 }
+    render(<ChapterPage />)
+
+    expect(screen.queryByText('節3のコメント')).toBeNull()
+  })
+
   it('継続節の印を押すとその節に関わるコメントが全件シートに出る', async () => {
     const { useSelectedUserStore } = await import('@/features/select-verse-view')
     useSelectedUserStore.setState({ selectedUserId: null })
@@ -436,11 +504,8 @@ describe('ChapterPage', () => {
         circlePost('p2', 'u2', '田中さん', [4], '節4だけの投稿'),
       ],
     }
-    search = {}
-    const user = userEvent.setup()
+    search = { comment: 4 }
     render(<ChapterPage />)
-
-    await user.click(await screen.findByRole('button', { name: /4節から始まるコメント/ }))
 
     expect(await screen.findByText('またぐ投稿')).toBeInTheDocument()
     expect(screen.getByText('節4だけの投稿')).toBeInTheDocument()

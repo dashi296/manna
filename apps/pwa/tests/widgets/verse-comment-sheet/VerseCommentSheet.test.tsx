@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import {
   createRootRoute,
   createRoute,
@@ -82,6 +82,49 @@ describe('VerseCommentSheet', () => {
     await waitFor(() => {
       expect(screen.getByText(/3:5–7/)).toBeInTheDocument()
     })
+  })
+
+  it('カードにホバーするとその投稿の対象節を通知し、離れると解除する', async () => {
+    const onHighlight = vi.fn()
+    renderInRouter(
+      <VerseCommentSheet
+        open={true}
+        verse={7}
+        posts={posts}
+        onOpenChange={vi.fn()}
+        onHighlight={onHighlight}
+      />,
+    )
+
+    // jsdom は要素の寸法を持たないため userEvent.hover は座標解決で別のカードにも
+    // enter を発火してしまう。対象のカードへ直接イベントを送る
+    const card = await screen.findByText('節5-7 への B の投稿')
+    const wrapper = card.closest('a')!.parentElement!
+
+    fireEvent.pointerOver(wrapper)
+    expect(onHighlight).toHaveBeenLastCalledWith([5, 6, 7])
+
+    fireEvent.pointerOut(wrapper)
+    expect(onHighlight).toHaveBeenLastCalledWith(null)
+  })
+
+  it('シートを閉じるときにハイライトを解除する', async () => {
+    const onHighlight = vi.fn()
+    const { rerender } = renderInRouter(
+      <VerseCommentSheet
+        open={true}
+        verse={7}
+        posts={posts}
+        onOpenChange={vi.fn()}
+        onHighlight={onHighlight}
+      />,
+    )
+    await screen.findByText('節7 への A の投稿')
+
+    onHighlight.mockClear()
+    rerender(<div />)
+
+    expect(onHighlight).toHaveBeenCalledWith(null)
   })
 
   it('open=false では中身を出さない', () => {
