@@ -442,6 +442,18 @@ describe('ChapterPage', () => {
     expect(call.search({})).toMatchObject({ comment: 3 })
   })
 
+  it('URL を書き換える操作はスクロール位置をリセットしない', async () => {
+    loaderData = { ...baseChapterData }
+    search = { mode: 'select', select: [] }
+    navigateSpy.mockClear()
+    const user = userEvent.setup()
+    render(<ChapterPage />)
+
+    await user.click(screen.getByRole('checkbox', { name: '2節を選択' }))
+
+    expect(navigateSpy.mock.calls.at(-1)![0]).toMatchObject({ resetScroll: false })
+  })
+
   it('search.comment があるとその節のシートを開く', async () => {
     const { useSelectedUserStore } = await import('@/features/select-verse-view')
     useSelectedUserStore.setState({ selectedUserId: null })

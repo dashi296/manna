@@ -451,6 +451,9 @@ function ChapterView({
       params: { collection, book: book.id, chapter: String(chapter) },
       search: (prev) => ({ ...prev, ...patch }),
       replace,
+      // 同じ章に留まる検索パラメータの更新なので、既定の「先頭へ戻す」は邪魔になる。
+      // これがないと下の方の節を選ぶたびに最上部へ飛ばされる
+      resetScroll: false,
     })
   }
 

@@ -33,6 +33,15 @@ describe('VerseCommentGutter 長押し', () => {
     expect(onOpen).toHaveBeenCalledWith(3)
   })
 
+  it('キーボード操作（pointerdown を伴わない click）でもシートが開く', () => {
+    const onOpen = vi.fn()
+    render(<VerseCommentGutter verse={3} entry={anchorEntry} onOpen={onOpen} />)
+
+    fireEvent.click(screen.getByRole('button', { name: /3節/ }))
+
+    expect(onOpen).toHaveBeenCalledWith(3)
+  })
+
   it('長押しして離してもシートは開かない', () => {
     vi.useFakeTimers()
     const onOpen = vi.fn()

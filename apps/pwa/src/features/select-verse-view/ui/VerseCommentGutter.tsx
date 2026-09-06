@@ -45,9 +45,11 @@ export function VerseCommentGutter({ verse, entry, onOpen, onHighlight }: Props)
         type="button"
         aria-label={label}
         onClick={() => {
-          const heldFor = Date.now() - pressStartedAt.current
+          // キーボードの Enter/Space は pointerdown を伴わないため押下時刻が無い。
+          // その場合は長押しではないものとして扱う
+          const startedAt = pressStartedAt.current
           pressStartedAt.current = 0
-          if (heldFor < LONG_PRESS_MS) onOpen(verse)
+          if (startedAt === 0 || Date.now() - startedAt < LONG_PRESS_MS) onOpen(verse)
         }}
         onPointerDown={() => {
           pressStartedAt.current = Date.now()
