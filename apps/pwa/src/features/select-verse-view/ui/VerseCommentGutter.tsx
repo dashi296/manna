@@ -28,14 +28,15 @@ type Props = {
 export function VerseCommentGutter({ verse, entry, onOpen, onHighlight }: Props) {
   const pressStartedAt = useRef(0)
 
-  if (!entry || entry.coveredCount === 0) {
+  // 印を置くのはアンカー節だけ。範囲の途中の節にボタンを置くと、見た目が空のまま
+  // フォーカスできる地点がキーボード利用者の前に並んでしまう
+  if (!entry || entry.anchoredCount === 0) {
     return <div className={`${VERSE_GUTTER_WIDTH} shrink-0`} aria-hidden="true" />
   }
 
-  const isAnchor = entry.anchoredCount > 0
-  const label = isAnchor
-    ? `${verse}節から始まるコメント ${entry.coveredCount}件を見る`
-    : `${verse}節を含むコメント ${entry.coveredCount}件を見る`
+  // 件数はラベルに入れない。視覚表示はこの節から始まる件数（anchoredCount）だが、
+  // シートに出るのはこの節に関わる全件（coveredCount）で、両者は一致しない
+  const label = `${verse}節のコメントを見る`
   const avatars = entry.commenters.slice(0, MAX_AVATARS)
   const highlight = entry.highlightVerses?.length ? entry.highlightVerses : null
 

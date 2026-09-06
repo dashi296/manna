@@ -139,6 +139,7 @@
     --header-bg: rgba(10, 20, 24, 0.8);
     --chip-bg: rgba(13, 28, 32, 0.9);
     --chip-line: rgba(141, 229, 219, 0.24);
+    --verse-highlight: color-mix(in srgb, var(--lagoon) 20%, transparent);
     --link-bg-hover: rgba(24, 44, 49, 0.8);
     --hero-a: rgba(96, 215, 207, 0.18);
     --hero-b: rgba(110, 200, 154, 0.12);

@@ -137,7 +137,7 @@ describe('VerseCommentGutter', () => {
     expect(screen.getByText('4')).toBeInTheDocument()
   })
 
-  it('継続節では件数を表示しない', () => {
+  it('継続節には押せる要素を置かない（見た目が空のフォーカス地点を作らない）', () => {
     render(
       <VerseCommentGutter
         verse={5}
@@ -146,6 +146,7 @@ describe('VerseCommentGutter', () => {
       />,
     )
 
+    expect(screen.queryByRole('button')).toBeNull()
     expect(screen.queryByText('3')).toBeNull()
   })
 
@@ -173,9 +174,9 @@ describe('VerseCommentGutter', () => {
     expect(onHighlight).toHaveBeenLastCalledWith(null)
   })
 
-  it('継続節の印にホバーしても何もハイライトしない', async () => {
+  it('継続節はホバーしてもハイライトを起こさない', async () => {
     const onHighlight = vi.fn()
-    render(
+    const { container } = render(
       <VerseCommentGutter
         verse={5}
         entry={{ anchoredCount: 0, coveredCount: 1, commenters: [], highlightVerses: [] }}
@@ -184,9 +185,9 @@ describe('VerseCommentGutter', () => {
       />,
     )
 
-    await userEvent.hover(screen.getByRole('button', { name: /5節/ }))
+    await userEvent.hover(container.firstElementChild!)
 
-    expect(onHighlight).not.toHaveBeenCalledWith(expect.arrayContaining([expect.any(Number)]))
+    expect(onHighlight).not.toHaveBeenCalled()
   })
 
   it('件数はその節から始まる投稿の数を示し、アバターの人数と食い違わない', () => {
@@ -226,25 +227,12 @@ describe('VerseCommentGutter', () => {
     expect(screen.queryByText('1')).toBeNull()
   })
 
-  it('継続節ではアバターを描画せず、押せる要素だけ残す', () => {
-    render(
-      <VerseCommentGutter
-        verse={5}
-        entry={{ anchoredCount: 0, coveredCount: 1, commenters: [] }}
-        onOpen={vi.fn()}
-      />,
-    )
-
-    expect(screen.getByRole('button', { name: /5節/ })).toBeInTheDocument()
-    expect(screen.queryByText('ア')).toBeNull()
-  })
-
   it('押すと節番号を伴って onOpen が呼ばれる', async () => {
     const onOpen = vi.fn()
     render(
       <VerseCommentGutter
         verse={5}
-        entry={{ anchoredCount: 0, coveredCount: 2, commenters: [] }}
+        entry={{ anchoredCount: 1, coveredCount: 2, commenters: [alice] }}
         onOpen={onOpen}
       />,
     )

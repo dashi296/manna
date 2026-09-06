@@ -10,7 +10,8 @@ export type VerseCommentEntry = {
   covered: PostWithUser[]
   // anchored の投稿者を重複なく並べたもの（アバター重ね用）
   commenters: AvatarStackItem[]
-  // この節の印にホバーしたとき塗る節。anchored の投稿の対象節をすべて集めたもの
+  // この節の印にホバーしたとき塗る節。アンカーが1件のときだけその投稿の対象節を持つ。
+  // 複数あると範囲がばらばらで、統合するとどの投稿の範囲でもなくなるため空にする
   highlightVerses: number[]
 }
 
@@ -45,11 +46,11 @@ export function buildVerseCommentIndex(posts: PostWithUser[]): VerseCommentIndex
   }
 
   for (const entry of index.values()) {
-    const highlight = new Set<number>()
-    for (const post of entry.anchored) {
-      post.scripture_verses?.forEach((v) => highlight.add(v))
+    if (entry.anchored.length === 1) {
+      entry.highlightVerses = [...(entry.anchored[0].scripture_verses ?? [])].sort(
+        (a, b) => a - b,
+      )
     }
-    entry.highlightVerses = [...highlight].sort((a, b) => a - b)
 
     const seen = new Set<string>()
     for (const post of entry.anchored) {

@@ -445,7 +445,11 @@ function ChapterView({
   )
   const mode: SelectionMode = canCompose && search.mode === 'select' ? 'select' : 'read'
 
-  const commentVerseForScroll = mode !== 'select' ? search.comment : undefined
+  // 章の節数を超える comment は無視する。0件のシートが開いてしまうため
+  const commentVerseForScroll =
+    mode !== 'select' && search.comment !== undefined && search.comment <= maxVerse
+      ? search.comment
+      : undefined
   const scrolledVerse = useRef<number | undefined>(undefined)
   const isMounted = useRef(false)
   // 併記表示の英文はクライアント側で後から届き、全節の高さが増える。secondaryTexts を

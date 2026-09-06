@@ -310,12 +310,12 @@ describe('ChapterPage', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole('button', { name: /3節から始まるコメント/ }),
+        screen.getByRole('button', { name: /3節のコメントを見る/ }),
       ).toBeInTheDocument()
     })
-    expect(screen.queryByRole('button', { name: /4節から始まるコメント/ })).toBeNull()
-    expect(screen.queryByRole('button', { name: /5節から始まるコメント/ })).toBeNull()
-    expect(screen.getByRole('button', { name: /4節を含むコメント/ })).toBeInTheDocument()
+    // 範囲の途中の節には印もボタンも置かない
+    expect(screen.queryByRole('button', { name: /4節のコメントを見る/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /5節のコメントを見る/ })).toBeNull()
   })
 
   it('ユーザー未選択でも身内全員の印が出る', async () => {
@@ -336,9 +336,9 @@ describe('ChapterPage', () => {
     render(<ChapterPage />)
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /1節から始まるコメント/ })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /1節のコメントを見る/ })).toBeInTheDocument()
     })
-    expect(screen.getByRole('button', { name: /2節から始まるコメント/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /2節のコメントを見る/ })).toBeInTheDocument()
   })
 
   it('ユーザーを選ぶとその人の印だけに絞られる', async () => {
@@ -359,9 +359,9 @@ describe('ChapterPage', () => {
     render(<ChapterPage />)
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /1節から始まるコメント/ })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /1節のコメントを見る/ })).toBeInTheDocument()
     })
-    expect(screen.queryByRole('button', { name: /2節から始まるコメント/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /2節のコメントを見る/ })).toBeNull()
   })
 
   it('mode=select 中は印を描画しない', async () => {
@@ -390,7 +390,7 @@ describe('ChapterPage', () => {
     const user = userEvent.setup()
     const { container } = render(<ChapterPage />)
 
-    const marker = await screen.findByRole('button', { name: /3節から始まるコメント/ })
+    const marker = await screen.findByRole('button', { name: /3節のコメントを見る/ })
     await user.hover(marker)
 
     await waitFor(() => {
@@ -415,10 +415,11 @@ describe('ChapterPage', () => {
     render(<ChapterPage />)
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /3節から始まるコメント/ })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /3節のコメントを見る/ })).toBeInTheDocument()
     })
-    expect(screen.getByRole('button', { name: /6節から始まるコメント/ })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /7節を含むコメント/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /6節のコメントを見る/ })).toBeInTheDocument()
+    // 7節は 6節から続く塊の途中なのでアンカーではない
+    expect(screen.queryByRole('button', { name: /7節のコメントを見る/ })).toBeNull()
     expect(screen.queryByRole('button', { name: /4節/ })).toBeNull()
   })
 
@@ -435,7 +436,7 @@ describe('ChapterPage', () => {
     const user = userEvent.setup()
     render(<ChapterPage />)
 
-    await user.click(await screen.findByRole('button', { name: /3節から始まるコメント/ }))
+    await user.click(await screen.findByRole('button', { name: /3節のコメントを見る/ }))
 
     const call = navigateSpy.mock.calls.at(-1)![0]
     expect(call.replace).toBe(false)
@@ -550,6 +551,18 @@ describe('ChapterPage', () => {
       expect(screen.getByText('一節の本文')).toBeInTheDocument()
     })
     expect(scrollIntoView).not.toHaveBeenCalled()
+  })
+
+  it('章に存在しない節の comment は無視する', async () => {
+    loaderData = { ...baseChapterData }
+    // baseChapterData の book.verses は [20]（1章は20節まで）
+    search = { comment: 999 }
+    render(<ChapterPage />)
+
+    await waitFor(() => {
+      expect(screen.getByText('一節の本文')).toBeInTheDocument()
+    })
+    expect(screen.queryByRole('dialog')).toBeNull()
   })
 
   it('mode=select 中は search.comment があってもシートを開かない', async () => {
