@@ -160,6 +160,29 @@ describe('ChapterPage', () => {
     expect(screen.getByPlaceholderText('節 (例: 7, 9)')).toHaveValue('')
   })
 
+  it('章表示から開いた投稿シートでは聖典・書・章を選び直せない', async () => {
+    const user = userEvent.setup()
+    render(<ChapterPage />)
+
+    await user.click(headerComposeTrigger())
+    await user.click(await screen.findByRole('menuitem', { name: /章全体に投稿/ }))
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(screen.queryAllByRole('combobox')).toHaveLength(0)
+    expect(screen.getByPlaceholderText('節 (例: 7, 9)')).toBeInTheDocument()
+  })
+
+  it('節表示から開いた投稿シートでも聖典・書・章を選び直せない', async () => {
+    loaderData = { ...baseChapterData, mode: 'verse', verses: [1] }
+    const user = userEvent.setup()
+    render(<ChapterPage />)
+
+    await user.click(screen.getAllByRole('button', { name: '投稿する' })[0])
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(screen.queryAllByRole('combobox')).toHaveLength(0)
+  })
+
   it('未ログインの章表示では投稿導線を表示しない', () => {
     loaderData = { ...baseChapterData, userId: null }
 

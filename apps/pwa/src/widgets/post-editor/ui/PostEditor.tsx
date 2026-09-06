@@ -64,10 +64,22 @@ type Props = {
   initialScripture?: ScriptureRefPartial
   mode?: 'page' | 'sheet'
   post?: EditablePost
+  /**
+   * 章ページなど参照元が確定している画面から開いたとき、聖典集・書籍・章を
+   * 選び直せないようにする。initialScripture の中身からは推測しない
+   * （章を渡すだけの呼び出し元の挙動が黙って変わるため）
+   */
+  lockScripture?: boolean
   onSuccess?: () => void
 }
 
-export function PostEditor({ initialScripture, mode = 'page', post, onSuccess }: Props) {
+export function PostEditor({
+  initialScripture,
+  mode = 'page',
+  post,
+  lockScripture = false,
+  onSuccess,
+}: Props) {
   const isEditing = post !== undefined
   const navigate = useNavigate()
   const [tab, setTab] = useState<'edit' | 'preview'>('edit')
@@ -172,6 +184,20 @@ export function PostEditor({ initialScripture, mode = 'page', post, onSuccess }:
         })
       : null
 
+  // 節は固定しないので、ラベルは章までにとどめる（下の入力欄と二重に出さない）
+  const lockedLabel =
+    !isEditing &&
+    lockScripture &&
+    initialScripture?.collection &&
+    initialScripture.book &&
+    initialScripture.chapter
+      ? getScriptureLabel({
+          collection: initialScripture.collection,
+          book: initialScripture.book,
+          chapter: initialScripture.chapter,
+        })
+      : null
+
   return (
     <div className={rootClass}>
       <TabBar tabs={TABS} active={tab} onChange={setTab} />
@@ -208,20 +234,22 @@ export function PostEditor({ initialScripture, mode = 'page', post, onSuccess }:
       <div className="space-y-4">
         <div>
           {isEditing ? (
-            scriptureLabel && (
-              <span
-                className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium"
-                style={{ background: 'var(--chip-bg)', border: '1px solid var(--chip-line)', color: 'var(--palm)' }}
-              >
-                <span aria-hidden="true">📖</span> {scriptureLabel}
-              </span>
-            )
+            scriptureLabel && <ScriptureChip label={scriptureLabel} />
           ) : (
             <>
               <p className="text-xs font-medium mb-2" style={softTextStyle}>
-                聖典参照（任意）
+                {lockedLabel ? '聖典参照' : '聖典参照（任意）'}
               </p>
-              <ScriptureSelector value={scripture} onChange={setScripture} />
+              {lockedLabel && (
+                <div className="mb-2">
+                  <ScriptureChip label={lockedLabel} />
+                </div>
+              )}
+              <ScriptureSelector
+                value={scripture}
+                onChange={setScripture}
+                lockRef={lockedLabel !== null}
+              />
             </>
           )}
         </div>
@@ -244,5 +272,16 @@ export function PostEditor({ initialScripture, mode = 'page', post, onSuccess }:
           : (submitting ? '投稿中...' : '投稿する')}
       </Button>
     </div>
+  )
+}
+
+function ScriptureChip({ label }: { label: string }) {
+  return (
+    <span
+      className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium"
+      style={{ background: 'var(--chip-bg)', border: '1px solid var(--chip-line)', color: 'var(--palm)' }}
+    >
+      <span aria-hidden="true">📖</span> {label}
+    </span>
   )
 }
