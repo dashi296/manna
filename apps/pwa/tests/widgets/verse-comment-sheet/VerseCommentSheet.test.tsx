@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { describe, it, expect, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import {
@@ -81,6 +82,55 @@ describe('VerseCommentSheet', () => {
     )
     await waitFor(() => {
       expect(screen.getByText(/3:5–7/)).toBeInTheDocument()
+    })
+  })
+
+  it('開いた時点で先頭の投稿が指す節を塗る', async () => {
+    // モーダルだった頃は先頭カードへ自動フォーカスが入る副作用で塗られていた。
+    // 非モーダルではフォーカスが Popup に留まるため、明示的に通知する必要がある
+    const onHighlight = vi.fn()
+    renderInRouter(
+      <VerseCommentSheet
+        open={true}
+        verse={7}
+        posts={posts}
+        onOpenChange={vi.fn()}
+        onHighlight={onHighlight}
+      />,
+    )
+    await screen.findByText('節7 への A の投稿')
+
+    expect(onHighlight).toHaveBeenCalledWith([7])
+  })
+
+  it('開いたまま別の節に切り替わったら塗り直す', async () => {
+    // 非モーダルになり、シートを開いたまま別の節の印を押せる
+    const onHighlight = vi.fn()
+    function SwitchHarness() {
+      const [verse, setVerse] = useState(7)
+      return (
+        <>
+          <button type="button" onClick={() => setVerse(5)}>
+            5節へ切替
+          </button>
+          <VerseCommentSheet
+            open={true}
+            verse={verse}
+            posts={verse === 7 ? posts : [posts[1]]}
+            onOpenChange={vi.fn()}
+            onHighlight={onHighlight}
+          />
+        </>
+      )
+    }
+    renderInRouter(<SwitchHarness />)
+    await screen.findByText('節7 への A の投稿')
+
+    onHighlight.mockClear()
+    fireEvent.click(screen.getByRole('button', { name: '5節へ切替' }))
+
+    await waitFor(() => {
+      expect(onHighlight).toHaveBeenCalledWith([5, 6, 7])
     })
   })
 

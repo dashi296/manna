@@ -37,6 +37,18 @@ export function VerseCommentSheet({
   highlightRef.current = onHighlight
   useEffect(() => () => highlightRef.current?.(null), [])
 
+  // 開いた時点で先頭の投稿が指す節を塗り、どの範囲へのコメントかを見せる。
+  // モーダルだった頃は先頭カードへ自動フォーカスが入り、その onFocus の副作用で
+  // 塗られていたが、非モーダルではフォーカスが Popup 自身に留まるため明示的に行う。
+  // posts は毎描画で作り直されることがあるため ref 経由で読む
+  const firstPostVerses = posts[0]?.scripture_verses ?? null
+  const firstPostVersesRef = useRef(firstPostVerses)
+  firstPostVersesRef.current = firstPostVerses
+  useEffect(() => {
+    if (!open) return
+    highlightRef.current?.(firstPostVersesRef.current)
+  }, [open, verse])
+
   if (!widthResolved) return null
 
   return (
