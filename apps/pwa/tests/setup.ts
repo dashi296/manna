@@ -24,11 +24,3 @@ if (!window.matchMedia) {
 if (!Element.prototype.scrollIntoView) {
   Element.prototype.scrollIntoView = () => {}
 }
-
-// jsdom は document.fonts を実装していない（章ページがフォント適用後にスクロールする）
-if (!document.fonts) {
-  Object.defineProperty(document, 'fonts', {
-    value: { ready: Promise.resolve(), status: 'loaded' },
-    configurable: true,
-  })
-}
