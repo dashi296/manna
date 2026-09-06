@@ -1,9 +1,14 @@
-import { useEffect, useMemo, useState } from 'react'
-import { createFileRoute, notFound, useRouter } from '@tanstack/react-router'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import {
+  createFileRoute,
+  notFound,
+  useRouter,
+  type HistoryState,
+} from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { useQuery } from '@tanstack/react-query'
 import { getBook, getCollection, buildScriptureUrl, getChapterLabel, getScriptureLabel } from '@/entities/scripture'
-import { PostCard, POST_SELECT, CommenterBubble, type PostWithUser } from '@/entities/post'
+import { PostCard, POST_SELECT, type PostWithUser } from '@/entities/post'
 import { createSupabaseServer } from '@/shared/lib/auth'
 import { supabase } from '@/shared/lib/supabase'
 import { ComposePostButton, EmptyState, PageHeader, ScriptureText } from '@/shared/ui'
@@ -17,12 +22,13 @@ import {
   type SelectionMode,
 } from '@/features/select-scripture-verses'
 import {
+  buildVerseCommentIndex,
   ChapterCommentersRow,
+  VerseCommentGutter,
   useSelectedUserId,
   useSelectedUserStore,
 } from '@/features/select-verse-view'
 import { VerseCommentSheet } from '@/widgets/verse-comment-sheet'
-import { useIsMobile } from '@/shared/hooks/use-mobile'
 import { getCircleUserIds } from '@/entities/user'
 import type { AvatarStackItem } from '@/shared/ui'
 import { useBookmarkStore } from '@/entities/bookmark'
@@ -204,6 +210,30 @@ type ChapterSearch = {
   verses?: number[]
   select?: number[]
   mode?: SelectionMode
+  // 開いているコメントシートの節。戻る操作で閉じられるよう URL に載せる
+  comment?: number
+}
+
+// PostComposerSheet と同じく、履歴エントリ自身に由来を持たせて back の可否を決める。
+// HistoryState は空インターフェースなので、宣言のマージで項目を足す
+declare module '@tanstack/react-router' {
+  interface HistoryState {
+    mannaVerseSheet?: true
+  }
+}
+
+type VerseSheetHistoryState = { mannaVerseSheet?: true }
+const VERSE_SHEET_MARKER: VerseSheetHistoryState = { mannaVerseSheet: true }
+
+// Number() に素通しすると '0x10' が16節、true が1節として通ってしまう。
+// パスの章番号と同じく10進数字だけを受け取る
+function parseCommentVerse(input: unknown): number | undefined {
+  if (typeof input === 'number') {
+    return Number.isInteger(input) && input > 0 ? input : undefined
+  }
+  if (typeof input !== 'string' || !/^\d+$/.test(input)) return undefined
+  const verse = Number(input)
+  return verse > 0 ? verse : undefined
 }
 
 export const Route = createFileRoute('/scriptures/$collection/$book/$chapter')({
@@ -211,6 +241,7 @@ export const Route = createFileRoute('/scriptures/$collection/$book/$chapter')({
     verses: search.verses !== undefined ? parseSelection(search.verses) : undefined,
     select: search.select !== undefined ? parseSelection(search.select) : undefined,
     mode: search.mode === 'select' ? 'select' : undefined,
+    comment: parseCommentVerse(search.comment),
   }),
   loaderDeps: ({ search }) => ({
     verses: search.verses,
@@ -395,10 +426,9 @@ function ChapterView({
   chapterCommenters, circlePosts,
 }: ChapterViewProps) {
   const router = useRouter()
-  const isMobile = useIsMobile()
   const [sheetOpen, setSheetOpen] = useState(false)
   const [composerVerses, setComposerVerses] = useState<number[] | undefined>()
-  const [openVerseSheet, setOpenVerseSheet] = useState<number | null>(null)
+  const [highlightedVerses, setHighlightedVerses] = useState<Set<number> | null>(null)
   const search = Route.useSearch()
   const navigate = Route.useNavigate()
   const maxVerse = book.verses[chapter - 1]
@@ -411,26 +441,30 @@ function ChapterView({
   const clearUser = useSelectedUserStore((s) => s.clear)
   const selectedUser =
     chapterCommenters.find((c) => c.userId === storedUserId) ?? null
-  const selectedUserPosts = useMemo(
+  // ユーザー未選択なら身内全員分を出す。選択は絞り込みであってゲートではない
+  const visiblePosts = useMemo(
     () =>
       selectedUser
         ? circlePosts.filter((p) => p.user_id === selectedUser.userId)
-        : [],
+        : circlePosts,
     [circlePosts, selectedUser],
   )
-  const { versesWithMarker, postsByVerse } = useMemo(() => {
-    const verses = new Set<number>()
-    const byVerse = new Map<number, PostWithUser[]>()
-    for (const p of selectedUserPosts) {
-      p.scripture_verses?.forEach((v) => {
-        verses.add(v)
-        const arr = byVerse.get(v) ?? []
-        arr.push(p)
-        byVerse.set(v, arr)
-      })
-    }
-    return { versesWithMarker: verses, postsByVerse: byVerse }
-  }, [selectedUserPosts])
+  // 身内全員分。シートの中身と、ガターの幅を取るかの判定に使う
+  const allCommentIndex = useMemo(
+    () => buildVerseCommentIndex(maxVerse, circlePosts),
+    [maxVerse, circlePosts],
+  )
+  // 節の横の印は絞り込みに従う
+  const commentIndex = useMemo(
+    () =>
+      selectedUser ? buildVerseCommentIndex(maxVerse, visiblePosts) : allCommentIndex,
+    [selectedUser, maxVerse, visiblePosts, allCommentIndex],
+  )
+  // シートの中身は絞り込みを無視する。共有された ?comment= を開いた側が別のユーザーで
+  // 絞り込んでいると、送った側が見せたいコメントが無言で開かなくなるため
+  const sheetIndex = allCommentIndex
+  const onHighlight = (verses: number[] | null) =>
+    setHighlightedVerses(verses ? new Set(verses) : null)
 
   const verseTextMap = useMemo(
     () => new Map(verseTexts.map((vt) => [vt.verse, vt.text_html])),
@@ -443,17 +477,81 @@ function ChapterView({
   )
   const mode: SelectionMode = canCompose && search.mode === 'select' ? 'select' : 'read'
 
-  const patchSearch = (patch: Partial<ChapterSearch>, replace = true) => {
+  // インデックスは章の範囲外の節を持たないので、コメントの有無だけを見れば足りる
+  const requestedComment = search.comment
+  const commentVerseForScroll =
+    mode !== 'select' &&
+    requestedComment !== undefined &&
+    (sheetIndex.get(requestedComment)?.covered.length ?? 0) > 0
+      ? requestedComment
+      : undefined
+  const scrolledVerse = useRef<number | undefined>(undefined)
+  const isMounted = useRef(false)
+  // 併記表示の英文はクライアント側で後から届き、全節の高さが増える。secondaryTexts を
+  // 依存に含めて、届いた後にもう一度位置を合わせ直す（含めないと 300px 以上ずれる）
+  useEffect(() => {
+    if (commentVerseForScroll === undefined) {
+      scrolledVerse.current = undefined
+      return
+    }
+    const target = document.querySelector(`li[data-verse="${commentVerseForScroll}"]`)
+    if (!target) return
+
+    // 印を押して別の節に移ったときだけスムーズに動かす（視差効果を減らす設定なら
+    // それも行わない）。直リンクで開いた初回の位置決めと、
+    // 英文が届いた後の再調整は即時にする。どちらも動く様子に意味がないうえ、'smooth' は
+    // 開始時点の座標を目標に据えるため、移動中に高さが変わるとずれた位置で止まる
+    const isNewSelection = scrolledVerse.current !== commentVerseForScroll
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const behavior =
+      !reduceMotion && isMounted.current && isNewSelection ? 'smooth' : 'auto'
+    scrolledVerse.current = commentVerseForScroll
+
+    target.scrollIntoView({ behavior, block: 'start' })
+  }, [commentVerseForScroll, secondaryTexts])
+
+  // 上のスクロール effect より後に置く。effect は宣言順に走るため、マウント時の
+  // 1回目（= 直リンクでの位置決め）では isMounted がまだ false になる
+  useEffect(() => {
+    isMounted.current = true
+  }, [])
+
+  const patchSearch = (
+    patch: Partial<ChapterSearch>,
+    replace = true,
+    markSheetEntry = false,
+  ) => {
     navigate({
       to: '/scriptures/$collection/$book/$chapter',
       params: { collection, book: book.id, chapter: String(chapter) },
       search: (prev) => ({ ...prev, ...patch }),
       replace,
+      // 同じ章に留まる検索パラメータの更新なので、既定の「先頭へ戻す」は邪魔になる。
+      // これがないと下の方の節を選ぶたびに最上部へ飛ばされる
+      resetScroll: false,
+      ...(markSheetEntry
+        ? { state: (prev: HistoryState) => ({ ...prev, ...VERSE_SHEET_MARKER }) }
+        : {}),
     })
   }
 
   const setSelection = (next: number[]) =>
     patchSearch({ select: next.length ? next : undefined })
+  // mode=select と同じく push する。戻る操作でシートを閉じられるようにするため。
+  // シートはモーダルで背景が inert になるため、開いたまま別の印を押す経路はない
+  const openVerseSheet = (verse: number) => patchSearch({ comment: verse }, false, true)
+  const closeVerseSheet = () => {
+    // 自分が push したエントリのときだけ戻す。replace で消すと同じ章 URL が
+    // 履歴に2件残り、戻るを押しても画面が変わらなくなる。
+    // canGoBack だけで判定すると、?comment= の直リンクを閉じたときに前のページへ
+    // 離脱してしまう（そのエントリはシートを開いたものではない）。
+    // 印を判別する状態を ref に持つとブラウザ履歴と同期せず、進む操作やリロードの
+    // 後に取り違えるため、履歴エントリ自身に持たせる
+    const pushedByUs = (window.history.state as VerseSheetHistoryState | null)
+      ?.mannaVerseSheet
+    if (pushedByUs && router.history.canGoBack()) router.history.back()
+    else patchSearch({ comment: undefined })
+  }
   const enterSelectMode = () => patchSearch({ mode: 'select' }, false)
   const exitSelectMode = () => patchSearch({ mode: undefined, select: undefined })
 
@@ -474,9 +572,14 @@ function ChapterView({
   }
 
   const showCommenters = canCompose && mode !== 'select'
-  const hasSelectedUser = mode !== 'select' && selectedUser !== null
-  const showBubbles = hasSelectedUser && !isMobile
-  const showMarkers = hasSelectedUser && isMobile
+  // 投稿の有無ではなく、印が出るかで判定する。範囲外の節だけを持つ投稿があると、
+  // 印ゼロのまま本文が狭くなる。絞り込み後ではなく全員分で見るのは、絞り込みの
+  // 切り替えで幅を揺らさないため
+  const hasAnchorInChapter = useMemo(
+    () => [...allCommentIndex.values()].some((entry) => entry.anchored.length > 0),
+    [allCommentIndex],
+  )
+  const showGutter = mode !== 'select' && hasAnchorInChapter
 
   const composeMenuProps = {
     onSelectChapter: openComposerForChapter,
@@ -529,28 +632,21 @@ function ChapterView({
 
   const verseList = (
     <div className="p-4 pb-[var(--fab-clearance)]">
-      <ul
-        className={
-          showBubbles
-            ? 'lg:grid lg:grid-cols-[minmax(0,1fr)_18rem] lg:gap-x-3'
-            : ''
-        }
-      >
+      <ul>
         {verseNumbers.map((verse, i) => {
           const textHtml = verseTextMap.get(verse)
           const isSelected = mode === 'select' && selection.includes(verse)
-          const marker =
-            showMarkers && versesWithMarker.has(verse) && selectedUser
-              ? selectedUser
-              : undefined
-          const bubblePosts = showBubbles ? postsByVerse.get(verse) ?? [] : []
+          const entry = commentIndex.get(verse)
           const isLast = i === verseNumbers.length - 1
           return (
-            <li key={verse} className={showBubbles ? 'lg:contents' : ''}>
-              <div
-                className={isLast ? '' : 'border-b'}
-                style={{ borderColor: 'var(--line)' }}
-              >
+            <li
+              key={verse}
+              data-verse={verse}
+              // sticky ヘッダーの下に潜り込まないよう、スクロール先に余白を取る
+              className={`flex items-stretch scroll-mt-16 ${isLast ? '' : 'border-b'}`}
+              style={{ borderColor: 'var(--line)' }}
+            >
+              <div className="flex-1 min-w-0">
                 <VerseRow
                   collection={collection}
                   book={book.id}
@@ -562,17 +658,23 @@ function ChapterView({
                   mode={mode}
                   selected={isSelected}
                   onSelect={(v) => setSelection(toggleVerse(selection, v))}
-                  commenterMarker={marker}
-                  onMarkerClick={(v) => setOpenVerseSheet(v)}
+                  highlighted={highlightedVerses?.has(verse) ?? false}
                   showNumber={!book.isFrontMatter}
                 />
               </div>
-              {showBubbles && (
-                <div className="hidden lg:flex lg:flex-col lg:gap-2 lg:py-2">
-                  {bubblePosts.map((p) => (
-                    <CommenterBubble key={p.id} post={p} />
-                  ))}
-                </div>
+              {showGutter && (
+                <VerseCommentGutter
+                  verse={verse}
+                  entry={
+                    entry && {
+                      anchoredCount: entry.anchored.length,
+                      commenters: entry.commenters,
+                      highlightVerses: entry.highlightVerses,
+                    }
+                  }
+                  onOpen={openVerseSheet}
+                  onHighlight={onHighlight}
+                />
               )}
             </li>
           )
@@ -582,15 +684,15 @@ function ChapterView({
   )
 
   const activeVerseSheet =
-    mode !== 'select' && openVerseSheet !== null && selectedUser ? (
+    commentVerseForScroll !== undefined ? (
       <VerseCommentSheet
         open
-        verse={openVerseSheet}
-        selectedUserName={selectedUser.name}
-        posts={postsByVerse.get(openVerseSheet) ?? []}
+        verse={commentVerseForScroll}
+        posts={sheetIndex.get(commentVerseForScroll)?.covered ?? []}
         onOpenChange={(open) => {
-          if (!open) setOpenVerseSheet(null)
+          if (!open) closeVerseSheet()
         }}
+        onHighlight={onHighlight}
       />
     ) : null
 

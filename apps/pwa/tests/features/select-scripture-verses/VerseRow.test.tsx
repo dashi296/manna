@@ -86,40 +86,34 @@ describe('VerseRow', () => {
       expect(container.querySelector('span.font-scripture')).not.toBeNull()
     })
   })
-
 })
 
-describe('VerseRow commenterMarker', () => {
-  const marker = { userId: 'u1', name: '中村さん', avatarUrl: null }
-
-  it('commenterMarker があるとマーカーボタンを出し、押下で onMarkerClick を呼ぶ', async () => {
-    const onMarkerClick = vi.fn()
-    renderInRouter(
+describe('VerseRow highlighted', () => {
+  it('highlighted=true で本文行に背景を敷く', async () => {
+    const { container } = renderInRouter(
       <VerseRow
         {...baseProps}
         mode="read"
         selected={false}
         onSelect={vi.fn()}
-        commenterMarker={marker}
-        onMarkerClick={onMarkerClick}
+        highlighted
       />,
     )
-    const btn = await screen.findByRole('button', {
-      name: '中村さん の 19節 コメントを見る',
+    await waitFor(() => {
+      expect(screen.getByText('19')).toBeInTheDocument()
     })
-    await userEvent.click(btn)
-    expect(onMarkerClick).toHaveBeenCalledWith(19)
+    const row = container.querySelector('[data-highlighted="true"]')
+    expect(row).not.toBeNull()
   })
 
-  it('commenterMarker 無しならマーカーは出さない', async () => {
-    renderInRouter(
+  it('highlighted 未指定なら背景を敷かない', async () => {
+    const { container } = renderInRouter(
       <VerseRow {...baseProps} mode="read" selected={false} onSelect={vi.fn()} />,
     )
     await waitFor(() => {
-      expect(
-        screen.queryByRole('button', { name: /コメントを見る/ }),
-      ).toBeNull()
+      expect(screen.getByText('19')).toBeInTheDocument()
     })
+    expect(container.querySelector('[data-highlighted="true"]')).toBeNull()
   })
 })
 

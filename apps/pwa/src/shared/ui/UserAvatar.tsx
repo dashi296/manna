@@ -1,6 +1,7 @@
-type Size = 'xs' | 'sm' | 'md' | 'lg'
+type Size = '2xs' | 'xs' | 'sm' | 'md' | 'lg'
 
 const SIZES: Record<Size, { wh: string; text: string }> = {
+  '2xs': { wh: 'w-6 h-6', text: 'text-[10px]' },
   xs: { wh: 'w-8 h-8', text: 'text-sm' },
   sm: { wh: 'w-9 h-9', text: 'text-sm' },
   md: { wh: 'w-10 h-10', text: 'text-sm' },

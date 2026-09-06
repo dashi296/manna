@@ -19,3 +19,8 @@ if (!window.matchMedia) {
       removeEventListener: () => {},
     }) as unknown as MediaQueryList
 }
+
+// jsdom は scrollIntoView を実装していない（章ページがシートを開いた節へスクロールする）
+if (!Element.prototype.scrollIntoView) {
+  Element.prototype.scrollIntoView = () => {}
+}
