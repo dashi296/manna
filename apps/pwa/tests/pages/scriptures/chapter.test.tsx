@@ -501,7 +501,10 @@ describe('ChapterPage', () => {
     expect(navigateSpy.mock.calls.at(-1)![0]).toMatchObject({ resetScroll: false })
   })
 
-  it('シートが開いている間は背後の印を操作できない（モーダルのため）', async () => {
+  it('シートが開いたまま別の印を押しても履歴を積まず、マーカーも足さない', async () => {
+    // シートは非モーダルなので背後の印を押せる。押すたびに push すると閉じる操作が
+    // 前の節のシートに戻ってしまう。また直リンクで開いたエントリにマーカーを足すと、
+    // 閉じたときに章から離脱する
     const { useSelectedUserStore } = await import('@/features/select-verse-view')
     useSelectedUserStore.setState({ selectedUserId: null })
     loaderData = {
@@ -509,14 +512,23 @@ describe('ChapterPage', () => {
       chapterCommenters: [{ userId: 'u1', name: '中村さん', avatarUrl: null }],
       circlePosts: [
         circlePost('p1', 'u1', '中村さん', [3], '節3のコメント'),
-        circlePost('p2', 'u1', '中村さん', [5]),
+        circlePost('p2', 'u1', '中村さん', [5], '節5のコメント'),
       ],
     }
     search = { comment: 3 }
+    navigateSpy.mockClear()
+    const user = userEvent.setup()
     render(<ChapterPage />)
     await screen.findByText('節3のコメント')
 
-    expect(screen.queryByRole('button', { name: /5節のコメントを見る/ })).toBeNull()
+    await user.click(screen.getByRole('button', { name: /5節のコメントを見る/ }))
+
+    const call = navigateSpy.mock.calls.at(-1)![0]
+    expect(call.search({})).toMatchObject({ comment: 5 })
+    expect(call.replace).toBe(true)
+    expect(call.state({})).not.toHaveProperty('mannaVerseSheet')
+    // 既に付いているマーカーは落とさない（印から開いたエントリのまま差し替える）
+    expect(call.state({ mannaVerseSheet: true })).toMatchObject({ mannaVerseSheet: true })
   })
 
   it('印を押すとシート由来のマーカーを履歴 state に載せる', async () => {

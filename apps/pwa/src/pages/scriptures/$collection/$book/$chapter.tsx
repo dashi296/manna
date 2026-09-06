@@ -520,7 +520,7 @@ function ChapterView({
   const patchSearch = (
     patch: Partial<ChapterSearch>,
     replace = true,
-    markSheetEntry = false,
+    state?: (prev: HistoryState) => HistoryState,
   ) => {
     navigate({
       to: '/scriptures/$collection/$book/$chapter',
@@ -530,17 +530,22 @@ function ChapterView({
       // 同じ章に留まる検索パラメータの更新なので、既定の「先頭へ戻す」は邪魔になる。
       // これがないと下の方の節を選ぶたびに最上部へ飛ばされる
       resetScroll: false,
-      ...(markSheetEntry
-        ? { state: (prev: HistoryState) => ({ ...prev, ...VERSE_SHEET_MARKER }) }
-        : {}),
+      ...(state ? { state } : {}),
     })
   }
 
   const setSelection = (next: number[]) =>
     patchSearch({ select: next.length ? next : undefined })
   // mode=select と同じく push する。戻る操作でシートを閉じられるようにするため。
-  // シートはモーダルで背景が inert になるため、開いたまま別の印を押す経路はない
-  const openVerseSheet = (verse: number) => patchSearch({ comment: verse }, false, true)
+  // ただしシートは非モーダルなので、開いたまま別の印を押せる。そのたびに push すると
+  // 閉じる操作が前の節のシートに戻ってしまうため、開いている間は差し替える。
+  // マーカーも足さない（直リンクで開いたエントリに付けると、閉じたときに章から離脱する）
+  const openVerseSheet = (verse: number) => {
+    const alreadyOpen = commentVerseForScroll !== undefined
+    patchSearch({ comment: verse }, alreadyOpen, (prev) =>
+      alreadyOpen ? prev : { ...prev, ...VERSE_SHEET_MARKER },
+    )
+  }
   const closeVerseSheet = () => {
     // 自分が push したエントリのときだけ戻す。replace で消すと同じ章 URL が
     // 履歴に2件残り、戻るを押しても画面が変わらなくなる。

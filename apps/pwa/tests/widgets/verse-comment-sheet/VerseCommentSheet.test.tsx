@@ -162,7 +162,7 @@ describe('VerseCommentSheet', () => {
 
     await waitFor(() => {
       expect(
-        document.body.querySelector('[data-slot="sheet-content"]')?.getAttribute('data-side'),
+        document.body.querySelector('[data-slot="drawer-content"]')?.getAttribute('data-side'),
       ).toBe('bottom')
     })
     Object.defineProperty(window, 'innerWidth', { writable: true, value: 1024 })
@@ -176,10 +176,30 @@ describe('VerseCommentSheet', () => {
 
     await waitFor(() => {
       expect(
-        document.body.querySelector('[data-slot="sheet-content"]')?.getAttribute('data-side'),
+        document.body.querySelector('[data-slot="drawer-content"]')?.getAttribute('data-side'),
       ).toBe('right')
     })
     Object.defineProperty(window, 'innerWidth', { writable: true, value: 1024 })
+  })
+
+  it('開いている間もページのスクロールをロックしない', async () => {
+    renderInRouter(
+      <VerseCommentSheet open={true} verse={7} posts={posts} onOpenChange={vi.fn()} />,
+    )
+    await screen.findByText('節7 への A の投稿')
+
+    expect(document.documentElement.style.overflowY).not.toBe('hidden')
+    expect(document.body.style.overflowY).not.toBe('hidden')
+  })
+
+  it('章を覆うバックドロップを描画しない', async () => {
+    renderInRouter(
+      <VerseCommentSheet open={true} verse={7} posts={posts} onOpenChange={vi.fn()} />,
+    )
+    await screen.findByText('節7 への A の投稿')
+
+    expect(document.body.querySelector('[data-slot="drawer-overlay"]')).toBeNull()
+    expect(document.body.querySelector('[data-slot="sheet-overlay"]')).toBeNull()
   })
 
   it('open=false では中身を出さない', () => {
@@ -195,7 +215,7 @@ describe('VerseCommentSheet', () => {
     )
     await waitFor(() => {
       const scroller = container.ownerDocument.body.querySelector(
-        '[data-slot="sheet-content"] .max-h-\\[70vh\\]',
+        '[data-slot="drawer-content"] .max-h-\\[70vh\\]',
       )
       expect(scroller).not.toBeNull()
       expect(scroller?.className).toContain('overflow-y-auto')
