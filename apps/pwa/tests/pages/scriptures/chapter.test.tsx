@@ -551,6 +551,51 @@ describe('ChapterPage', () => {
     canGoBack = true
   })
 
+  it('直リンクのシートは受け手のユーザー絞り込みに関わらず開く', async () => {
+    // 共有リンクを開いた側が別のユーザーで絞り込んでいても、送った側が見せたい
+    // コメントは開かなければ意味がない。背後の印は絞り込んだままにする
+    const { useSelectedUserStore } = await import('@/features/select-verse-view')
+    useSelectedUserStore.setState({ selectedUserId: 'u2' })
+    loaderData = {
+      ...baseChapterData,
+      chapterCommenters: [
+        { userId: 'u1', name: '中村さん', avatarUrl: null },
+        { userId: 'u2', name: '田中さん', avatarUrl: null },
+      ],
+      circlePosts: [
+        circlePost('p1', 'u1', '中村さん', [3], '中村さんの節3コメント'),
+        circlePost('p2', 'u2', '田中さん', [5]),
+      ],
+    }
+    search = { comment: 3 }
+    render(<ChapterPage />)
+
+    expect(await screen.findByText('中村さんの節3コメント')).toBeInTheDocument()
+  })
+
+  it('絞り込み中でも背後の印は絞り込んだままにする', async () => {
+    const { useSelectedUserStore } = await import('@/features/select-verse-view')
+    useSelectedUserStore.setState({ selectedUserId: 'u2' })
+    loaderData = {
+      ...baseChapterData,
+      chapterCommenters: [
+        { userId: 'u1', name: '中村さん', avatarUrl: null },
+        { userId: 'u2', name: '田中さん', avatarUrl: null },
+      ],
+      circlePosts: [
+        circlePost('p1', 'u1', '中村さん', [3]),
+        circlePost('p2', 'u2', '田中さん', [5]),
+      ],
+    }
+    search = {}
+    render(<ChapterPage />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /5節のコメントを見る/ })).toBeInTheDocument()
+    })
+    expect(screen.queryByRole('button', { name: /3節のコメントを見る/ })).toBeNull()
+  })
+
   it('その節にコメントが無いなら comment があってもシートを開かない', async () => {
     const { useSelectedUserStore } = await import('@/features/select-verse-view')
     useSelectedUserStore.setState({ selectedUserId: null })
@@ -671,6 +716,37 @@ describe('ChapterPage', () => {
     loaderData = { ...baseChapterData }
     // baseChapterData の book.verses は [20]（1章は20節まで）
     search = { comment: 999 }
+    render(<ChapterPage />)
+
+    await waitFor(() => {
+      expect(screen.getByText('一節の本文')).toBeInTheDocument()
+    })
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('章の節数を超える投稿があっても範囲外の comment は開かない', async () => {
+    // scripture_verses に DB 側の範囲制約が無いため、API から直接作られた
+    // 範囲外の投稿が存在しうる。commentIndex に載っていても開いてはいけない
+    const { useSelectedUserStore } = await import('@/features/select-verse-view')
+    useSelectedUserStore.setState({ selectedUserId: null })
+    loaderData = {
+      ...baseChapterData,
+      chapterCommenters: [{ userId: 'u1', name: '中村さん', avatarUrl: null }],
+      circlePosts: [circlePost('p1', 'u1', '中村さん', [999], '範囲外の投稿')],
+    }
+    search = { comment: 999 }
+    render(<ChapterPage />)
+
+    await waitFor(() => {
+      expect(screen.getByText('一節の本文')).toBeInTheDocument()
+    })
+    expect(screen.queryByText('範囲外の投稿')).toBeNull()
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('0以下の comment は無視する', async () => {
+    loaderData = { ...baseChapterData }
+    search = { comment: 0 }
     render(<ChapterPage />)
 
     await waitFor(() => {

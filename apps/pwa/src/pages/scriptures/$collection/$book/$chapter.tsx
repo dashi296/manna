@@ -443,9 +443,17 @@ function ChapterView({
         : circlePosts,
     [circlePosts, selectedUser],
   )
+  // 節の横の印は絞り込みに従う
   const commentIndex = useMemo(
     () => buildVerseCommentIndex(visiblePosts),
     [visiblePosts],
+  )
+  // シートの中身は絞り込みを無視して身内全員分から作る。共有された ?comment= を
+  // 開いた側が別のユーザーで絞り込んでいると、送った側が見せたいコメントが無言で
+  // 開かなくなるため
+  const sheetIndex = useMemo(
+    () => (selectedUser ? buildVerseCommentIndex(circlePosts) : commentIndex),
+    [selectedUser, circlePosts, commentIndex],
   )
   const onHighlight = (verses: number[] | null) =>
     setHighlightedVerses(verses ? new Set(verses) : null)
@@ -461,13 +469,17 @@ function ChapterView({
   )
   const mode: SelectionMode = canCompose && search.mode === 'select' ? 'select' : 'read'
 
-  // 実際にコメントがある節でなければ開かない。節番号だけを見ていると、範囲外の
-  // 直リンク・未ログイン・ユーザー絞り込みで除外された場合に 0件のシートが開く
+  // 章の範囲内であることと、実際にコメントがあることを別々に確かめる。
+  // scripture_verses に DB 側の範囲制約が無く、API から直接作られた範囲外の投稿が
+  // commentIndex に載りうるため、節番号の検証を投稿の有無に代替させない
+  const requestedComment = search.comment
   const commentVerseForScroll =
     mode !== 'select' &&
-    search.comment !== undefined &&
-    (commentIndex.get(search.comment)?.covered.length ?? 0) > 0
-      ? search.comment
+    requestedComment !== undefined &&
+    requestedComment >= 1 &&
+    requestedComment <= maxVerse &&
+    (sheetIndex.get(requestedComment)?.covered.length ?? 0) > 0
+      ? requestedComment
       : undefined
   const scrolledVerse = useRef<number | undefined>(undefined)
   const isMounted = useRef(false)
@@ -662,7 +674,7 @@ function ChapterView({
       <VerseCommentSheet
         open
         verse={commentVerseForScroll}
-        posts={commentIndex.get(commentVerseForScroll)?.covered ?? []}
+        posts={sheetIndex.get(commentVerseForScroll)?.covered ?? []}
         onOpenChange={(open) => {
           if (!open) closeVerseSheet()
         }}
