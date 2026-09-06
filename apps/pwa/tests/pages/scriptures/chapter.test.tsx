@@ -515,6 +515,30 @@ describe('ChapterPage', () => {
     )
   })
 
+  it('印を押して開いたときはスムーズにスクロールする', async () => {
+    const scrollIntoView = vi.fn()
+    Element.prototype.scrollIntoView = scrollIntoView
+    const { useSelectedUserStore } = await import('@/features/select-verse-view')
+    useSelectedUserStore.setState({ selectedUserId: null })
+    loaderData = {
+      ...baseChapterData,
+      chapterCommenters: [{ userId: 'u1', name: '中村さん', avatarUrl: null }],
+      circlePosts: [circlePost('p1', 'u1', '中村さん', [15])],
+    }
+    search = {}
+    const { rerender } = render(<ChapterPage />)
+    expect(scrollIntoView).not.toHaveBeenCalled()
+
+    search = { comment: 15 }
+    rerender(<ChapterPage />)
+
+    await waitFor(() => {
+      expect(scrollIntoView).toHaveBeenCalledWith(
+        expect.objectContaining({ behavior: 'smooth' }),
+      )
+    })
+  })
+
   it('シートを開いていないときはスクロールしない', async () => {
     const scrollIntoView = vi.fn()
     Element.prototype.scrollIntoView = scrollIntoView

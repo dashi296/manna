@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { createFileRoute, notFound, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { useQuery } from '@tanstack/react-query'
@@ -446,14 +446,33 @@ function ChapterView({
   const mode: SelectionMode = canCompose && search.mode === 'select' ? 'select' : 'read'
 
   const commentVerseForScroll = mode !== 'select' ? search.comment : undefined
+  const scrolledVerse = useRef<number | undefined>(undefined)
+  const isMounted = useRef(false)
   // 併記表示の英文はクライアント側で後から届き、全節の高さが増える。secondaryTexts を
-  // 依存に含めて、届いた後にもう一度位置を合わせ直す（含めないと 300px 以上ずれる）。
-  // behavior は 'smooth' にしない。移動中に高さが変わっても目標を更新しないため
+  // 依存に含めて、届いた後にもう一度位置を合わせ直す（含めないと 300px 以上ずれる）
   useEffect(() => {
-    if (commentVerseForScroll === undefined) return
+    if (commentVerseForScroll === undefined) {
+      scrolledVerse.current = undefined
+      return
+    }
     const target = document.querySelector(`li[data-verse="${commentVerseForScroll}"]`)
-    target?.scrollIntoView({ behavior: 'auto', block: 'start' })
+    if (!target) return
+
+    // 印を押して別の節に移ったときだけスムーズに動かす。直リンクで開いた初回の位置決めと、
+    // 英文が届いた後の再調整は即時にする。どちらも動く様子に意味がないうえ、'smooth' は
+    // 開始時点の座標を目標に据えるため、移動中に高さが変わるとずれた位置で止まる
+    const isNewSelection = scrolledVerse.current !== commentVerseForScroll
+    const behavior = isMounted.current && isNewSelection ? 'smooth' : 'auto'
+    scrolledVerse.current = commentVerseForScroll
+
+    target.scrollIntoView({ behavior, block: 'start' })
   }, [commentVerseForScroll, secondaryTexts])
+
+  // 上のスクロール effect より後に置く。effect は宣言順に走るため、マウント時の
+  // 1回目（= 直リンクでの位置決め）では isMounted がまだ false になる
+  useEffect(() => {
+    isMounted.current = true
+  }, [])
 
   const patchSearch = (patch: Partial<ChapterSearch>, replace = true) => {
     navigate({
