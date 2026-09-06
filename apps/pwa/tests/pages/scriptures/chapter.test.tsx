@@ -746,9 +746,10 @@ describe('ChapterPage', () => {
     })
   })
 
-  it('シートが開いている間は、その節が塗られたままになる', async () => {
+  it('シートが開いている間は、コメントが指す節すべてが塗られたままになる', async () => {
     // 印を押して開くとフォーカスが印からシートへ移り、印には blur が飛ぶ。
-    // 塗りの持ち主を分けていないと、開いた直後に塗りが消える
+    // 塗りの持ち主を分けていないと、開いた直後に塗りが消える。
+    // またホバーの無いタッチでは、開いた時点の塗りが範囲を知る唯一の手段になる
     const { useSelectedUserStore } = await import('@/features/select-verse-view')
     useSelectedUserStore.setState({ selectedUserId: null })
     loaderData = {
@@ -764,7 +765,28 @@ describe('ChapterPage', () => {
     fireEvent.pointerOut(screen.getByRole('button', { name: /3節のコメントを見る/ }))
 
     await waitFor(() => {
-      expect(container.querySelectorAll('[data-highlighted="true"]')).toHaveLength(1)
+      expect(container.querySelectorAll('[data-highlighted="true"]')).toHaveLength(3)
+    })
+  })
+
+  it('シートに複数のコメントが出るときは、その全部が指す節を塗る', async () => {
+    const { useSelectedUserStore } = await import('@/features/select-verse-view')
+    useSelectedUserStore.setState({ selectedUserId: null })
+    loaderData = {
+      ...baseChapterData,
+      chapterCommenters: [{ userId: 'u1', name: '中村さん', avatarUrl: null }],
+      circlePosts: [
+        circlePost('p1', 'u1', '中村さん', [3, 4, 5], 'またぐ投稿'),
+        circlePost('p2', 'u1', '中村さん', [5, 6], '別のまたぐ投稿'),
+      ],
+    }
+    search = { comment: 5 }
+    const { container } = render(<ChapterPage />)
+    await screen.findByText('またぐ投稿')
+
+    // 3,4,5 と 5,6 の和集合で 3〜6 の4節
+    await waitFor(() => {
+      expect(container.querySelectorAll('[data-highlighted="true"]')).toHaveLength(4)
     })
   })
 

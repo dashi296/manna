@@ -489,14 +489,17 @@ function ChapterView({
       ? requestedComment
       : undefined
   // シートが開いている間はシート側だけが塗りを決める。カードに触れていないときは
-  // シートが扱っている節そのものを塗り、見出しの「N節のコメント」と一致させる
+  // シートに出ている全コメントが指す節をまとめて塗る。ホバーの無いタッチでは、
+  // これがコメントの指す範囲を知る唯一の手段になる
   const highlightedVerses = useMemo(() => {
-    const verses =
-      commentVerseForScroll !== undefined
-        ? (sheetHighlight ?? [commentVerseForScroll])
-        : gutterHighlight
-    return verses ? new Set(verses) : null
-  }, [commentVerseForScroll, sheetHighlight, gutterHighlight])
+    if (commentVerseForScroll === undefined) {
+      return gutterHighlight ? new Set(gutterHighlight) : null
+    }
+    if (sheetHighlight) return new Set(sheetHighlight)
+    const covered = sheetIndex.get(commentVerseForScroll)?.covered ?? []
+    const verses = covered.flatMap((p) => p.scripture_verses ?? [])
+    return new Set(verses.length ? verses : [commentVerseForScroll])
+  }, [commentVerseForScroll, sheetHighlight, gutterHighlight, sheetIndex])
 
   const scrolledVerse = useRef<number | undefined>(undefined)
   const isMounted = useRef(false)
