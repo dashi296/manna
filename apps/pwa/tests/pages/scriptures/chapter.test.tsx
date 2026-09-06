@@ -490,6 +490,44 @@ describe('ChapterPage', () => {
     })
   })
 
+  it('シートを開くとその節までスクロールする', async () => {
+    const scrollIntoView = vi.fn()
+    Element.prototype.scrollIntoView = scrollIntoView
+    const { useSelectedUserStore } = await import('@/features/select-verse-view')
+    useSelectedUserStore.setState({ selectedUserId: null })
+    loaderData = {
+      ...baseChapterData,
+      chapterCommenters: [{ userId: 'u1', name: '中村さん', avatarUrl: null }],
+      circlePosts: [circlePost('p1', 'u1', '中村さん', [15])],
+    }
+    search = { comment: 15 }
+    const { container } = render(<ChapterPage />)
+
+    await waitFor(() => {
+      expect(scrollIntoView).toHaveBeenCalled()
+    })
+    const target = container.querySelector('[data-verse="15"]')
+    expect(scrollIntoView.mock.instances[0]).toBe(target)
+    // smooth は移動中に content-visibility の節が実描画されても目標位置を更新せず、
+    // 数百px ずれた場所で止まる
+    expect(scrollIntoView).toHaveBeenCalledWith(
+      expect.objectContaining({ behavior: 'auto' }),
+    )
+  })
+
+  it('シートを開いていないときはスクロールしない', async () => {
+    const scrollIntoView = vi.fn()
+    Element.prototype.scrollIntoView = scrollIntoView
+    loaderData = { ...baseChapterData }
+    search = {}
+    render(<ChapterPage />)
+
+    await waitFor(() => {
+      expect(screen.getByText('一節の本文')).toBeInTheDocument()
+    })
+    expect(scrollIntoView).not.toHaveBeenCalled()
+  })
+
   it('mode=select 中は search.comment があってもシートを開かない', async () => {
     loaderData = {
       ...baseChapterData,

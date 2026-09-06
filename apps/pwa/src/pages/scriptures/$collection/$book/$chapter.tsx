@@ -445,6 +445,16 @@ function ChapterView({
   )
   const mode: SelectionMode = canCompose && search.mode === 'select' ? 'select' : 'read'
 
+  const commentVerseForScroll = mode !== 'select' ? search.comment : undefined
+  // 併記表示の英文はクライアント側で後から届き、全節の高さが増える。secondaryTexts を
+  // 依存に含めて、届いた後にもう一度位置を合わせ直す（含めないと 300px 以上ずれる）。
+  // behavior は 'smooth' にしない。移動中に高さが変わっても目標を更新しないため
+  useEffect(() => {
+    if (commentVerseForScroll === undefined) return
+    const target = document.querySelector(`li[data-verse="${commentVerseForScroll}"]`)
+    target?.scrollIntoView({ behavior: 'auto', block: 'start' })
+  }, [commentVerseForScroll, secondaryTexts])
+
   const patchSearch = (patch: Partial<ChapterSearch>, replace = true) => {
     navigate({
       to: '/scriptures/$collection/$book/$chapter',
@@ -544,7 +554,9 @@ function ChapterView({
           return (
             <li
               key={verse}
-              className={`flex items-stretch ${isLast ? '' : 'border-b'}`}
+              data-verse={verse}
+              // sticky ヘッダーの下に潜り込まないよう、スクロール先に余白を取る
+              className={`flex items-stretch scroll-mt-16 ${isLast ? '' : 'border-b'}`}
               style={{ borderColor: 'var(--line)' }}
             >
               <div className="flex-1 min-w-0">
@@ -585,13 +597,12 @@ function ChapterView({
     </div>
   )
 
-  const commentVerse = mode !== 'select' ? search.comment : undefined
   const activeVerseSheet =
-    commentVerse !== undefined ? (
+    commentVerseForScroll !== undefined ? (
       <VerseCommentSheet
         open
-        verse={commentVerse}
-        posts={commentIndex.get(commentVerse)?.covered ?? []}
+        verse={commentVerseForScroll}
+        posts={commentIndex.get(commentVerseForScroll)?.covered ?? []}
         onOpenChange={(open) => {
           if (!open) closeVerseSheet()
         }}
