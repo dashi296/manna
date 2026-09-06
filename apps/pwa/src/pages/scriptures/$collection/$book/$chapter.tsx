@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { createFileRoute, notFound, useRouter } from '@tanstack/react-router'
+import {
+  createFileRoute,
+  notFound,
+  useRouter,
+  type HistoryState,
+} from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { useQuery } from '@tanstack/react-query'
 import { getBook, getCollection, buildScriptureUrl, getChapterLabel, getScriptureLabel } from '@/entities/scripture'
@@ -208,6 +213,17 @@ type ChapterSearch = {
   // 開いているコメントシートの節。戻る操作で閉じられるよう URL に載せる
   comment?: number
 }
+
+// PostComposerSheet と同じく、履歴エントリ自身に由来を持たせて back の可否を決める。
+// HistoryState は空インターフェースなので、宣言のマージで項目を足す
+declare module '@tanstack/react-router' {
+  interface HistoryState {
+    mannaVerseSheet?: true
+  }
+}
+
+type VerseSheetHistoryState = { mannaVerseSheet?: true }
+const VERSE_SHEET_MARKER: VerseSheetHistoryState = { mannaVerseSheet: true }
 
 function parseCommentVerse(input: unknown): number | undefined {
   const verse = Number(input)
@@ -454,8 +470,6 @@ function ChapterView({
       ? search.comment
       : undefined
   const scrolledVerse = useRef<number | undefined>(undefined)
-  // このページで印を押してシートの履歴エントリを積んだか
-  const pushedSheetEntry = useRef(false)
   const isMounted = useRef(false)
   // 併記表示の英文はクライアント側で後から届き、全節の高さが増える。secondaryTexts を
   // 依存に含めて、届いた後にもう一度位置を合わせ直す（含めないと 300px 以上ずれる）
@@ -483,7 +497,11 @@ function ChapterView({
     isMounted.current = true
   }, [])
 
-  const patchSearch = (patch: Partial<ChapterSearch>, replace = true) => {
+  const patchSearch = (
+    patch: Partial<ChapterSearch>,
+    replace = true,
+    markSheetEntry = false,
+  ) => {
     navigate({
       to: '/scriptures/$collection/$book/$chapter',
       params: { collection, book: book.id, chapter: String(chapter) },
@@ -492,6 +510,9 @@ function ChapterView({
       // 同じ章に留まる検索パラメータの更新なので、既定の「先頭へ戻す」は邪魔になる。
       // これがないと下の方の節を選ぶたびに最上部へ飛ばされる
       resetScroll: false,
+      ...(markSheetEntry
+        ? { state: (prev: HistoryState) => ({ ...prev, ...VERSE_SHEET_MARKER }) }
+        : {}),
     })
   }
 
@@ -499,22 +520,18 @@ function ChapterView({
     patchSearch({ select: next.length ? next : undefined })
   // mode=select と同じく push する。戻る操作でシートを閉じられるようにするため。
   // シートはモーダルで背景が inert になるため、開いたまま別の印を押す経路はない
-  const openVerseSheet = (verse: number) => {
-    pushedSheetEntry.current = true
-    patchSearch({ comment: verse }, false)
-  }
+  const openVerseSheet = (verse: number) => patchSearch({ comment: verse }, false, true)
   const closeVerseSheet = () => {
-    // 自分が push したエントリがあるときだけ戻す。replace で消すと同じ章 URL が
+    // 自分が push したエントリのときだけ戻す。replace で消すと同じ章 URL が
     // 履歴に2件残り、戻るを押しても画面が変わらなくなる。
-    // canGoBack だけで判定すると、?comment= の直リンクを閉じたときに前のサイトへ
-    // 離脱してしまう（そのエントリはシートを開いたものではない）
-    if (pushedSheetEntry.current && router.history.canGoBack()) {
-      pushedSheetEntry.current = false
-      router.history.back()
-      return
-    }
-    pushedSheetEntry.current = false
-    patchSearch({ comment: undefined })
+    // canGoBack だけで判定すると、?comment= の直リンクを閉じたときに前のページへ
+    // 離脱してしまう（そのエントリはシートを開いたものではない）。
+    // 印を判別する状態を ref に持つとブラウザ履歴と同期せず、進む操作やリロードの
+    // 後に取り違えるため、履歴エントリ自身に持たせる
+    const pushedByUs = (window.history.state as VerseSheetHistoryState | null)
+      ?.mannaVerseSheet
+    if (pushedByUs && router.history.canGoBack()) router.history.back()
+    else patchSearch({ comment: undefined })
   }
   const enterSelectMode = () => patchSearch({ mode: 'select' }, false)
   const exitSelectMode = () => patchSearch({ mode: undefined, select: undefined })

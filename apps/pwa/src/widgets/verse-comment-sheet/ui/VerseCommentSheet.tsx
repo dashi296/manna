@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { CompactPostCard, type PostWithUser } from '@/entities/post'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/shared/ui/sheet'
 import { useIsMobile } from '@/shared/hooks/use-mobile'
@@ -19,12 +19,19 @@ export function VerseCommentSheet({
   onHighlight,
 }: Props) {
   const isMobile = useIsMobile()
+  // useIsMobile は画面幅を effect でしか反映しないため、初回描画は必ず false になる。
+  // そのまま描画するとモバイルでも一度 side="right" で DOM に入り、右からのスライド
+  // アニメーションが始まってから下シートへ切り替わる
+  const [widthResolved, setWidthResolved] = useState(false)
+  useEffect(() => setWidthResolved(true), [])
 
   // アンマウント時に塗りが残らないようにする。onHighlight は毎描画で作り直される
   // ことがあるため、ref 経由で読んでクリーンアップの再実行を避ける
   const highlightRef = useRef(onHighlight)
   highlightRef.current = onHighlight
   useEffect(() => () => highlightRef.current?.(null), [])
+
+  if (!widthResolved) return null
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>

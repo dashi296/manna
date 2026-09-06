@@ -478,40 +478,33 @@ describe('ChapterPage', () => {
     expect(screen.queryByRole('button', { name: /5節のコメントを見る/ })).toBeNull()
   })
 
-  it('印を押して開いたシートを閉じるときは、積んだ履歴を back で戻す', async () => {
-    canGoBack = true
-    historyBackSpy.mockClear()
+  it('印を押すとシート由来のマーカーを履歴 state に載せる', async () => {
     const { useSelectedUserStore } = await import('@/features/select-verse-view')
     useSelectedUserStore.setState({ selectedUserId: null })
     loaderData = {
       ...baseChapterData,
       chapterCommenters: [{ userId: 'u1', name: '中村さん', avatarUrl: null }],
-      circlePosts: [circlePost('p1', 'u1', '中村さん', [3], '節3のコメント')],
+      circlePosts: [circlePost('p1', 'u1', '中村さん', [3])],
     }
     search = {}
+    navigateSpy.mockClear()
     const user = userEvent.setup()
-    const { rerender } = render(<ChapterPage />)
+    render(<ChapterPage />)
 
     await user.click(await screen.findByRole('button', { name: /3節のコメントを見る/ }))
-    search = { comment: 3 }
-    rerender(<ChapterPage />)
-    await screen.findByText('節3のコメント')
 
-    navigateSpy.mockClear()
-    await user.keyboard('{Escape}')
-
-    await waitFor(() => {
-      expect(historyBackSpy).toHaveBeenCalled()
-    })
-    expect(navigateSpy).not.toHaveBeenCalled()
+    const call = navigateSpy.mock.calls.at(-1)![0]
+    expect(call.replace).toBe(false)
+    expect(call.state({})).toMatchObject({ mannaVerseSheet: true })
   })
 
-  it('直リンクで開いたシートは、戻れる履歴があっても back せず comment を消す', async () => {
-    // 履歴に何かあれば canGoBack は true になるが、そのエントリはシートを開いた
-    // ものではない。back すると章ページから離脱してしまう
+  it('履歴 state にマーカーがあれば back で戻す', async () => {
     canGoBack = true
     historyBackSpy.mockClear()
     navigateSpy.mockClear()
+    // 印から開いたエントリを再現する。進む操作やリロードでも state は復元されるため、
+    // ref と違ってブラウザ履歴と同期する
+    window.history.pushState({ mannaVerseSheet: true }, '')
     const { useSelectedUserStore } = await import('@/features/select-verse-view')
     useSelectedUserStore.setState({ selectedUserId: null })
     loaderData = {
@@ -526,11 +519,10 @@ describe('ChapterPage', () => {
     await userEvent.keyboard('{Escape}')
 
     await waitFor(() => {
-      expect(navigateSpy.mock.calls.at(-1)![0].search({})).toMatchObject({
-        comment: undefined,
-      })
+      expect(historyBackSpy).toHaveBeenCalled()
     })
-    expect(historyBackSpy).not.toHaveBeenCalled()
+    expect(navigateSpy).not.toHaveBeenCalled()
+    window.history.replaceState({}, '')
   })
 
   it('戻れず直リンクでもないときも comment を消して閉じる', async () => {
