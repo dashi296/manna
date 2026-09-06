@@ -225,9 +225,15 @@ declare module '@tanstack/react-router' {
 type VerseSheetHistoryState = { mannaVerseSheet?: true }
 const VERSE_SHEET_MARKER: VerseSheetHistoryState = { mannaVerseSheet: true }
 
+// Number() に素通しすると '0x10' が16節、true が1節として通ってしまう。
+// パスの章番号と同じく10進数字だけを受け取る
 function parseCommentVerse(input: unknown): number | undefined {
+  if (typeof input === 'number') {
+    return Number.isInteger(input) && input > 0 ? input : undefined
+  }
+  if (typeof input !== 'string' || !/^\d+$/.test(input)) return undefined
   const verse = Number(input)
-  return Number.isInteger(verse) && verse > 0 ? verse : undefined
+  return verse > 0 ? verse : undefined
 }
 
 export const Route = createFileRoute('/scriptures/$collection/$book/$chapter')({
@@ -445,13 +451,14 @@ function ChapterView({
   )
   // 身内全員分。シートの中身と、ガターの幅を取るかの判定に使う
   const allCommentIndex = useMemo(
-    () => buildVerseCommentIndex(circlePosts),
-    [circlePosts],
+    () => buildVerseCommentIndex(maxVerse, circlePosts),
+    [maxVerse, circlePosts],
   )
   // 節の横の印は絞り込みに従う
   const commentIndex = useMemo(
-    () => (selectedUser ? buildVerseCommentIndex(visiblePosts) : allCommentIndex),
-    [selectedUser, visiblePosts, allCommentIndex],
+    () =>
+      selectedUser ? buildVerseCommentIndex(maxVerse, visiblePosts) : allCommentIndex,
+    [selectedUser, maxVerse, visiblePosts, allCommentIndex],
   )
   // シートの中身は絞り込みを無視する。共有された ?comment= を開いた側が別のユーザーで
   // 絞り込んでいると、送った側が見せたいコメントが無言で開かなくなるため
@@ -470,15 +477,11 @@ function ChapterView({
   )
   const mode: SelectionMode = canCompose && search.mode === 'select' ? 'select' : 'read'
 
-  // 章の範囲内であることと、実際にコメントがあることを別々に確かめる。
-  // scripture_verses に DB 側の範囲制約が無く、API から直接作られた範囲外の投稿が
-  // commentIndex に載りうるため、節番号の検証を投稿の有無に代替させない
+  // インデックスは章の範囲外の節を持たないので、コメントの有無だけを見れば足りる
   const requestedComment = search.comment
   const commentVerseForScroll =
     mode !== 'select' &&
     requestedComment !== undefined &&
-    requestedComment >= 1 &&
-    requestedComment <= maxVerse &&
     (sheetIndex.get(requestedComment)?.covered.length ?? 0) > 0
       ? requestedComment
       : undefined
@@ -569,15 +572,13 @@ function ChapterView({
   }
 
   const showCommenters = canCompose && mode !== 'select'
-  // 投稿の有無ではなく、章の範囲内に印が出るかで判定する。scripture_verses に DB 側の
-  // 範囲制約が無く、範囲外の節だけを持つ投稿があると、印ゼロのまま本文が狭くなる。
-  // 絞り込み後ではなく全員分で見るのは、絞り込みの切り替えで幅を揺らさないため
-  const hasAnchorInChapter = useMemo(() => {
-    for (const [verse, entry] of allCommentIndex) {
-      if (verse >= 1 && verse <= maxVerse && entry.anchored.length > 0) return true
-    }
-    return false
-  }, [allCommentIndex, maxVerse])
+  // 投稿の有無ではなく、印が出るかで判定する。範囲外の節だけを持つ投稿があると、
+  // 印ゼロのまま本文が狭くなる。絞り込み後ではなく全員分で見るのは、絞り込みの
+  // 切り替えで幅を揺らさないため
+  const hasAnchorInChapter = useMemo(
+    () => [...allCommentIndex.values()].some((entry) => entry.anchored.length > 0),
+    [allCommentIndex],
+  )
   const showGutter = mode !== 'select' && hasAnchorInChapter
 
   const composeMenuProps = {

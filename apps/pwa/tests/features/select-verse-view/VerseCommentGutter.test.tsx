@@ -1,7 +1,7 @@
 import { afterEach, describe, it, expect, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { VerseCommentGutter } from '@/features/select-verse-view/ui/VerseCommentGutter'
+import { VerseCommentGutter } from '@/features/select-verse-view'
 
 const alice = { userId: 'u1', name: 'アリス', avatarUrl: null }
 const bob = { userId: 'u2', name: 'ボブ', avatarUrl: null }

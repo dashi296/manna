@@ -30,14 +30,23 @@ function entryFor(index: VerseCommentIndex, verse: number): VerseCommentEntry {
   return created
 }
 
-export function buildVerseCommentIndex(posts: PostWithUser[]): VerseCommentIndex {
+// maxVerse は章の節数。scripture_verses に DB 側の範囲制約が無く、API から直接
+// 作られた範囲外の節が混ざりうる。除外せずに塊を判定すると、たとえば [0, 1] の 0 が
+// アンカーになり 1 が「0 の続き」と見なされて、章内に印が出なくなる
+export function buildVerseCommentIndex(
+  maxVerse: number,
+  posts: PostWithUser[],
+): VerseCommentIndex {
   const index: VerseCommentIndex = new Map()
 
   for (const post of posts) {
     const verses = post.scripture_verses
     if (!verses?.length) continue
 
-    const sorted = [...new Set(verses)].sort((a, b) => a - b)
+    const sorted = [...new Set(verses)]
+      .filter((v) => v >= 1 && v <= maxVerse)
+      .sort((a, b) => a - b)
+    if (sorted.length === 0) continue
     for (const [i, verse] of sorted.entries()) {
       const entry = entryFor(index, verse)
       entry.covered.push(post)
@@ -47,9 +56,9 @@ export function buildVerseCommentIndex(posts: PostWithUser[]): VerseCommentIndex
 
   for (const entry of index.values()) {
     if (entry.anchored.length === 1) {
-      entry.highlightVerses = [...(entry.anchored[0].scripture_verses ?? [])].sort(
-        (a, b) => a - b,
-      )
+      entry.highlightVerses = [...(entry.anchored[0].scripture_verses ?? [])]
+        .filter((v) => v >= 1 && v <= maxVerse)
+        .sort((a, b) => a - b)
     }
 
     const seen = new Set<string>()

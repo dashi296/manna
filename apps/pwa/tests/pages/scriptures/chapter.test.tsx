@@ -222,6 +222,29 @@ describe('ChapterPage', () => {
     expect(validate({ select: 'abc,-1,0,4' })).toMatchObject({ select: [4] })
   })
 
+  it('validateSearch は comment を10進の節番号としてのみ受け取る', async () => {
+    const mod = await import('@/pages/scriptures/$collection/$book/$chapter')
+    const Route = mod.Route as unknown as {
+      validateSearch: (s: Record<string, unknown>) => { comment?: number }
+    }
+    const validate = Route.validateSearch
+
+    expect(validate({ comment: '7' })).toMatchObject({ comment: 7 })
+    expect(validate({ comment: 7 })).toMatchObject({ comment: 7 })
+
+    // Number() に素通しすると 16進や boolean を節番号として受理してしまう
+    expect(validate({ comment: '0x10' }).comment).toBeUndefined()
+    expect(validate({ comment: true }).comment).toBeUndefined()
+    expect(validate({ comment: '7.5' }).comment).toBeUndefined()
+    expect(validate({ comment: ' 7 ' }).comment).toBeUndefined()
+    expect(validate({ comment: '1e2' }).comment).toBeUndefined()
+    expect(validate({ comment: ['7'] }).comment).toBeUndefined()
+    expect(validate({ comment: '0' }).comment).toBeUndefined()
+    expect(validate({ comment: '-3' }).comment).toBeUndefined()
+    expect(validate({ comment: '' }).comment).toBeUndefined()
+    expect(validate({}).comment).toBeUndefined()
+  })
+
   it('未ログインの節表示では投稿導線を表示しない', () => {
     loaderData = {
       ...baseChapterData,
