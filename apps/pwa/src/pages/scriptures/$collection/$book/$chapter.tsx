@@ -399,6 +399,7 @@ function ChapterView({
   const [sheetOpen, setSheetOpen] = useState(false)
   const [composerVerses, setComposerVerses] = useState<number[] | undefined>()
   const [openVerseSheet, setOpenVerseSheet] = useState<number | null>(null)
+  const [highlightedVerses, setHighlightedVerses] = useState<Set<number> | null>(null)
   const search = Route.useSearch()
   const navigate = Route.useNavigate()
   const maxVerse = book.verses[chapter - 1]
@@ -423,6 +424,8 @@ function ChapterView({
     () => buildVerseCommentIndex(visiblePosts),
     [visiblePosts],
   )
+  const onHighlight = (verses: number[] | null) =>
+    setHighlightedVerses(verses ? new Set(verses) : null)
 
   const verseTextMap = useMemo(
     () => new Map(verseTexts.map((vt) => [vt.verse, vt.text_html])),
@@ -543,6 +546,7 @@ function ChapterView({
                   mode={mode}
                   selected={isSelected}
                   onSelect={(v) => setSelection(toggleVerse(selection, v))}
+                  highlighted={highlightedVerses?.has(verse) ?? false}
                   showNumber={!book.isFrontMatter}
                 />
               </div>
@@ -554,10 +558,11 @@ function ChapterView({
                       anchoredCount: entry.anchored.length,
                       coveredCount: entry.covered.length,
                       commenters: entry.commenters,
-                      spanning: entry.spanning,
+                      highlightVerses: entry.highlightVerses,
                     }
                   }
                   onOpen={setOpenVerseSheet}
+                  onHighlight={onHighlight}
                 />
               )}
             </li>

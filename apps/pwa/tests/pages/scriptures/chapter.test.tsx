@@ -378,6 +378,50 @@ describe('ChapterPage', () => {
     expect(screen.queryByRole('button', { name: /コメント.*件を見る/ })).toBeNull()
   })
 
+  it('印にホバーするとその投稿の対象節だけがハイライトされる', async () => {
+    const { useSelectedUserStore } = await import('@/features/select-verse-view')
+    useSelectedUserStore.setState({ selectedUserId: null })
+    loaderData = {
+      ...baseChapterData,
+      chapterCommenters: [{ userId: 'u1', name: '中村さん', avatarUrl: null }],
+      circlePosts: [circlePost('p1', 'u1', '中村さん', [3, 4, 5])],
+    }
+    search = {}
+    const user = userEvent.setup()
+    const { container } = render(<ChapterPage />)
+
+    const marker = await screen.findByRole('button', { name: /3節から始まるコメント/ })
+    await user.hover(marker)
+
+    await waitFor(() => {
+      expect(container.querySelectorAll('[data-highlighted="true"]')).toHaveLength(3)
+    })
+
+    await user.unhover(marker)
+    await waitFor(() => {
+      expect(container.querySelectorAll('[data-highlighted="true"]')).toHaveLength(0)
+    })
+  })
+
+  it('飛び番の投稿は連続する塊ごとに印が出る', async () => {
+    const { useSelectedUserStore } = await import('@/features/select-verse-view')
+    useSelectedUserStore.setState({ selectedUserId: null })
+    loaderData = {
+      ...baseChapterData,
+      chapterCommenters: [{ userId: 'u1', name: '中村さん', avatarUrl: null }],
+      circlePosts: [circlePost('p1', 'u1', '中村さん', [3, 6, 7])],
+    }
+    search = {}
+    render(<ChapterPage />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /3節から始まるコメント/ })).toBeInTheDocument()
+    })
+    expect(screen.getByRole('button', { name: /6節から始まるコメント/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /7節を含むコメント/ })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /4節/ })).toBeNull()
+  })
+
   it('継続節の印を押すとその節に関わるコメントが全件シートに出る', async () => {
     const { useSelectedUserStore } = await import('@/features/select-verse-view')
     useSelectedUserStore.setState({ selectedUserId: null })

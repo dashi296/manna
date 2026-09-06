@@ -4,23 +4,24 @@ import type { AvatarStackItem } from '@/shared/ui'
 const MAX_AVATARS = 3
 
 // 節本文の右に確保する固定幅。件数が増えても行の高さが変わらないよう、
-// 幅は常に一定で、中身だけが「印あり／縦線のみ／空」に切り替わる
+// 幅は常に一定で、中身だけが「印あり／なし」に切り替わる
 export const VERSE_GUTTER_WIDTH = 'w-12 lg:w-20'
 
 export type VerseGutterEntry = {
   anchoredCount: number
   coveredCount: number
   commenters: AvatarStackItem[]
-  spanning?: boolean
+  highlightVerses?: number[]
 }
 
 type Props = {
   verse: number
   entry: VerseGutterEntry | undefined
   onOpen: (verse: number) => void
+  onHighlight?: (verses: number[] | null) => void
 }
 
-export function VerseCommentGutter({ verse, entry, onOpen }: Props) {
+export function VerseCommentGutter({ verse, entry, onOpen, onHighlight }: Props) {
   if (!entry || entry.coveredCount === 0) {
     return <div className={`${VERSE_GUTTER_WIDTH} shrink-0`} aria-hidden="true" />
   }
@@ -30,21 +31,19 @@ export function VerseCommentGutter({ verse, entry, onOpen }: Props) {
     ? `${verse}節から始まるコメント ${entry.coveredCount}件を見る`
     : `${verse}節を含むコメント ${entry.coveredCount}件を見る`
   const avatars = entry.commenters.slice(0, MAX_AVATARS)
+  const highlight = entry.highlightVerses?.length ? entry.highlightVerses : null
 
   return (
-    <div className={`${VERSE_GUTTER_WIDTH} shrink-0 self-stretch relative`}>
-      {entry.spanning && (
-        <span
-          aria-hidden="true"
-          className="absolute inset-y-0 left-2 w-0.5 rounded-full"
-          style={{ background: 'var(--lagoon)', opacity: 0.35 }}
-        />
-      )}
+    <div className={`${VERSE_GUTTER_WIDTH} shrink-0 self-stretch`}>
       <button
         type="button"
         aria-label={label}
         onClick={() => onOpen(verse)}
-        className="relative w-full h-full flex items-start justify-start gap-1 pl-1 pt-3"
+        onPointerEnter={() => onHighlight?.(highlight)}
+        onPointerLeave={() => onHighlight?.(null)}
+        onFocus={() => onHighlight?.(highlight)}
+        onBlur={() => onHighlight?.(null)}
+        className="w-full h-full flex items-start justify-start gap-1 pl-1 pt-3"
       >
         {avatars.map((c, i) => (
           <span

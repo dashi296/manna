@@ -14,6 +14,12 @@ const ROW_UNSELECTED_STYLE: CSSProperties = {
   borderLeft: '3px solid transparent',
   transition: ROW_TRANSITION,
 }
+// ガターの印にホバーしたとき、その投稿が対象にしている節を示す
+const ROW_HIGHLIGHTED_STYLE: CSSProperties = {
+  background: 'var(--verse-highlight)',
+  borderLeft: '3px solid transparent',
+  transition: ROW_TRANSITION,
+}
 
 type Props = {
   collection: string
@@ -26,6 +32,7 @@ type Props = {
   mode: 'read' | 'select'
   selected: boolean
   onSelect: (verse: number) => void
+  highlighted?: boolean
   showNumber?: boolean
 }
 
@@ -40,9 +47,14 @@ export function VerseRow({
   mode,
   selected,
   onSelect,
+  highlighted = false,
   showNumber = true,
 }: Props) {
-  const containerStyle = selected ? ROW_SELECTED_STYLE : ROW_UNSELECTED_STYLE
+  const containerStyle = selected
+    ? ROW_SELECTED_STYLE
+    : highlighted
+      ? ROW_HIGHLIGHTED_STYLE
+      : ROW_UNSELECTED_STYLE
 
   const numberLabel = showNumber && (
     <span
@@ -123,7 +135,7 @@ export function VerseRow({
   }
 
   return (
-    <div style={containerStyle}>
+    <div style={containerStyle} data-highlighted={highlighted || undefined}>
       <Link
         to="/scriptures/$collection/$book/$chapter"
         params={{ collection, book, chapter: String(chapter) }}

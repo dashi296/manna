@@ -88,6 +88,35 @@ describe('VerseRow', () => {
   })
 })
 
+describe('VerseRow highlighted', () => {
+  it('highlighted=true で本文行に背景を敷く', async () => {
+    const { container } = renderInRouter(
+      <VerseRow
+        {...baseProps}
+        mode="read"
+        selected={false}
+        onSelect={vi.fn()}
+        highlighted
+      />,
+    )
+    await waitFor(() => {
+      expect(screen.getByText('19')).toBeInTheDocument()
+    })
+    const row = container.querySelector('[data-highlighted="true"]')
+    expect(row).not.toBeNull()
+  })
+
+  it('highlighted 未指定なら背景を敷かない', async () => {
+    const { container } = renderInRouter(
+      <VerseRow {...baseProps} mode="read" selected={false} onSelect={vi.fn()} />,
+    )
+    await waitFor(() => {
+      expect(screen.getByText('19')).toBeInTheDocument()
+    })
+    expect(container.querySelector('[data-highlighted="true"]')).toBeNull()
+  })
+})
+
 describe('VerseRow showNumber', () => {
   it("showNumber=false のとき mode='read' で節番号を表示しない", async () => {
     renderInRouter(

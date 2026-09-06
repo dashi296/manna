@@ -43,16 +43,56 @@ describe('VerseCommentGutter', () => {
     expect(screen.getByText('4')).toBeInTheDocument()
   })
 
-  it('継続節では件数を表示せず、線だけで範囲を示す', () => {
+  it('継続節では件数を表示しない', () => {
     render(
       <VerseCommentGutter
         verse={5}
-        entry={{ anchoredCount: 0, coveredCount: 3, commenters: [], spanning: true }}
+        entry={{ anchoredCount: 0, coveredCount: 3, commenters: [] }}
         onOpen={vi.fn()}
       />,
     )
 
     expect(screen.queryByText('3')).toBeNull()
+  })
+
+  it('印にホバーするとその投稿の対象節を通知し、離れると解除する', async () => {
+    const onHighlight = vi.fn()
+    render(
+      <VerseCommentGutter
+        verse={3}
+        entry={{
+          anchoredCount: 1,
+          coveredCount: 1,
+          commenters: [alice],
+          highlightVerses: [3, 4, 5],
+        }}
+        onOpen={vi.fn()}
+        onHighlight={onHighlight}
+      />,
+    )
+
+    const btn = screen.getByRole('button', { name: /3節/ })
+    await userEvent.hover(btn)
+    expect(onHighlight).toHaveBeenLastCalledWith([3, 4, 5])
+
+    await userEvent.unhover(btn)
+    expect(onHighlight).toHaveBeenLastCalledWith(null)
+  })
+
+  it('継続節の印にホバーしても何もハイライトしない', async () => {
+    const onHighlight = vi.fn()
+    render(
+      <VerseCommentGutter
+        verse={5}
+        entry={{ anchoredCount: 0, coveredCount: 1, commenters: [], highlightVerses: [] }}
+        onOpen={vi.fn()}
+        onHighlight={onHighlight}
+      />,
+    )
+
+    await userEvent.hover(screen.getByRole('button', { name: /5節/ }))
+
+    expect(onHighlight).not.toHaveBeenCalledWith(expect.arrayContaining([expect.any(Number)]))
   })
 
   it('件数はその節から始まる投稿の数を示し、アバターの人数と食い違わない', () => {
