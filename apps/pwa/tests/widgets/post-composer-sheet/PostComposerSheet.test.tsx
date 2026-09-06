@@ -44,6 +44,29 @@ describe('PostComposerSheet', () => {
     expect(screen.getByText(/モーサヤ書 3:19/)).toBeInTheDocument()
   })
 
+  it('lockScripture を PostEditor に伝え、聖典参照のセレクタを出さない', () => {
+    render(
+      <PostComposerSheet
+        open
+        onOpenChange={() => {}}
+        initialScripture={{ collection: 'bofm', book: 'mosiah', chapter: 3 }}
+        lockScripture
+      />,
+    )
+    expect(screen.queryAllByRole('combobox')).toHaveLength(0)
+  })
+
+  it('lockScripture なしなら聖典参照のセレクタを出す', () => {
+    render(
+      <PostComposerSheet
+        open
+        onOpenChange={() => {}}
+        initialScripture={{ collection: 'bofm', book: 'mosiah', chapter: 3 }}
+      />,
+    )
+    expect(screen.getAllByRole('combobox')).toHaveLength(3)
+  })
+
   it('initialScripture 未指定なら「新しい投稿」タイトル', () => {
     render(<PostComposerSheet open onOpenChange={() => {}} />)
     expect(screen.getByText('新しい投稿')).toBeInTheDocument()

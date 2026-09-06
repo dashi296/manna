@@ -14,6 +14,8 @@ import { parseVerses, buildChapterItems, type ScriptureRefPartial } from '../mod
 type Props = {
   value: ScriptureRefPartial
   onChange: (ref: ScriptureRefPartial) => void
+  /** 参照元の章が決まっている画面用。聖典集・書籍・章を隠し、節だけ選ばせる */
+  lockRef?: boolean
 }
 
 type RefSelectProps = {
@@ -47,7 +49,7 @@ function RefSelect({ items, value, placeholder, disabled, onSelect }: RefSelectP
   )
 }
 
-export function ScriptureSelector({ value, onChange }: Props) {
+export function ScriptureSelector({ value, onChange, lockRef = false }: Props) {
   const collections = getAllCollections()
   const selectedCollection = value.collection ? getCollection(value.collection) : undefined
   const selectedBook =
@@ -65,32 +67,36 @@ export function ScriptureSelector({ value, onChange }: Props) {
 
   return (
     <div className="space-y-3">
-      <RefSelect
-        items={collectionItems}
-        value={value.collection ?? null}
-        placeholder="聖典集を選択"
-        onSelect={(v) => onChange({ collection: v })}
-      />
+      {!lockRef && (
+        <>
+          <RefSelect
+            items={collectionItems}
+            value={value.collection ?? null}
+            placeholder="聖典集を選択"
+            onSelect={(v) => onChange({ collection: v })}
+          />
 
-      <RefSelect
-        items={bookItems}
-        value={value.book ?? null}
-        placeholder="書籍を選択"
-        disabled={!selectedCollection}
-        onSelect={(v) =>
-          onChange({ ...value, book: v, chapter: undefined, verses: undefined })
-        }
-      />
+          <RefSelect
+            items={bookItems}
+            value={value.book ?? null}
+            placeholder="書籍を選択"
+            disabled={!selectedCollection}
+            onSelect={(v) =>
+              onChange({ ...value, book: v, chapter: undefined, verses: undefined })
+            }
+          />
 
-      <RefSelect
-        items={chapterItems}
-        value={value.chapter?.toString() ?? null}
-        placeholder="章を選択"
-        disabled={!selectedBook}
-        onSelect={(v) =>
-          onChange({ ...value, chapter: parseInt(v, 10), verses: undefined })
-        }
-      />
+          <RefSelect
+            items={chapterItems}
+            value={value.chapter?.toString() ?? null}
+            placeholder="章を選択"
+            disabled={!selectedBook}
+            onSelect={(v) =>
+              onChange({ ...value, chapter: parseInt(v, 10), verses: undefined })
+            }
+          />
+        </>
+      )}
 
       <Input
         placeholder="節 (例: 7, 9)"

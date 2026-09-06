@@ -281,3 +281,42 @@ describe('PostEditor（編集モード）', () => {
     expect(onSuccess).not.toHaveBeenCalled()
   })
 })
+
+describe('PostEditor（聖典参照の固定）', () => {
+  const chapterRef = { collection: 'bofm', book: 'mosiah', chapter: 3 }
+
+  it('既定では聖典参照のセレクタを描画する', () => {
+    render(<PostEditor mode="sheet" initialScripture={chapterRef} onSuccess={() => {}} />)
+
+    expect(screen.getAllByRole('combobox')).toHaveLength(3)
+  })
+
+  it('lockScripture 時はセレクタの代わりに聖典ラベルを表示する', () => {
+    render(
+      <PostEditor mode="sheet" initialScripture={chapterRef} lockScripture onSuccess={() => {}} />,
+    )
+
+    expect(screen.queryAllByRole('combobox')).toHaveLength(0)
+    expect(screen.getByText('モーサヤ書 第3章')).toBeInTheDocument()
+  })
+
+  it('lockScripture 時も節は編集でき、固定の参照とともに投稿される', async () => {
+    const user = userEvent.setup()
+    render(
+      <PostEditor mode="sheet" initialScripture={chapterRef} lockScripture onSuccess={() => {}} />,
+    )
+    await user.type(screen.getByPlaceholderText(/感じたこと/), '3章への感想')
+    await user.type(screen.getByPlaceholderText(/節/), '7, 9')
+    await user.click(screen.getByRole('button', { name: '投稿する' }))
+
+    await waitFor(() => expect(mockInsert).toHaveBeenCalled())
+    expect(mockInsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        scripture_collection: 'bofm',
+        scripture_book: 'mosiah',
+        scripture_chapter: 3,
+        scripture_verses: [7, 9],
+      }),
+    )
+  })
+})

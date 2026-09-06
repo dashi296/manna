@@ -404,6 +404,7 @@ function VerseView({ book, chapter, collection, verses, posts, verseTexts, canCo
           open={sheetOpen}
           onOpenChange={onSheetOpenChange}
           initialScripture={{ collection, book: book.id, chapter, verses }}
+          lockScripture
         />
       )}
     </div>
@@ -722,6 +723,7 @@ function ChapterView({
             chapter,
             verses: composerVerses,
           }}
+          lockScripture
         />
       )}
       {activeVerseSheet}

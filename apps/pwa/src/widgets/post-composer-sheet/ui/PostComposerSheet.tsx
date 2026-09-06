@@ -11,6 +11,8 @@ type Props = {
   onOpenChange: (open: boolean) => void
   initialScripture?: ScriptureRefPartial
   post?: EditablePost
+  /** 章ページなど参照元が確定している画面から開くとき、聖典集・書籍・章を固定する */
+  lockScripture?: boolean
   /**
    * シートの close 動作 (history.back による composer 用エントリ pop) が
    * 完了した後に呼ばれる。onOpenChange とは別に必要。呼び出し側は
@@ -22,7 +24,14 @@ type Props = {
 type ComposerHistoryState = { mannaComposer: true }
 const HISTORY_STATE_MARKER: ComposerHistoryState = { mannaComposer: true }
 
-export function PostComposerSheet({ open, onOpenChange, initialScripture, post, onClosed }: Props) {
+export function PostComposerSheet({
+  open,
+  onOpenChange,
+  initialScripture,
+  post,
+  lockScripture,
+  onClosed,
+}: Props) {
   const isMobile = useIsMobile()
   const onOpenChangeRef = useRef(onOpenChange)
   const onClosedRef = useRef(onClosed)
@@ -81,6 +90,7 @@ export function PostComposerSheet({ open, onOpenChange, initialScripture, post, 
             initialScripture={initialScripture}
             mode="sheet"
             post={post}
+            lockScripture={lockScripture}
             onSuccess={() => onOpenChange(false)}
           />
         </div>
