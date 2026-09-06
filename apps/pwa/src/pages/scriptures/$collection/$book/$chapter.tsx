@@ -443,18 +443,19 @@ function ChapterView({
         : circlePosts,
     [circlePosts, selectedUser],
   )
+  // 身内全員分。シートの中身と、ガターの幅を取るかの判定に使う
+  const allCommentIndex = useMemo(
+    () => buildVerseCommentIndex(circlePosts),
+    [circlePosts],
+  )
   // 節の横の印は絞り込みに従う
   const commentIndex = useMemo(
-    () => buildVerseCommentIndex(visiblePosts),
-    [visiblePosts],
+    () => (selectedUser ? buildVerseCommentIndex(visiblePosts) : allCommentIndex),
+    [selectedUser, visiblePosts, allCommentIndex],
   )
-  // シートの中身は絞り込みを無視して身内全員分から作る。共有された ?comment= を
-  // 開いた側が別のユーザーで絞り込んでいると、送った側が見せたいコメントが無言で
-  // 開かなくなるため
-  const sheetIndex = useMemo(
-    () => (selectedUser ? buildVerseCommentIndex(circlePosts) : commentIndex),
-    [selectedUser, circlePosts, commentIndex],
-  )
+  // シートの中身は絞り込みを無視する。共有された ?comment= を開いた側が別のユーザーで
+  // 絞り込んでいると、送った側が見せたいコメントが無言で開かなくなるため
+  const sheetIndex = allCommentIndex
   const onHighlight = (verses: number[] | null) =>
     setHighlightedVerses(verses ? new Set(verses) : null)
 
@@ -568,7 +569,16 @@ function ChapterView({
   }
 
   const showCommenters = canCompose && mode !== 'select'
-  const showGutter = mode !== 'select' && circlePosts.length > 0
+  // 投稿の有無ではなく、章の範囲内に印が出るかで判定する。scripture_verses に DB 側の
+  // 範囲制約が無く、範囲外の節だけを持つ投稿があると、印ゼロのまま本文が狭くなる。
+  // 絞り込み後ではなく全員分で見るのは、絞り込みの切り替えで幅を揺らさないため
+  const hasAnchorInChapter = useMemo(() => {
+    for (const [verse, entry] of allCommentIndex) {
+      if (verse >= 1 && verse <= maxVerse && entry.anchored.length > 0) return true
+    }
+    return false
+  }, [allCommentIndex, maxVerse])
+  const showGutter = mode !== 'select' && hasAnchorInChapter
 
   const composeMenuProps = {
     onSelectChapter: openComposerForChapter,

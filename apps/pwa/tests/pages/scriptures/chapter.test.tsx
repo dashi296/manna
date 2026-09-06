@@ -591,6 +591,49 @@ describe('ChapterPage', () => {
     expect(screen.queryByRole('button', { name: /3節のコメントを見る/ })).toBeNull()
   })
 
+  it('章の範囲内に印が1つも無いならガターの幅を確保しない', async () => {
+    // scripture_verses に DB 側の範囲制約が無いため、範囲外の節だけを持つ投稿が
+    // 存在しうる。その場合ガターは空のまま本文だけが狭くなる
+    const { useSelectedUserStore } = await import('@/features/select-verse-view')
+    useSelectedUserStore.setState({ selectedUserId: null })
+    loaderData = {
+      ...baseChapterData,
+      chapterCommenters: [{ userId: 'u1', name: '中村さん', avatarUrl: null }],
+      circlePosts: [circlePost('p1', 'u1', '中村さん', [999])],
+    }
+    search = {}
+    const { container } = render(<ChapterPage />)
+
+    await waitFor(() => {
+      expect(screen.getByText('一節の本文')).toBeInTheDocument()
+    })
+    const row = container.querySelector('li[data-verse="1"]')!
+    expect(row.querySelector('.w-12')).toBeNull()
+  })
+
+  it('絞り込みで印が消えてもガターの幅は保つ（レイアウトを揺らさない）', async () => {
+    const { useSelectedUserStore } = await import('@/features/select-verse-view')
+    useSelectedUserStore.setState({ selectedUserId: 'u2' })
+    loaderData = {
+      ...baseChapterData,
+      chapterCommenters: [
+        { userId: 'u1', name: '中村さん', avatarUrl: null },
+        { userId: 'u2', name: '田中さん', avatarUrl: null },
+      ],
+      // 絞り込み対象の u2 はこの章に投稿していない
+      circlePosts: [circlePost('p1', 'u1', '中村さん', [3])],
+    }
+    search = {}
+    const { container } = render(<ChapterPage />)
+
+    await waitFor(() => {
+      expect(screen.getByText('一節の本文')).toBeInTheDocument()
+    })
+    expect(screen.queryByRole('button', { name: /節のコメントを見る/ })).toBeNull()
+    const row = container.querySelector('li[data-verse="1"]')!
+    expect(row.querySelector('.w-12')).not.toBeNull()
+  })
+
   it('その節にコメントが無いなら comment があってもシートを開かない', async () => {
     const { useSelectedUserStore } = await import('@/features/select-verse-view')
     useSelectedUserStore.setState({ selectedUserId: null })

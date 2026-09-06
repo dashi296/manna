@@ -8,8 +8,9 @@ const MAX_AVATARS = 3
 const LONG_PRESS_MS = 400
 
 // 節本文の右に確保する固定幅。件数が増えても行の高さが変わらないよう、
-// 幅は常に一定で、中身だけが「印あり／なし」に切り替わる
-export const VERSE_GUTTER_WIDTH = 'w-12 lg:w-20'
+// 幅は常に一定で、中身だけが「印あり／なし」に切り替わる。
+// lg は最大構成（24px アバター3枚の重ね + 2桁の件数）が収まる幅にする
+export const VERSE_GUTTER_WIDTH = 'w-12 lg:w-24'
 
 export type VerseGutterEntry = {
   anchoredCount: number
