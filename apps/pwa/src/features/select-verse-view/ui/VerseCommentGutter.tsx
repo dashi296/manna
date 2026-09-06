@@ -1,7 +1,11 @@
+import { useRef } from 'react'
 import { UserAvatar } from '@/shared/ui'
 import type { AvatarStackItem } from '@/shared/ui'
 
 const MAX_AVATARS = 3
+// タッチにはホバーがないため、押している間のハイライトを「範囲を見る」操作として使う。
+// これを超えて押し続けた場合は、指を離してもシートを開かない
+const LONG_PRESS_MS = 400
 
 // 節本文の右に確保する固定幅。件数が増えても行の高さが変わらないよう、
 // 幅は常に一定で、中身だけが「印あり／なし」に切り替わる
@@ -22,6 +26,8 @@ type Props = {
 }
 
 export function VerseCommentGutter({ verse, entry, onOpen, onHighlight }: Props) {
+  const pressStartedAt = useRef(0)
+
   if (!entry || entry.coveredCount === 0) {
     return <div className={`${VERSE_GUTTER_WIDTH} shrink-0`} aria-hidden="true" />
   }
@@ -38,12 +44,26 @@ export function VerseCommentGutter({ verse, entry, onOpen, onHighlight }: Props)
       <button
         type="button"
         aria-label={label}
-        onClick={() => onOpen(verse)}
+        onClick={() => {
+          const heldFor = Date.now() - pressStartedAt.current
+          pressStartedAt.current = 0
+          if (heldFor < LONG_PRESS_MS) onOpen(verse)
+        }}
+        onPointerDown={() => {
+          pressStartedAt.current = Date.now()
+        }}
         onPointerEnter={() => onHighlight?.(highlight)}
         onPointerLeave={() => onHighlight?.(null)}
+        // 押したままスクロールに移ると pointercancel だけが来て pointerleave が来ない
+        onPointerCancel={() => {
+          pressStartedAt.current = 0
+          onHighlight?.(null)
+        }}
         onFocus={() => onHighlight?.(highlight)}
         onBlur={() => onHighlight?.(null)}
-        className="w-full h-full flex items-start justify-start gap-1 pl-1 pt-3"
+        onContextMenu={(e) => e.preventDefault()}
+        className="w-full h-full flex items-start justify-start gap-1 pl-1 pt-3 select-none"
+        style={{ WebkitTouchCallout: 'none', touchAction: 'manipulation' }}
       >
         {avatars.map((c, i) => (
           <span

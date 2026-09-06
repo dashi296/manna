@@ -1,5 +1,5 @@
-import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { afterEach, describe, it, expect, vi } from 'vitest'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { VerseCommentGutter } from '@/features/select-verse-view/ui/VerseCommentGutter'
 
@@ -7,6 +7,91 @@ const alice = { userId: 'u1', name: 'アリス', avatarUrl: null }
 const bob = { userId: 'u2', name: 'ボブ', avatarUrl: null }
 const carol = { userId: 'u3', name: 'キャロル', avatarUrl: null }
 const dave = { userId: 'u4', name: 'デイブ', avatarUrl: null }
+
+describe('VerseCommentGutter 長押し', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  const anchorEntry = {
+    anchoredCount: 1,
+    coveredCount: 1,
+    commenters: [alice],
+    highlightVerses: [3, 4, 5],
+  }
+
+  it('短く押して離せばシートが開く', () => {
+    vi.useFakeTimers()
+    const onOpen = vi.fn()
+    render(<VerseCommentGutter verse={3} entry={anchorEntry} onOpen={onOpen} />)
+
+    const btn = screen.getByRole('button', { name: /3節/ })
+    fireEvent.pointerDown(btn)
+    vi.advanceTimersByTime(120)
+    fireEvent.click(btn)
+
+    expect(onOpen).toHaveBeenCalledWith(3)
+  })
+
+  it('長押しして離してもシートは開かない', () => {
+    vi.useFakeTimers()
+    const onOpen = vi.fn()
+    render(<VerseCommentGutter verse={3} entry={anchorEntry} onOpen={onOpen} />)
+
+    const btn = screen.getByRole('button', { name: /3節/ })
+    fireEvent.pointerDown(btn)
+    vi.advanceTimersByTime(800)
+    fireEvent.click(btn)
+
+    expect(onOpen).not.toHaveBeenCalled()
+  })
+
+  it('長押しの後でも次の短い押下ならシートが開く', () => {
+    vi.useFakeTimers()
+    const onOpen = vi.fn()
+    render(<VerseCommentGutter verse={3} entry={anchorEntry} onOpen={onOpen} />)
+
+    const btn = screen.getByRole('button', { name: /3節/ })
+    fireEvent.pointerDown(btn)
+    vi.advanceTimersByTime(800)
+    fireEvent.click(btn)
+
+    fireEvent.pointerDown(btn)
+    vi.advanceTimersByTime(100)
+    fireEvent.click(btn)
+
+    expect(onOpen).toHaveBeenCalledTimes(1)
+  })
+
+  it('押している最中にポインタがキャンセルされてもハイライトが残らない', () => {
+    const onHighlight = vi.fn()
+    render(
+      <VerseCommentGutter
+        verse={3}
+        entry={anchorEntry}
+        onOpen={vi.fn()}
+        onHighlight={onHighlight}
+      />,
+    )
+
+    const btn = screen.getByRole('button', { name: /3節/ })
+    fireEvent.pointerEnter(btn)
+    fireEvent.pointerDown(btn)
+    fireEvent.pointerCancel(btn)
+
+    expect(onHighlight).toHaveBeenLastCalledWith(null)
+  })
+
+  it('長押し中の OS のコンテキストメニューを抑止する', () => {
+    render(<VerseCommentGutter verse={3} entry={anchorEntry} onOpen={vi.fn()} />)
+
+    const btn = screen.getByRole('button', { name: /3節/ })
+    const event = new MouseEvent('contextmenu', { bubbles: true, cancelable: true })
+    fireEvent(btn, event)
+
+    expect(event.defaultPrevented).toBe(true)
+  })
+})
 
 describe('VerseCommentGutter', () => {
   it('コメントのない節では押せる要素を描画しない', () => {
