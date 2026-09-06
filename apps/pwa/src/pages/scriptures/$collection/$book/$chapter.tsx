@@ -445,9 +445,12 @@ function ChapterView({
   )
   const mode: SelectionMode = canCompose && search.mode === 'select' ? 'select' : 'read'
 
-  // 章の節数を超える comment は無視する。0件のシートが開いてしまうため
+  // 実際にコメントがある節でなければ開かない。節番号だけを見ていると、範囲外の
+  // 直リンク・未ログイン・ユーザー絞り込みで除外された場合に 0件のシートが開く
   const commentVerseForScroll =
-    mode !== 'select' && search.comment !== undefined && search.comment <= maxVerse
+    mode !== 'select' &&
+    search.comment !== undefined &&
+    (commentIndex.get(search.comment)?.covered.length ?? 0) > 0
       ? search.comment
       : undefined
   const scrolledVerse = useRef<number | undefined>(undefined)
@@ -492,9 +495,15 @@ function ChapterView({
 
   const setSelection = (next: number[]) =>
     patchSearch({ select: next.length ? next : undefined })
-  // mode=select と同じく push する。戻る操作でシートを閉じられるようにするため
+  // mode=select と同じく push する。戻る操作でシートを閉じられるようにするため。
+  // シートはモーダルで背景が inert になるため、開いたまま別の印を押す経路はない
   const openVerseSheet = (verse: number) => patchSearch({ comment: verse }, false)
-  const closeVerseSheet = () => patchSearch({ comment: undefined })
+  const closeVerseSheet = () => {
+    // 開いたときの push を戻して履歴を元の長さに保つ。replace で消すと同じ章 URL が
+    // 履歴に2件残り、戻るを押しても画面が変わらなくなる
+    if (router.history.canGoBack()) router.history.back()
+    else patchSearch({ comment: undefined })
+  }
   const enterSelectMode = () => patchSearch({ mode: 'select' }, false)
   const exitSelectMode = () => patchSearch({ mode: undefined, select: undefined })
 

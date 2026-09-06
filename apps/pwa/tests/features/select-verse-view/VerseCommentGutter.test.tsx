@@ -28,6 +28,7 @@ describe('VerseCommentGutter 長押し', () => {
     const btn = screen.getByRole('button', { name: /3節/ })
     fireEvent.pointerDown(btn)
     vi.advanceTimersByTime(120)
+    fireEvent.pointerUp(btn)
     fireEvent.click(btn)
 
     expect(onOpen).toHaveBeenCalledWith(3)
@@ -50,9 +51,57 @@ describe('VerseCommentGutter 長押し', () => {
     const btn = screen.getByRole('button', { name: /3節/ })
     fireEvent.pointerDown(btn)
     vi.advanceTimersByTime(800)
+    fireEvent.pointerUp(btn)
     fireEvent.click(btn)
 
     expect(onOpen).not.toHaveBeenCalled()
+  })
+
+  it('押下したまま外へ離脱した後、キーボード操作でシートが開く', () => {
+    vi.useFakeTimers()
+    const onOpen = vi.fn()
+    render(<VerseCommentGutter verse={3} entry={anchorEntry} onOpen={onOpen} />)
+
+    const btn = screen.getByRole('button', { name: /3節/ })
+    // 押しかけてポインタを外へ移動（クリックは発生しない）
+    fireEvent.pointerDown(btn)
+    fireEvent.pointerLeave(btn)
+    vi.advanceTimersByTime(5000)
+
+    // その後キーボードで開く
+    fireEvent.click(btn)
+
+    expect(onOpen).toHaveBeenCalledWith(3)
+  })
+
+  it('タッチのように pointerleave が click より先に来ても長押しは効く', () => {
+    vi.useFakeTimers()
+    const onOpen = vi.fn()
+    render(<VerseCommentGutter verse={3} entry={anchorEntry} onOpen={onOpen} />)
+
+    const btn = screen.getByRole('button', { name: /3節/ })
+    fireEvent.pointerDown(btn)
+    vi.advanceTimersByTime(800)
+    fireEvent.pointerUp(btn)
+    fireEvent.pointerLeave(btn)
+    fireEvent.click(btn)
+
+    expect(onOpen).not.toHaveBeenCalled()
+  })
+
+  it('タッチのように pointerleave が click より先に来ても短押しは開く', () => {
+    vi.useFakeTimers()
+    const onOpen = vi.fn()
+    render(<VerseCommentGutter verse={3} entry={anchorEntry} onOpen={onOpen} />)
+
+    const btn = screen.getByRole('button', { name: /3節/ })
+    fireEvent.pointerDown(btn)
+    vi.advanceTimersByTime(100)
+    fireEvent.pointerUp(btn)
+    fireEvent.pointerLeave(btn)
+    fireEvent.click(btn)
+
+    expect(onOpen).toHaveBeenCalledWith(3)
   })
 
   it('長押しの後でも次の短い押下ならシートが開く', () => {
@@ -63,10 +112,12 @@ describe('VerseCommentGutter 長押し', () => {
     const btn = screen.getByRole('button', { name: /3節/ })
     fireEvent.pointerDown(btn)
     vi.advanceTimersByTime(800)
+    fireEvent.pointerUp(btn)
     fireEvent.click(btn)
 
     fireEvent.pointerDown(btn)
     vi.advanceTimersByTime(100)
+    fireEvent.pointerUp(btn)
     fireEvent.click(btn)
 
     expect(onOpen).toHaveBeenCalledTimes(1)

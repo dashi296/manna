@@ -87,6 +87,8 @@ const baseChapterData: TestLoaderData = {
 let loaderData: TestLoaderData
 let search: { select?: number[]; mode?: 'select'; comment?: number } = { select: [1, 2] }
 const navigateSpy = vi.fn()
+const historyBackSpy = vi.fn()
+let canGoBack = true
 
 // 併記表示ONのときにクライアント側で取得する第2言語の節本文（テストごとに差し替える）
 let clientVerseTexts: { verse: number; text_html: string }[] = []
@@ -97,7 +99,10 @@ vi.mock('@tanstack/react-router', async () => {
   const { routerMock } = await import('../../helpers/tanstack')
   return {
     ...routerMock(() => loaderData),
-    useRouter: () => ({ invalidate: vi.fn() }),
+    useRouter: () => ({
+      invalidate: vi.fn(),
+      history: { canGoBack: () => canGoBack, back: historyBackSpy },
+    }),
     useNavigate: () => navigateSpy,
   }
 })
@@ -453,6 +458,91 @@ describe('ChapterPage', () => {
     await user.click(screen.getByRole('checkbox', { name: '2節を選択' }))
 
     expect(navigateSpy.mock.calls.at(-1)![0]).toMatchObject({ resetScroll: false })
+  })
+
+  it('シートが開いている間は背後の印を操作できない（モーダルのため）', async () => {
+    const { useSelectedUserStore } = await import('@/features/select-verse-view')
+    useSelectedUserStore.setState({ selectedUserId: null })
+    loaderData = {
+      ...baseChapterData,
+      chapterCommenters: [{ userId: 'u1', name: '中村さん', avatarUrl: null }],
+      circlePosts: [
+        circlePost('p1', 'u1', '中村さん', [3], '節3のコメント'),
+        circlePost('p2', 'u1', '中村さん', [5]),
+      ],
+    }
+    search = { comment: 3 }
+    render(<ChapterPage />)
+    await screen.findByText('節3のコメント')
+
+    expect(screen.queryByRole('button', { name: /5節のコメントを見る/ })).toBeNull()
+  })
+
+  it('シートを閉じるときは履歴を積まず、戻れるなら戻る', async () => {
+    canGoBack = true
+    historyBackSpy.mockClear()
+    navigateSpy.mockClear()
+    const { useSelectedUserStore } = await import('@/features/select-verse-view')
+    useSelectedUserStore.setState({ selectedUserId: null })
+    loaderData = {
+      ...baseChapterData,
+      chapterCommenters: [{ userId: 'u1', name: '中村さん', avatarUrl: null }],
+      circlePosts: [circlePost('p1', 'u1', '中村さん', [3], '節3のコメント')],
+    }
+    search = { comment: 3 }
+    render(<ChapterPage />)
+    await screen.findByText('節3のコメント')
+
+    await userEvent.keyboard('{Escape}')
+
+    await waitFor(() => {
+      expect(historyBackSpy).toHaveBeenCalled()
+    })
+    expect(navigateSpy).not.toHaveBeenCalled()
+  })
+
+  it('直リンクで開いて戻れないときは comment を消して閉じる', async () => {
+    canGoBack = false
+    historyBackSpy.mockClear()
+    navigateSpy.mockClear()
+    const { useSelectedUserStore } = await import('@/features/select-verse-view')
+    useSelectedUserStore.setState({ selectedUserId: null })
+    loaderData = {
+      ...baseChapterData,
+      chapterCommenters: [{ userId: 'u1', name: '中村さん', avatarUrl: null }],
+      circlePosts: [circlePost('p1', 'u1', '中村さん', [3], '節3のコメント')],
+    }
+    search = { comment: 3 }
+    render(<ChapterPage />)
+    await screen.findByText('節3のコメント')
+
+    await userEvent.keyboard('{Escape}')
+
+    await waitFor(() => {
+      expect(navigateSpy.mock.calls.at(-1)![0].search({})).toMatchObject({
+        comment: undefined,
+      })
+    })
+    expect(historyBackSpy).not.toHaveBeenCalled()
+    canGoBack = true
+  })
+
+  it('その節にコメントが無いなら comment があってもシートを開かない', async () => {
+    const { useSelectedUserStore } = await import('@/features/select-verse-view')
+    useSelectedUserStore.setState({ selectedUserId: null })
+    loaderData = {
+      ...baseChapterData,
+      chapterCommenters: [{ userId: 'u1', name: '中村さん', avatarUrl: null }],
+      circlePosts: [circlePost('p1', 'u1', '中村さん', [3])],
+    }
+    // 2節にはコメントが無い
+    search = { comment: 2 }
+    render(<ChapterPage />)
+
+    await waitFor(() => {
+      expect(screen.getByText('一節の本文')).toBeInTheDocument()
+    })
+    expect(screen.queryByRole('dialog')).toBeNull()
   })
 
   it('search.comment があるとその節のシートを開く', async () => {

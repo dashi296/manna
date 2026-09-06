@@ -27,6 +27,9 @@ type Props = {
 
 export function VerseCommentGutter({ verse, entry, onOpen, onHighlight }: Props) {
   const pressStartedAt = useRef(0)
+  // pointerup の時点で押下時間を確定させる。タッチでは pointerleave が click より
+  // 先に来るため、leave 側で押下時間ごと捨てると長押しが判定できなくなる
+  const lastPressDuration = useRef<number | null>(null)
 
   // 印を置くのはアンカー節だけ。範囲の途中の節にボタンを置くと、見た目が空のまま
   // フォーカスできる地点がキーボード利用者の前に並んでしまう
@@ -46,20 +49,31 @@ export function VerseCommentGutter({ verse, entry, onOpen, onHighlight }: Props)
         type="button"
         aria-label={label}
         onClick={() => {
-          // キーボードの Enter/Space は pointerdown を伴わないため押下時刻が無い。
+          // キーボードの Enter/Space は pointerdown を伴わないため押下時間が無い。
           // その場合は長押しではないものとして扱う
-          const startedAt = pressStartedAt.current
-          pressStartedAt.current = 0
-          if (startedAt === 0 || Date.now() - startedAt < LONG_PRESS_MS) onOpen(verse)
+          const heldFor = lastPressDuration.current
+          lastPressDuration.current = null
+          if (heldFor === null || heldFor < LONG_PRESS_MS) onOpen(verse)
         }}
         onPointerDown={() => {
           pressStartedAt.current = Date.now()
+          lastPressDuration.current = null
+        }}
+        onPointerUp={() => {
+          if (pressStartedAt.current === 0) return
+          lastPressDuration.current = Date.now() - pressStartedAt.current
+          pressStartedAt.current = 0
         }}
         onPointerEnter={() => onHighlight?.(highlight)}
-        onPointerLeave={() => onHighlight?.(null)}
+        onPointerLeave={() => {
+          // 押しかけて外へ移動した場合。確定済みの押下時間は tap の一部なので残す
+          pressStartedAt.current = 0
+          onHighlight?.(null)
+        }}
         // 押したままスクロールに移ると pointercancel だけが来て pointerleave が来ない
         onPointerCancel={() => {
           pressStartedAt.current = 0
+          lastPressDuration.current = null
           onHighlight?.(null)
         }}
         onFocus={() => onHighlight?.(highlight)}
