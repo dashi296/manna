@@ -30,6 +30,10 @@ export function VerseCommentGutter({ verse, entry, onOpen, onHighlight }: Props)
   // pointerup の時点で押下時間を確定させる。タッチでは pointerleave が click より
   // 先に来るため、leave 側で押下時間ごと捨てると長押しが判定できなくなる
   const lastPressDuration = useRef<number | null>(null)
+  // このボタンがフォーカスで塗ったかどうか。シートの開閉に伴うフォーカスの出入りで
+  // focus / blur が飛ぶため、素の focus で塗ると「閉じたのに色がついている」、
+  // blur で無条件に消すと「開いたのに色がつかない」状態になる
+  const highlightedByFocus = useRef(false)
 
   // 印を置くのはアンカー節だけ。範囲の途中の節にボタンを置くと、見た目が空のまま
   // フォーカスできる地点がキーボード利用者の前に並んでしまう
@@ -80,8 +84,19 @@ export function VerseCommentGutter({ verse, entry, onOpen, onHighlight }: Props)
           lastPressDuration.current = null
           onHighlight?.(null)
         }}
-        onFocus={() => onHighlight?.(highlight)}
-        onBlur={() => onHighlight?.(null)}
+        // 輪郭は focus-visible で出し分けているので、塗りも同じ条件に揃える。
+        // シートを閉じたときのフォーカス復帰はプログラム的で輪郭が出ないため、
+        // 素の focus で塗ると輪郭の無い塗りだけが章に残る
+        onFocus={(e) => {
+          if (!e.currentTarget.matches(':focus-visible')) return
+          highlightedByFocus.current = true
+          onHighlight?.(highlight)
+        }}
+        onBlur={() => {
+          if (!highlightedByFocus.current) return
+          highlightedByFocus.current = false
+          onHighlight?.(null)
+        }}
         onContextMenu={(e) => e.preventDefault()}
         className="w-full h-full flex items-start justify-start gap-1 pl-1 pt-3 select-none rounded-md transition-colors hover:bg-[var(--verse-highlight)] active:bg-[var(--verse-highlight)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lagoon)]"
         style={{ WebkitTouchCallout: 'none', touchAction: 'manipulation' }}

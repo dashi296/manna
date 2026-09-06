@@ -174,6 +174,12 @@ describe('VerseCommentGutter 長押し', () => {
 })
 
 describe('VerseCommentGutter', () => {
+  const anchorEntry = {
+    anchoredCount: 1,
+    commenters: [alice],
+    highlightVerses: [3, 4, 5],
+  }
+
   it('コメントのない節では押せる要素を描画しない', () => {
     render(<VerseCommentGutter verse={4} entry={undefined} onOpen={vi.fn()} />)
 
@@ -242,6 +248,65 @@ describe('VerseCommentGutter', () => {
 
     await userEvent.unhover(btn)
     expect(onHighlight).toHaveBeenLastCalledWith(null)
+  })
+
+  it('キーボードで印にフォーカスするとハイライトし、外れると解除する', async () => {
+    const onHighlight = vi.fn()
+    const user = userEvent.setup()
+    render(
+      <>
+        <button type="button">前</button>
+        <VerseCommentGutter
+          verse={3}
+          entry={anchorEntry}
+          onOpen={vi.fn()}
+          onHighlight={onHighlight}
+        />
+      </>,
+    )
+
+    screen.getByRole('button', { name: '前' }).focus()
+    await user.tab()
+    expect(onHighlight).toHaveBeenLastCalledWith([3, 4, 5])
+
+    await user.tab()
+    expect(onHighlight).toHaveBeenLastCalledWith(null)
+  })
+
+  it('輪郭の出ないフォーカス（シートを閉じたときの復帰）ではハイライトしない', () => {
+    // 印の輪郭は focus-visible で出し分けている。プログラム的なフォーカス復帰では
+    // 輪郭が出ないので、塗りだけが残ると「閉じたのに色がついている」状態になる
+    const onHighlight = vi.fn()
+    render(
+      <VerseCommentGutter
+        verse={3}
+        entry={anchorEntry}
+        onOpen={vi.fn()}
+        onHighlight={onHighlight}
+      />,
+    )
+
+    fireEvent.focus(screen.getByRole('button', { name: /3節/ }))
+
+    expect(onHighlight).not.toHaveBeenCalled()
+  })
+
+  it('フォーカスで塗っていないなら blur でハイライトを消さない', () => {
+    // シートを開くとフォーカスがシートへ移り、印には blur が飛ぶ。ここで消すと
+    // シートが決めた塗りまで巻き添えで消える
+    const onHighlight = vi.fn()
+    render(
+      <VerseCommentGutter
+        verse={3}
+        entry={anchorEntry}
+        onOpen={vi.fn()}
+        onHighlight={onHighlight}
+      />,
+    )
+
+    fireEvent.blur(screen.getByRole('button', { name: /3節/ }))
+
+    expect(onHighlight).not.toHaveBeenCalled()
   })
 
   it('継続節はホバーしてもハイライトを起こさない', async () => {

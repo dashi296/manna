@@ -429,7 +429,11 @@ function ChapterView({
   const router = useRouter()
   const [sheetOpen, setSheetOpen] = useState(false)
   const [composerVerses, setComposerVerses] = useState<number[] | undefined>()
-  const [highlightedVerses, setHighlightedVerses] = useState<Set<number> | null>(null)
+  // 塗りの持ち主は印とシートで分ける。ひとつの状態を両者で書くと、シートの開閉に
+  // 伴うフォーカスの出入りで飛ぶ印の focus / blur に負けて、開いた直後に消えたり
+  // 閉じた後に残ったりする
+  const [gutterHighlight, setGutterHighlight] = useState<number[] | null>(null)
+  const [sheetHighlight, setSheetHighlight] = useState<number[] | null>(null)
   const search = Route.useSearch()
   const navigate = Route.useNavigate()
   const maxVerse = book.verses[chapter - 1]
@@ -464,8 +468,6 @@ function ChapterView({
   // シートの中身は絞り込みを無視する。共有された ?comment= を開いた側が別のユーザーで
   // 絞り込んでいると、送った側が見せたいコメントが無言で開かなくなるため
   const sheetIndex = allCommentIndex
-  const onHighlight = (verses: number[] | null) =>
-    setHighlightedVerses(verses ? new Set(verses) : null)
 
   const verseTextMap = useMemo(
     () => new Map(verseTexts.map((vt) => [vt.verse, vt.text_html])),
@@ -486,6 +488,16 @@ function ChapterView({
     (sheetIndex.get(requestedComment)?.covered.length ?? 0) > 0
       ? requestedComment
       : undefined
+  // シートが開いている間はシート側だけが塗りを決める。カードに触れていないときは
+  // シートが扱っている節そのものを塗り、見出しの「N節のコメント」と一致させる
+  const highlightedVerses = useMemo(() => {
+    const verses =
+      commentVerseForScroll !== undefined
+        ? (sheetHighlight ?? [commentVerseForScroll])
+        : gutterHighlight
+    return verses ? new Set(verses) : null
+  }, [commentVerseForScroll, sheetHighlight, gutterHighlight])
+
   const scrolledVerse = useRef<number | undefined>(undefined)
   const isMounted = useRef(false)
   // 併記表示の英文はクライアント側で後から届き、全節の高さが増える。secondaryTexts を
@@ -679,7 +691,7 @@ function ChapterView({
                     }
                   }
                   onOpen={openVerseSheet}
-                  onHighlight={onHighlight}
+                  onHighlight={setGutterHighlight}
                 />
               )}
             </li>
@@ -698,7 +710,7 @@ function ChapterView({
         onOpenChange={(open) => {
           if (!open) closeVerseSheet()
         }}
-        onHighlight={onHighlight}
+        onHighlight={setSheetHighlight}
       />
     ) : null
 

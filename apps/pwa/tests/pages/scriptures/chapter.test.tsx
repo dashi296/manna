@@ -746,6 +746,51 @@ describe('ChapterPage', () => {
     })
   })
 
+  it('シートが開いている間は、その節が塗られたままになる', async () => {
+    // 印を押して開くとフォーカスが印からシートへ移り、印には blur が飛ぶ。
+    // 塗りの持ち主を分けていないと、開いた直後に塗りが消える
+    const { useSelectedUserStore } = await import('@/features/select-verse-view')
+    useSelectedUserStore.setState({ selectedUserId: null })
+    loaderData = {
+      ...baseChapterData,
+      chapterCommenters: [{ userId: 'u1', name: '中村さん', avatarUrl: null }],
+      circlePosts: [circlePost('p1', 'u1', '中村さん', [3, 4, 5], 'またぐ投稿')],
+    }
+    search = { comment: 3 }
+    const { container } = render(<ChapterPage />)
+    await screen.findByText('またぐ投稿')
+
+    // 印からポインタが離れても、シートが開いている限り塗りは残る
+    fireEvent.pointerOut(screen.getByRole('button', { name: /3節のコメントを見る/ }))
+
+    await waitFor(() => {
+      expect(container.querySelectorAll('[data-highlighted="true"]')).toHaveLength(1)
+    })
+  })
+
+  it('シートを閉じた後は塗りが残らない', async () => {
+    // 閉じるときフォーカスが印へ戻り、その focus で塗り直されていた
+    const { useSelectedUserStore } = await import('@/features/select-verse-view')
+    useSelectedUserStore.setState({ selectedUserId: null })
+    loaderData = {
+      ...baseChapterData,
+      chapterCommenters: [{ userId: 'u1', name: '中村さん', avatarUrl: null }],
+      circlePosts: [circlePost('p1', 'u1', '中村さん', [3, 4, 5], 'またぐ投稿')],
+    }
+    search = { comment: 3 }
+    const { container, rerender } = render(<ChapterPage />)
+    await screen.findByText('またぐ投稿')
+
+    search = {}
+    rerender(<ChapterPage />)
+    // 閉じた後にブラウザがフォーカスを印へ戻す
+    fireEvent.focus(screen.getByRole('button', { name: /3節のコメントを見る/ }))
+
+    await waitFor(() => {
+      expect(container.querySelectorAll('[data-highlighted="true"]')).toHaveLength(0)
+    })
+  })
+
   it('シートを開くとその節までスクロールする', async () => {
     const scrollIntoView = vi.fn()
     Element.prototype.scrollIntoView = scrollIntoView
