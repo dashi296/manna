@@ -144,7 +144,7 @@ export function VerseCommentGutter({ verse, entry, onOpen, onHighlight }: Props)
           releaseHighlight()
         }}
         onContextMenu={(e) => e.preventDefault()}
-        className="flex items-center gap-1 select-none rounded-md transition-colors hover:bg-[var(--verse-highlight)] active:bg-[var(--verse-highlight)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lagoon)]"
+        className="flex w-fit items-center gap-1 select-none rounded-md transition-colors hover:bg-[var(--verse-highlight)] active:bg-[var(--verse-highlight)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lagoon)]"
         style={{ WebkitTouchCallout: 'none', touchAction: 'manipulation' }}
       >
         {avatars.map((c, i) => (

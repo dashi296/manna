@@ -228,10 +228,13 @@ describe('VerseCommentGutter', () => {
     render(<VerseCommentGutter verse={3} entry={anchorEntry} onOpen={vi.fn()} />)
 
     const btn = screen.getByRole('button', { name: /3節/ })
-    expect(btn.className).not.toContain('w-full')
-    expect(btn.className).not.toContain('h-full')
-    // 件数が増えても行の高さが変わらないよう、幅の確保は外側のセルが持ち続ける
-    expect(btn.parentElement?.className).toContain('w-12')
+    // 中身の幅に収まることを明示する。button の暗黙の shrink-to-fit に頼ると、
+    // display や box-sizing の変更で気付かないうちに広がる
+    expect(btn).toHaveClass('w-fit')
+    expect(btn).not.toHaveClass('w-full')
+    expect(btn).not.toHaveClass('h-full')
+    // 件数が増えても行の高さが変わらないよう、幅と高さの確保は外側のセルが持ち続ける
+    expect(btn.parentElement).toHaveClass('w-12', 'lg:w-24', 'shrink-0', 'self-stretch')
   })
 
   it('継続節には押せる要素を置かない（見た目が空のフォーカス地点を作らない）', () => {
