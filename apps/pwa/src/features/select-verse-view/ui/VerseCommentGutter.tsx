@@ -9,8 +9,10 @@ const LONG_PRESS_MS = 400
 
 // 節本文の右に確保する固定幅。件数が増えても行の高さが変わらないよう、
 // 幅は常に一定で、中身だけが「印あり／なし」に切り替わる。
-// lg は最大構成（24px アバター3枚の重ね + 2桁の件数）が収まる幅にする
-export const VERSE_GUTTER_WIDTH = 'w-12 lg:w-24'
+// 件数はアイコンに重ねるので、幅はアイコンぶんだけで足りる。
+// バッジのはみ出し 4px はページ側の余白（p-4）に逃がし、幅には数えない。
+// lg は最大構成（24px アバター3枚の重ね = 56px）が収まる幅にする
+export const VERSE_GUTTER_WIDTH = 'w-6 lg:w-14'
 
 export type VerseGutterEntry = {
   anchoredCount: number
@@ -89,7 +91,7 @@ export function VerseCommentGutter({ verse, entry, onOpen, onHighlight }: Props)
   return (
     // 幅の確保はセル側が持ち続ける（件数が増えても行の高さを変えないため）。
     // 判定はアイコンの大きさに収め、余白を通っただけでは反応しないようにする
-    <div className={`${VERSE_GUTTER_WIDTH} shrink-0 self-stretch pl-1 pt-3`}>
+    <div className={`${VERSE_GUTTER_WIDTH} shrink-0 self-stretch pt-3`}>
       <button
         type="button"
         aria-label={label}
@@ -144,7 +146,7 @@ export function VerseCommentGutter({ verse, entry, onOpen, onHighlight }: Props)
           releaseHighlight()
         }}
         onContextMenu={(e) => e.preventDefault()}
-        className="flex w-fit items-center gap-1 select-none rounded-md transition-colors hover:bg-[var(--verse-highlight)] active:bg-[var(--verse-highlight)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lagoon)]"
+        className="relative flex w-fit items-center select-none rounded-md transition-colors hover:bg-[var(--verse-highlight)] active:bg-[var(--verse-highlight)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lagoon)]"
         style={{ WebkitTouchCallout: 'none', touchAction: 'manipulation' }}
       >
         {avatars.map((c, i) => (
@@ -157,8 +159,20 @@ export function VerseCommentGutter({ verse, entry, onOpen, onHighlight }: Props)
           </span>
         ))}
         {entry!.anchoredCount >= 2 && (
-          <span className="text-[11px] leading-6" style={{ color: 'var(--sea-ink-soft)' }}>
-            {entry.anchoredCount}
+          // 通知バッジと同じ置き方。横に並べるとその分だけ列が広がる。
+          // 10px の小さい文字なのでコントラストは 4.5:1 が要る。白文字＋lagoon-deep
+          // では 3.81 で足りず、lagoon 地に sea-ink の文字で 5.15 にしている。
+          // アバターは flex アイテムに z-index を持つ（static でも効く）ので、
+          // それより前に出さないとバッジが下に潜る
+          <span
+            className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] leading-none font-medium"
+            style={{
+              background: 'var(--lagoon)',
+              color: 'var(--sea-ink)',
+              zIndex: avatars.length + 1,
+            }}
+          >
+            {entry!.anchoredCount}
           </span>
         )}
       </button>
