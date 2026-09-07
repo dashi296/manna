@@ -160,8 +160,9 @@
      各組の1行目は auto 非対応の環境向けフォールバックで、対応環境では下が勝つ */
   contain-intrinsic-size: 0 96px;
   contain-intrinsic-size: auto 96px;
-  /* 幅が広いほど折り返しが減って低くなる */
-  @media (min-width: 640px) {
+  /* 幅が広いほど折り返しが減って低くなる。境界を px で書くとブラウザの既定
+     フォントサイズを変えている環境で Tailwind の sm とずれる（ComposeMenu と同じ理由） */
+  @media (min-width: 40rem) {
     contain-intrinsic-size: 0 60px;
     contain-intrinsic-size: auto 60px;
   }
@@ -169,7 +170,7 @@
   &[data-bilingual] {
     contain-intrinsic-size: 0 158px;
     contain-intrinsic-size: auto 158px;
-    @media (min-width: 640px) {
+    @media (min-width: 40rem) {
       contain-intrinsic-size: 0 92px;
       contain-intrinsic-size: auto 92px;
     }
