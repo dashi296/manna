@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { CompactPostCard, type PostWithUser } from '@/entities/post'
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/shared/ui/sheet'
+import {
+  Drawer,
+  DrawerBody,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+} from '@/shared/ui/drawer'
 import { useIsMobile } from '@/shared/hooks/use-mobile'
 
 type Props = {
@@ -34,17 +40,24 @@ export function VerseCommentSheet({
   if (!widthResolved) return null
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent
-        side={isMobile ? 'bottom' : 'right'}
-        overlayClassName="supports-backdrop-filter:backdrop-blur-none"
-      >
-        <SheetHeader>
-          <SheetTitle>
+    // 章を読みながらコメントを見るための非モーダル。バックドロップを出さず
+    // ページのスクロールも止めない。外側プレスでの自動クローズは、章のスクロール
+    // 操作（外側で 10px 動いた時点）で閉じてしまうため切り、代わりに
+    // スワイプと閉じるボタンで閉じる
+    <Drawer
+      open={open}
+      onOpenChange={onOpenChange}
+      side={isMobile ? 'bottom' : 'right'}
+      modal={false}
+      disablePointerDismissal
+    >
+      <DrawerContent showOverlay={false}>
+        <DrawerHeader>
+          <DrawerTitle>
             📖 {verse}節のコメント {posts.length}件
-          </SheetTitle>
-        </SheetHeader>
-        <div className="flex flex-col gap-2 px-4 pb-4 max-h-[70vh] overflow-y-auto">
+          </DrawerTitle>
+        </DrawerHeader>
+        <DrawerBody className="flex flex-col gap-2 px-4 pb-4 max-h-[70vh]">
           {posts.map((p) => (
             <div
               key={p.id}
@@ -58,8 +71,8 @@ export function VerseCommentSheet({
               <CompactPostCard post={p} />
             </div>
           ))}
-        </div>
-      </SheetContent>
-    </Sheet>
+        </DrawerBody>
+      </DrawerContent>
+    </Drawer>
   )
 }

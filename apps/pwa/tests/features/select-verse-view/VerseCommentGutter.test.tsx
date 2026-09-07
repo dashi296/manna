@@ -159,7 +159,7 @@ describe('VerseCommentGutter 長押し', () => {
     fireEvent.pointerDown(btn)
     fireEvent.pointerCancel(btn)
 
-    expect(onHighlight).toHaveBeenLastCalledWith(null)
+    expect(onHighlight).toHaveBeenLastCalledWith(3, null)
   })
 
   it('長押し中の OS のコンテキストメニューを抑止する', () => {
@@ -174,6 +174,20 @@ describe('VerseCommentGutter 長押し', () => {
 })
 
 describe('VerseCommentGutter', () => {
+  // jsdom の :focus-visible はテスト順で揺れるため、実ブラウザの
+  // 「輪郭の出るフォーカス」を明示的に作る
+  function makeFocusVisible(el: HTMLElement) {
+    const matches = el.matches.bind(el)
+    el.matches = ((sel: string) =>
+      sel === ':focus-visible' ? true : matches(sel)) as typeof el.matches
+  }
+
+  const anchorEntry = {
+    anchoredCount: 1,
+    commenters: [alice],
+    highlightVerses: [3, 4, 5],
+  }
+
   it('コメントのない節では押せる要素を描画しない', () => {
     render(<VerseCommentGutter verse={4} entry={undefined} onOpen={vi.fn()} />)
 
@@ -238,10 +252,226 @@ describe('VerseCommentGutter', () => {
 
     const btn = screen.getByRole('button', { name: /3節/ })
     await userEvent.hover(btn)
-    expect(onHighlight).toHaveBeenLastCalledWith([3, 4, 5])
+    expect(onHighlight).toHaveBeenLastCalledWith(3, [3, 4, 5])
 
     await userEvent.unhover(btn)
-    expect(onHighlight).toHaveBeenLastCalledWith(null)
+    expect(onHighlight).toHaveBeenLastCalledWith(3, null)
+  })
+
+  it('キーボードで印にフォーカスするとハイライトし、外れると解除する', async () => {
+    const onHighlight = vi.fn()
+    const user = userEvent.setup()
+    render(
+      <>
+        <button type="button">前</button>
+        <VerseCommentGutter
+          verse={3}
+          entry={anchorEntry}
+          onOpen={vi.fn()}
+          onHighlight={onHighlight}
+        />
+      </>,
+    )
+
+    screen.getByRole('button', { name: '前' }).focus()
+    await user.tab()
+    expect(onHighlight).toHaveBeenLastCalledWith(3, [3, 4, 5])
+
+    await user.tab()
+    expect(onHighlight).toHaveBeenLastCalledWith(3, null)
+  })
+
+  it('キーボードで塗った後にマウスが通り過ぎてもハイライトを消さない', () => {
+    // フォーカスの輪郭は残るのに塗りだけ消えると、両者が食い違う
+    const onHighlight = vi.fn()
+    render(
+      <VerseCommentGutter
+        verse={3}
+        entry={anchorEntry}
+        onOpen={vi.fn()}
+        onHighlight={onHighlight}
+      />,
+    )
+
+    const btn = screen.getByRole('button', { name: /3節/ })
+    makeFocusVisible(btn)
+    fireEvent.focus(btn)
+    expect(onHighlight).toHaveBeenLastCalledWith(3, [3, 4, 5])
+
+    onHighlight.mockClear()
+    fireEvent.pointerEnter(btn)
+    fireEvent.pointerLeave(btn)
+
+    expect(onHighlight).not.toHaveBeenCalledWith(3, null)
+  })
+
+  it('ホバーで塗った後にフォーカスが外れてもハイライトを消さない', () => {
+    // 逆向き。ポインタが乗っている間は blur で消さない
+    const onHighlight = vi.fn()
+    render(
+      <VerseCommentGutter
+        verse={3}
+        entry={anchorEntry}
+        onOpen={vi.fn()}
+        onHighlight={onHighlight}
+      />,
+    )
+
+    const btn = screen.getByRole('button', { name: /3節/ })
+    makeFocusVisible(btn)
+    fireEvent.focus(btn)
+    fireEvent.pointerEnter(btn)
+    onHighlight.mockClear()
+    fireEvent.blur(btn)
+
+    expect(onHighlight).not.toHaveBeenCalledWith(3, null)
+  })
+
+  it('輪郭の出るフォーカスならハイライトする', () => {
+    // jsdom は fireEvent.focus で activeElement を変えないため :focus-visible が
+    // 常に偽になる。実ブラウザの「輪郭が出るフォーカス」を matches で明示して固定する
+    const onHighlight = vi.fn()
+    render(
+      <VerseCommentGutter
+        verse={3}
+        entry={anchorEntry}
+        onOpen={vi.fn()}
+        onHighlight={onHighlight}
+      />,
+    )
+
+    const btn = screen.getByRole('button', { name: /3節/ })
+    makeFocusVisible(btn)
+    fireEvent.focus(btn)
+
+    expect(onHighlight).toHaveBeenCalledWith(3, [3, 4, 5])
+  })
+
+  it('輪郭の出ないフォーカス（シートを閉じたときの復帰）ではハイライトしない', () => {
+    // 印の輪郭は focus-visible で出し分けている。プログラム的なフォーカス復帰では
+    // 輪郭が出ないので、塗りだけが残ると「閉じたのに色がついている」状態になる
+    const onHighlight = vi.fn()
+    render(
+      <VerseCommentGutter
+        verse={3}
+        entry={anchorEntry}
+        onOpen={vi.fn()}
+        onHighlight={onHighlight}
+      />,
+    )
+
+    fireEvent.focus(screen.getByRole('button', { name: /3節/ }))
+
+    expect(onHighlight).not.toHaveBeenCalled()
+  })
+
+  it('フォーカスで塗っていないなら blur でハイライトを消さない', () => {
+    // シートを開くとフォーカスがシートへ移り、印には blur が飛ぶ。ここで消すと
+    // シートが決めた塗りまで巻き添えで消える
+    const onHighlight = vi.fn()
+    render(
+      <VerseCommentGutter
+        verse={3}
+        entry={anchorEntry}
+        onOpen={vi.fn()}
+        onHighlight={onHighlight}
+      />,
+    )
+
+    fireEvent.blur(screen.getByRole('button', { name: /3節/ }))
+
+    expect(onHighlight).not.toHaveBeenCalled()
+  })
+
+  it('塗っている最中に対象節が変わったら、新しい範囲で塗り直す', () => {
+    // 絞り込みの変更や投稿の更新で、ボタンは残ったまま対象節だけが変わりうる。
+    // 主張を握ったままにすると、親には古い範囲が残る
+    const onHighlight = vi.fn()
+    const { rerender } = render(
+      <VerseCommentGutter
+        verse={3}
+        entry={anchorEntry}
+        onOpen={vi.fn()}
+        onHighlight={onHighlight}
+      />,
+    )
+    fireEvent.pointerEnter(screen.getByRole('button', { name: /3節/ }))
+    onHighlight.mockClear()
+
+    rerender(
+      <VerseCommentGutter
+        verse={3}
+        entry={{ ...anchorEntry, highlightVerses: [7, 8] }}
+        onOpen={vi.fn()}
+        onHighlight={onHighlight}
+      />,
+    )
+
+    expect(onHighlight).toHaveBeenCalledWith(3, [7, 8])
+  })
+
+  it('塗っていなければ対象節が変わっても通知しない', () => {
+    const onHighlight = vi.fn()
+    const { rerender } = render(
+      <VerseCommentGutter
+        verse={3}
+        entry={anchorEntry}
+        onOpen={vi.fn()}
+        onHighlight={onHighlight}
+      />,
+    )
+    onHighlight.mockClear()
+
+    rerender(
+      <VerseCommentGutter
+        verse={3}
+        entry={{ ...anchorEntry, highlightVerses: [7, 8] }}
+        onOpen={vi.fn()}
+        onHighlight={onHighlight}
+      />,
+    )
+
+    expect(onHighlight).not.toHaveBeenCalled()
+  })
+
+  it('印が消えたら塗りを解放する', () => {
+    // 絞り込みで entry が無くなるとボタンはプレースホルダーに変わり、
+    // pointerleave も blur も飛ばないまま親に塗りが残る
+    const onHighlight = vi.fn()
+    const { rerender } = render(
+      <VerseCommentGutter
+        verse={3}
+        entry={anchorEntry}
+        onOpen={vi.fn()}
+        onHighlight={onHighlight}
+      />,
+    )
+    fireEvent.pointerEnter(screen.getByRole('button', { name: /3節/ }))
+    onHighlight.mockClear()
+
+    rerender(
+      <VerseCommentGutter verse={3} entry={undefined} onOpen={vi.fn()} onHighlight={onHighlight} />,
+    )
+
+    expect(onHighlight).toHaveBeenCalledWith(3, null)
+  })
+
+  it('アンマウントされたら塗りを解放する', () => {
+    const onHighlight = vi.fn()
+    const { unmount } = render(
+      <VerseCommentGutter
+        verse={3}
+        entry={anchorEntry}
+        onOpen={vi.fn()}
+        onHighlight={onHighlight}
+      />,
+    )
+    fireEvent.pointerEnter(screen.getByRole('button', { name: /3節/ }))
+    onHighlight.mockClear()
+
+    unmount()
+
+    expect(onHighlight).toHaveBeenCalledWith(3, null)
   })
 
   it('継続節はホバーしてもハイライトを起こさない', async () => {

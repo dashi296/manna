@@ -501,7 +501,10 @@ describe('ChapterPage', () => {
     expect(navigateSpy.mock.calls.at(-1)![0]).toMatchObject({ resetScroll: false })
   })
 
-  it('シートが開いている間は背後の印を操作できない（モーダルのため）', async () => {
+  it('シートが開いたまま別の印を押しても履歴を積まず、マーカーも足さない', async () => {
+    // シートは非モーダルなので背後の印を押せる。押すたびに push すると閉じる操作が
+    // 前の節のシートに戻ってしまう。また直リンクで開いたエントリにマーカーを足すと、
+    // 閉じたときに章から離脱する
     const { useSelectedUserStore } = await import('@/features/select-verse-view')
     useSelectedUserStore.setState({ selectedUserId: null })
     loaderData = {
@@ -509,14 +512,23 @@ describe('ChapterPage', () => {
       chapterCommenters: [{ userId: 'u1', name: '中村さん', avatarUrl: null }],
       circlePosts: [
         circlePost('p1', 'u1', '中村さん', [3], '節3のコメント'),
-        circlePost('p2', 'u1', '中村さん', [5]),
+        circlePost('p2', 'u1', '中村さん', [5], '節5のコメント'),
       ],
     }
     search = { comment: 3 }
+    navigateSpy.mockClear()
+    const user = userEvent.setup()
     render(<ChapterPage />)
     await screen.findByText('節3のコメント')
 
-    expect(screen.queryByRole('button', { name: /5節のコメントを見る/ })).toBeNull()
+    await user.click(screen.getByRole('button', { name: /5節のコメントを見る/ }))
+
+    const call = navigateSpy.mock.calls.at(-1)![0]
+    expect(call.search({})).toMatchObject({ comment: 5 })
+    expect(call.replace).toBe(true)
+    expect(call.state({})).not.toHaveProperty('mannaVerseSheet')
+    // 既に付いているマーカーは落とさない（印から開いたエントリのまま差し替える）
+    expect(call.state({ mannaVerseSheet: true })).toMatchObject({ mannaVerseSheet: true })
   })
 
   it('印を押すとシート由来のマーカーを履歴 state に載せる', async () => {
@@ -731,6 +743,155 @@ describe('ChapterPage', () => {
 
     await waitFor(() => {
       expect(container.querySelectorAll('[data-highlighted="true"]')).toHaveLength(3)
+    })
+  })
+
+  // jsdom の :focus-visible はテスト順で揺れるため、実ブラウザの
+  // 「輪郭の出るフォーカス」を明示的に作る
+  function makeFocusVisible(el: HTMLElement) {
+    const matches = el.matches.bind(el)
+    el.matches = ((sel: string) =>
+      sel === ':focus-visible' ? true : matches(sel)) as typeof el.matches
+  }
+
+  // 印をまたぐ塗りの所有権。印1つ分の中だけで持つと、別の印から離脱しただけで
+  // フォーカスが残っている印の塗りまで消える
+  const twoMarks = () => ({
+    ...baseChapterData,
+    chapterCommenters: [{ userId: 'u1', name: '中村さん', avatarUrl: null }],
+    circlePosts: [
+      circlePost('p1', 'u1', '中村さん', [3, 4, 5], 'A の投稿'),
+      circlePost('p2', 'u1', '中村さん', [10, 11], 'B の投稿'),
+    ],
+  })
+
+  it('A をキーボードで塗ったまま B にホバーして離れても、A の塗りが残る', async () => {
+    const { useSelectedUserStore } = await import('@/features/select-verse-view')
+    useSelectedUserStore.setState({ selectedUserId: null })
+    loaderData = twoMarks()
+    search = {}
+    const { container } = render(<ChapterPage />)
+
+    const a = await screen.findByRole('button', { name: /3節のコメントを見る/ })
+    const b = screen.getByRole('button', { name: /10節のコメントを見る/ })
+    makeFocusVisible(a)
+    fireEvent.focus(a)
+    await waitFor(() => {
+      expect(container.querySelectorAll('[data-highlighted="true"]')).toHaveLength(3)
+    })
+
+    fireEvent.pointerEnter(b)
+    await waitFor(() => {
+      expect(container.querySelectorAll('[data-highlighted="true"]')).toHaveLength(2)
+    })
+
+    fireEvent.pointerLeave(b)
+    await waitFor(() => {
+      expect(container.querySelectorAll('[data-highlighted="true"]')).toHaveLength(3)
+    })
+  })
+
+  it('A のフォーカスが外れたら、ホバー中の B の塗りに戻る', async () => {
+    const { useSelectedUserStore } = await import('@/features/select-verse-view')
+    useSelectedUserStore.setState({ selectedUserId: null })
+    loaderData = twoMarks()
+    search = {}
+    const { container } = render(<ChapterPage />)
+
+    const a = await screen.findByRole('button', { name: /3節のコメントを見る/ })
+    const b = screen.getByRole('button', { name: /10節のコメントを見る/ })
+    makeFocusVisible(a)
+    fireEvent.focus(a)
+    fireEvent.pointerEnter(b)
+    fireEvent.blur(a)
+
+    await waitFor(() => {
+      expect(container.querySelectorAll('[data-highlighted="true"]')).toHaveLength(2)
+    })
+  })
+
+  it('A をフォーカスしたまま B で pointercancel が起きても、A の塗りが残る', async () => {
+    const { useSelectedUserStore } = await import('@/features/select-verse-view')
+    useSelectedUserStore.setState({ selectedUserId: null })
+    loaderData = twoMarks()
+    search = {}
+    const { container } = render(<ChapterPage />)
+
+    const a = await screen.findByRole('button', { name: /3節のコメントを見る/ })
+    const b = screen.getByRole('button', { name: /10節のコメントを見る/ })
+    makeFocusVisible(a)
+    fireEvent.focus(a)
+    fireEvent.pointerCancel(b)
+
+    await waitFor(() => {
+      expect(container.querySelectorAll('[data-highlighted="true"]')).toHaveLength(3)
+    })
+  })
+
+  it('シートが開いている間は、コメントが指す節すべてが塗られたままになる', async () => {
+    // 印を押して開くとフォーカスが印からシートへ移り、印には blur が飛ぶ。
+    // 塗りの持ち主を分けていないと、開いた直後に塗りが消える。
+    // またホバーの無いタッチでは、開いた時点の塗りが範囲を知る唯一の手段になる
+    const { useSelectedUserStore } = await import('@/features/select-verse-view')
+    useSelectedUserStore.setState({ selectedUserId: null })
+    loaderData = {
+      ...baseChapterData,
+      chapterCommenters: [{ userId: 'u1', name: '中村さん', avatarUrl: null }],
+      circlePosts: [circlePost('p1', 'u1', '中村さん', [3, 4, 5], 'またぐ投稿')],
+    }
+    search = { comment: 3 }
+    const { container } = render(<ChapterPage />)
+    await screen.findByText('またぐ投稿')
+
+    // 印からポインタが離れても、シートが開いている限り塗りは残る
+    fireEvent.pointerOut(screen.getByRole('button', { name: /3節のコメントを見る/ }))
+
+    await waitFor(() => {
+      expect(container.querySelectorAll('[data-highlighted="true"]')).toHaveLength(3)
+    })
+  })
+
+  it('シートに複数のコメントが出るときは、その全部が指す節を塗る', async () => {
+    const { useSelectedUserStore } = await import('@/features/select-verse-view')
+    useSelectedUserStore.setState({ selectedUserId: null })
+    loaderData = {
+      ...baseChapterData,
+      chapterCommenters: [{ userId: 'u1', name: '中村さん', avatarUrl: null }],
+      circlePosts: [
+        circlePost('p1', 'u1', '中村さん', [3, 4, 5], 'またぐ投稿'),
+        circlePost('p2', 'u1', '中村さん', [5, 6], '別のまたぐ投稿'),
+      ],
+    }
+    search = { comment: 5 }
+    const { container } = render(<ChapterPage />)
+    await screen.findByText('またぐ投稿')
+
+    // 3,4,5 と 5,6 の和集合で 3〜6 の4節
+    await waitFor(() => {
+      expect(container.querySelectorAll('[data-highlighted="true"]')).toHaveLength(4)
+    })
+  })
+
+  it('シートを閉じた後は塗りが残らない', async () => {
+    // 閉じるときフォーカスが印へ戻り、その focus で塗り直されていた
+    const { useSelectedUserStore } = await import('@/features/select-verse-view')
+    useSelectedUserStore.setState({ selectedUserId: null })
+    loaderData = {
+      ...baseChapterData,
+      chapterCommenters: [{ userId: 'u1', name: '中村さん', avatarUrl: null }],
+      circlePosts: [circlePost('p1', 'u1', '中村さん', [3, 4, 5], 'またぐ投稿')],
+    }
+    search = { comment: 3 }
+    const { container, rerender } = render(<ChapterPage />)
+    await screen.findByText('またぐ投稿')
+
+    search = {}
+    rerender(<ChapterPage />)
+    // 閉じた後にブラウザがフォーカスを印へ戻す
+    fireEvent.focus(screen.getByRole('button', { name: /3節のコメントを見る/ }))
+
+    await waitFor(() => {
+      expect(container.querySelectorAll('[data-highlighted="true"]')).toHaveLength(0)
     })
   })
 

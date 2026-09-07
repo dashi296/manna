@@ -174,6 +174,35 @@ describe('VerseRow bilingual', () => {
     expect(numberSpan.nextElementSibling?.tagName).toBe('SPAN')
   })
 
+  it('併記中は verse-item に data-bilingual を付ける', async () => {
+    // 画面外の節の高さ見積もり（contain-intrinsic-size）を併記の有無で切り替えるため。
+    // 見積もりがずれるとページ全体の高さと節へのスクロール位置が狂う
+    const { container } = renderInRouter(
+      <VerseRow
+        {...baseProps}
+        mode="read"
+        selected={false}
+        onSelect={vi.fn()}
+        textHtmlSecondary="Home to the Lord is one way"
+        secondaryLang="en"
+      />,
+    )
+
+    await waitFor(() => {
+      expect(container.querySelector('.verse-item')).toHaveAttribute('data-bilingual')
+    })
+  })
+
+  it('併記していなければ data-bilingual を付けない', async () => {
+    const { container } = renderInRouter(
+      <VerseRow {...baseProps} mode="read" selected={false} onSelect={vi.fn()} />,
+    )
+
+    await waitFor(() => {
+      expect(container.querySelector('.verse-item')).not.toHaveAttribute('data-bilingual')
+    })
+  })
+
   it('textHtmlSecondary が無ければ第2言語ブロックを描画しない', async () => {
     const { container } = renderInRouter(
       <VerseRow {...baseProps} mode="read" selected={false} onSelect={vi.fn()} />,

@@ -155,9 +155,26 @@
 
 @utility verse-item {
   content-visibility: auto;
-  /* auto 非対応の環境向けフォールバック。対応環境では下が勝つ */
-  contain-intrinsic-size: 0 81px;
-  contain-intrinsic-size: auto 81px;
+  /* 画面外の節の高さの見積もり。実測（4章 292節）の平均に合わせている。
+     ずれるとページ全体の高さと、節へのスクロール位置が狂う。
+     各組の1行目は auto 非対応の環境向けフォールバックで、対応環境では下が勝つ */
+  contain-intrinsic-size: 0 96px;
+  contain-intrinsic-size: auto 96px;
+  /* 幅が広いほど折り返しが減って低くなる。境界を px で書くとブラウザの既定
+     フォントサイズを変えている環境で Tailwind の sm とずれる（ComposeMenu と同じ理由） */
+  @media (min-width: 40rem) {
+    contain-intrinsic-size: 0 60px;
+    contain-intrinsic-size: auto 60px;
+  }
+  /* 日英併記は行数が増える。狭い画面では縦に積むので特に高い */
+  &[data-bilingual] {
+    contain-intrinsic-size: 0 158px;
+    contain-intrinsic-size: auto 158px;
+    @media (min-width: 40rem) {
+      contain-intrinsic-size: 0 92px;
+      contain-intrinsic-size: auto 92px;
+    }
+  }
   /* 画面外の節が印刷から落ちないようにする */
   @media print {
     content-visibility: visible;
