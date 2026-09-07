@@ -9,10 +9,10 @@ const LONG_PRESS_MS = 400
 
 // 節本文の右に確保する固定幅。件数が増えても行の高さが変わらないよう、
 // 幅は常に一定で、中身だけが「印あり／なし」に切り替わる。
-// 件数はアイコンに重ねるので、幅は左余白 4px + アイコン 24px で足りる。
+// 件数はアイコンに重ねるので、幅はアイコンぶんだけで足りる。
 // バッジのはみ出し 4px はページ側の余白（p-4）に逃がし、幅には数えない。
 // lg は最大構成（24px アバター3枚の重ね = 56px）が収まる幅にする
-export const VERSE_GUTTER_WIDTH = 'w-7 lg:w-15'
+export const VERSE_GUTTER_WIDTH = 'w-6 lg:w-14'
 
 export type VerseGutterEntry = {
   anchoredCount: number
@@ -91,7 +91,7 @@ export function VerseCommentGutter({ verse, entry, onOpen, onHighlight }: Props)
   return (
     // 幅の確保はセル側が持ち続ける（件数が増えても行の高さを変えないため）。
     // 判定はアイコンの大きさに収め、余白を通っただけでは反応しないようにする
-    <div className={`${VERSE_GUTTER_WIDTH} shrink-0 self-stretch pl-1 pt-3`}>
+    <div className={`${VERSE_GUTTER_WIDTH} shrink-0 self-stretch pt-3`}>
       <button
         type="button"
         aria-label={label}

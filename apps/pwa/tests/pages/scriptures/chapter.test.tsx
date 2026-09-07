@@ -666,7 +666,7 @@ describe('ChapterPage', () => {
       expect(screen.getByText('一節の本文')).toBeInTheDocument()
     })
     const row = container.querySelector('li[data-verse="1"]')!
-    expect(row.querySelector('.w-7')).toBeNull()
+    expect(row.querySelector('.w-6')).toBeNull()
   })
 
   it('絞り込みで印が消えてもガターの幅は保つ（レイアウトを揺らさない）', async () => {
@@ -689,7 +689,7 @@ describe('ChapterPage', () => {
     })
     expect(screen.queryByRole('button', { name: /節のコメントを見る/ })).toBeNull()
     const row = container.querySelector('li[data-verse="1"]')!
-    expect(row.querySelector('.w-7')).not.toBeNull()
+    expect(row.querySelector('.w-6')).not.toBeNull()
   })
 
   it('その節にコメントが無いなら comment があってもシートを開かない', async () => {
