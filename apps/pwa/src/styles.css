@@ -181,6 +181,28 @@
   }
 }
 
+/* @tailwindcss/typography の既定色はライト固定で、テーマ変数を見ない。
+   .prose 自身が --tw-prose-* を再定義するため :root 側で上書きしても効かず、
+   ダークでは本文が gray-700 のまま沈む。@layer に入れると plugin 側と同じ
+   レイヤーで負けるので、意図的にレイヤー外に置いている */
+.prose {
+  --tw-prose-body: var(--sea-ink);
+  --tw-prose-headings: var(--sea-ink);
+  --tw-prose-bold: var(--sea-ink);
+  --tw-prose-code: var(--sea-ink);
+  --tw-prose-kbd: var(--sea-ink);
+  --tw-prose-lead: var(--sea-ink-soft);
+  --tw-prose-captions: var(--sea-ink-soft);
+  --tw-prose-quotes: var(--sea-ink-soft);
+  --tw-prose-bullets: var(--sea-ink-soft);
+  --tw-prose-counters: var(--sea-ink-soft);
+  --tw-prose-links: var(--lagoon-deep);
+  --tw-prose-hr: var(--line);
+  --tw-prose-quote-borders: var(--line);
+  --tw-prose-th-borders: var(--line);
+  --tw-prose-td-borders: var(--line);
+}
+
 * {
   box-sizing: border-box;
 }
