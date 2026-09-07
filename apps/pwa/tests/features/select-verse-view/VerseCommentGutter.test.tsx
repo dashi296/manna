@@ -222,6 +222,30 @@ describe('VerseCommentGutter', () => {
     expect(screen.getByText('4')).toBeInTheDocument()
   })
 
+  it('件数はアイコンの右上に重ねる', () => {
+    // 件数を横に並べるとその分だけ列が広がり、聖文が圧迫される
+    render(
+      <VerseCommentGutter
+        verse={3}
+        entry={{ anchoredCount: 3, commenters: [alice], highlightVerses: [3] }}
+        onOpen={vi.fn()}
+      />,
+    )
+
+    const badge = screen.getByText('3')
+    expect(badge).toHaveClass('absolute')
+    expect(badge.closest('button')).toHaveClass('relative')
+  })
+
+  it('印の列はアイコン1枚ぶんの幅に収める', () => {
+    // 件数を重ねたので、列はアイコン + バッジのはみ出しがあれば足りる
+    render(<VerseCommentGutter verse={3} entry={anchorEntry} onOpen={vi.fn()} />)
+
+    const cell = screen.getByRole('button', { name: /3節/ }).parentElement
+    expect(cell).toHaveClass('w-9')
+    expect(cell).not.toHaveClass('w-12')
+  })
+
   it('判定はアイコンの大きさに収め、印のセル全体には広げない', () => {
     // jsdom はレイアウトを持たないためクラスで固定する。セル全体が判定だと、
     // アイコンから離れた余白を通っただけで節が塗られ、クリックでシートが開く
@@ -234,7 +258,7 @@ describe('VerseCommentGutter', () => {
     expect(btn).not.toHaveClass('w-full')
     expect(btn).not.toHaveClass('h-full')
     // 件数が増えても行の高さが変わらないよう、幅と高さの確保は外側のセルが持ち続ける
-    expect(btn.parentElement).toHaveClass('w-12', 'lg:w-24', 'shrink-0', 'self-stretch')
+    expect(btn.parentElement).toHaveClass('w-9', 'lg:w-18', 'shrink-0', 'self-stretch')
   })
 
   it('継続節には押せる要素を置かない（見た目が空のフォーカス地点を作らない）', () => {

@@ -9,8 +9,9 @@ const LONG_PRESS_MS = 400
 
 // 節本文の右に確保する固定幅。件数が増えても行の高さが変わらないよう、
 // 幅は常に一定で、中身だけが「印あり／なし」に切り替わる。
-// lg は最大構成（24px アバター3枚の重ね + 2桁の件数）が収まる幅にする
-export const VERSE_GUTTER_WIDTH = 'w-12 lg:w-24'
+// 件数はアイコンに重ねるので、幅はアイコンとバッジのはみ出しぶんで足りる。
+// lg は最大構成（24px アバター3枚の重ね = 56px + はみ出し）が収まる幅にする
+export const VERSE_GUTTER_WIDTH = 'w-9 lg:w-18'
 
 export type VerseGutterEntry = {
   anchoredCount: number
@@ -144,7 +145,7 @@ export function VerseCommentGutter({ verse, entry, onOpen, onHighlight }: Props)
           releaseHighlight()
         }}
         onContextMenu={(e) => e.preventDefault()}
-        className="flex w-fit items-center gap-1 select-none rounded-md transition-colors hover:bg-[var(--verse-highlight)] active:bg-[var(--verse-highlight)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lagoon)]"
+        className="relative flex w-fit items-center select-none rounded-md transition-colors hover:bg-[var(--verse-highlight)] active:bg-[var(--verse-highlight)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lagoon)]"
         style={{ WebkitTouchCallout: 'none', touchAction: 'manipulation' }}
       >
         {avatars.map((c, i) => (
@@ -157,8 +158,14 @@ export function VerseCommentGutter({ verse, entry, onOpen, onHighlight }: Props)
           </span>
         ))}
         {entry!.anchoredCount >= 2 && (
-          <span className="text-[11px] leading-6" style={{ color: 'var(--sea-ink-soft)' }}>
-            {entry.anchoredCount}
+          // 通知バッジと同じ置き方。横に並べるとその分だけ列が広がる。
+          // 10px の小さい文字なのでコントラストは 4.5:1 が要る。白文字＋lagoon-deep
+          // では 3.81 で足りず、lagoon 地に sea-ink の文字で 5.15 にしている
+          <span
+            className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] leading-none font-medium"
+            style={{ background: 'var(--lagoon)', color: 'var(--sea-ink)' }}
+          >
+            {entry!.anchoredCount}
           </span>
         )}
       </button>
