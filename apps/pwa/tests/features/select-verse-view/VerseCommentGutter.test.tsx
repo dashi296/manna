@@ -383,6 +383,57 @@ describe('VerseCommentGutter', () => {
     expect(onHighlight).not.toHaveBeenCalled()
   })
 
+  it('塗っている最中に対象節が変わったら、新しい範囲で塗り直す', () => {
+    // 絞り込みの変更や投稿の更新で、ボタンは残ったまま対象節だけが変わりうる。
+    // 主張を握ったままにすると、親には古い範囲が残る
+    const onHighlight = vi.fn()
+    const { rerender } = render(
+      <VerseCommentGutter
+        verse={3}
+        entry={anchorEntry}
+        onOpen={vi.fn()}
+        onHighlight={onHighlight}
+      />,
+    )
+    fireEvent.pointerEnter(screen.getByRole('button', { name: /3節/ }))
+    onHighlight.mockClear()
+
+    rerender(
+      <VerseCommentGutter
+        verse={3}
+        entry={{ ...anchorEntry, highlightVerses: [7, 8] }}
+        onOpen={vi.fn()}
+        onHighlight={onHighlight}
+      />,
+    )
+
+    expect(onHighlight).toHaveBeenCalledWith(3, [7, 8])
+  })
+
+  it('塗っていなければ対象節が変わっても通知しない', () => {
+    const onHighlight = vi.fn()
+    const { rerender } = render(
+      <VerseCommentGutter
+        verse={3}
+        entry={anchorEntry}
+        onOpen={vi.fn()}
+        onHighlight={onHighlight}
+      />,
+    )
+    onHighlight.mockClear()
+
+    rerender(
+      <VerseCommentGutter
+        verse={3}
+        entry={{ ...anchorEntry, highlightVerses: [7, 8] }}
+        onOpen={vi.fn()}
+        onHighlight={onHighlight}
+      />,
+    )
+
+    expect(onHighlight).not.toHaveBeenCalled()
+  })
+
   it('印が消えたら塗りを解放する', () => {
     // 絞り込みで entry が無くなるとボタンはプレースホルダーに変わり、
     // pointerleave も blur も飛ばないまま親に塗りが残る

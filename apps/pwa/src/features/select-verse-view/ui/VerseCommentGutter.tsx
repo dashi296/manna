@@ -50,11 +50,15 @@ export function VerseCommentGutter({ verse, entry, onOpen, onHighlight }: Props)
   // 印を置くのはアンカー節だけ。範囲の途中の節にボタンを置くと、見た目が空のまま
   // フォーカスできる地点がキーボード利用者の前に並んでしまう
   const hasButton = !!entry && entry.anchoredCount > 0
+  const highlight = entry?.highlightVerses?.length ? entry.highlightVerses : null
 
-  // ボタンが消えると pointerleave も blur も飛ばないため、自分で手放す。
-  // onHighlight は毎描画で作り直されうるので ref 経由で読む
+  // onHighlight と highlight は毎描画で作り直されうるので ref 経由で読む
   const onHighlightRef = useRef(onHighlight)
   onHighlightRef.current = onHighlight
+  const highlightRef = useRef(highlight)
+  highlightRef.current = highlight
+
+  // ボタンが消えると pointerleave も blur も飛ばないため、自分で手放す
   useEffect(() => {
     if (!hasButton) return
     return () => {
@@ -64,6 +68,15 @@ export function VerseCommentGutter({ verse, entry, onOpen, onHighlight }: Props)
     }
   }, [hasButton, verse])
 
+  // 塗っている最中に対象節が変わることがある（絞り込みの変更や投稿の更新）。
+  // 主張を握ったままにすると、受け手には古い範囲が残る。
+  // 配列は毎描画で作り直されるため、中身をキーにして変化したときだけ通知する
+  const highlightKey = highlight?.join(',') ?? ''
+  useEffect(() => {
+    if (!highlightedByFocus.current && !highlightedByPointer.current) return
+    onHighlightRef.current?.(verse, highlightRef.current)
+  }, [highlightKey, verse])
+
   if (!hasButton) {
     return <div className={`${VERSE_GUTTER_WIDTH} shrink-0`} aria-hidden="true" />
   }
@@ -72,7 +85,6 @@ export function VerseCommentGutter({ verse, entry, onOpen, onHighlight }: Props)
   // この節に関わる全件で、両者は一致しない
   const label = `${verse}節のコメントを見る`
   const avatars = entry!.commenters.slice(0, MAX_AVATARS)
-  const highlight = entry!.highlightVerses?.length ? entry!.highlightVerses : null
 
   return (
     <div className={`${VERSE_GUTTER_WIDTH} shrink-0 self-stretch`}>
