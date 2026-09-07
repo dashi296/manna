@@ -262,8 +262,8 @@ describe('VerseCommentGutter', () => {
     render(<VerseCommentGutter verse={3} entry={anchorEntry} onOpen={vi.fn()} />)
 
     const cell = screen.getByRole('button', { name: /3節/ }).parentElement
-    expect(cell).toHaveClass('w-9')
-    expect(cell).not.toHaveClass('w-12')
+    expect(cell).toHaveClass('w-7')
+    expect(cell).not.toHaveClass('w-9')
   })
 
   it('判定はアイコンの大きさに収め、印のセル全体には広げない', () => {
@@ -278,7 +278,7 @@ describe('VerseCommentGutter', () => {
     expect(btn).not.toHaveClass('w-full')
     expect(btn).not.toHaveClass('h-full')
     // 件数が増えても行の高さが変わらないよう、幅と高さの確保は外側のセルが持ち続ける
-    expect(btn.parentElement).toHaveClass('w-9', 'lg:w-18', 'shrink-0', 'self-stretch')
+    expect(btn.parentElement).toHaveClass('w-7', 'lg:w-15', 'shrink-0', 'self-stretch')
   })
 
   it('継続節には押せる要素を置かない（見た目が空のフォーカス地点を作らない）', () => {

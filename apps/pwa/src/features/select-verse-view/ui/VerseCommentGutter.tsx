@@ -9,9 +9,10 @@ const LONG_PRESS_MS = 400
 
 // 節本文の右に確保する固定幅。件数が増えても行の高さが変わらないよう、
 // 幅は常に一定で、中身だけが「印あり／なし」に切り替わる。
-// 件数はアイコンに重ねるので、幅はアイコンとバッジのはみ出しぶんで足りる。
-// lg は最大構成（24px アバター3枚の重ね = 56px + はみ出し）が収まる幅にする
-export const VERSE_GUTTER_WIDTH = 'w-9 lg:w-18'
+// 件数はアイコンに重ねるので、幅は左余白 4px + アイコン 24px で足りる。
+// バッジのはみ出し 4px はページ側の余白（p-4）に逃がし、幅には数えない。
+// lg は最大構成（24px アバター3枚の重ね = 56px）が収まる幅にする
+export const VERSE_GUTTER_WIDTH = 'w-7 lg:w-15'
 
 export type VerseGutterEntry = {
   anchoredCount: number
