@@ -30,10 +30,19 @@ export function VerseCommentGutter({ verse, entry, onOpen, onHighlight }: Props)
   // pointerup の時点で押下時間を確定させる。タッチでは pointerleave が click より
   // 先に来るため、leave 側で押下時間ごと捨てると長押しが判定できなくなる
   const lastPressDuration = useRef<number | null>(null)
-  // このボタンがフォーカスで塗ったかどうか。シートの開閉に伴うフォーカスの出入りで
-  // focus / blur が飛ぶため、素の focus で塗ると「閉じたのに色がついている」、
-  // blur で無条件に消すと「開いたのに色がつかない」状態になる
+  // 塗りの持ち主をフォーカスとポインタで別々に持つ。シートの開閉に伴うフォーカスの
+  // 出入りで focus / blur が飛ぶため、素の focus で塗ると「閉じたのに色がついている」、
+  // blur で無条件に消すと「開いたのに色がつかない」状態になる。
+  // 片方だけを見て消すと、キーボードで塗った上をマウスが通り過ぎただけで
+  // 輪郭は残ったまま塗りが消える
   const highlightedByFocus = useRef(false)
+  const highlightedByPointer = useRef(false)
+
+  // どちらも持っていないときだけ消す
+  function releaseHighlight(onHighlight?: (verses: number[] | null) => void) {
+    if (highlightedByFocus.current || highlightedByPointer.current) return
+    onHighlight?.(null)
+  }
 
   // 印を置くのはアンカー節だけ。範囲の途中の節にボタンを置くと、見た目が空のまま
   // フォーカスできる地点がキーボード利用者の前に並んでしまう
@@ -72,17 +81,22 @@ export function VerseCommentGutter({ verse, entry, onOpen, onHighlight }: Props)
           lastPressDuration.current = Date.now() - pressStartedAt.current
           pressStartedAt.current = 0
         }}
-        onPointerEnter={() => onHighlight?.(highlight)}
+        onPointerEnter={() => {
+          highlightedByPointer.current = true
+          onHighlight?.(highlight)
+        }}
         onPointerLeave={() => {
           // 押しかけて外へ移動した場合。確定済みの押下時間は tap の一部なので残す
           pressStartedAt.current = 0
-          onHighlight?.(null)
+          highlightedByPointer.current = false
+          releaseHighlight(onHighlight)
         }}
         // 押したままスクロールに移ると pointercancel だけが来て pointerleave が来ない
         onPointerCancel={() => {
           pressStartedAt.current = 0
           lastPressDuration.current = null
-          onHighlight?.(null)
+          highlightedByPointer.current = false
+          releaseHighlight(onHighlight)
         }}
         // 輪郭は focus-visible で出し分けているので、塗りも同じ条件に揃える。
         // シートを閉じたときのフォーカス復帰はプログラム的で輪郭が出ないため、
@@ -95,7 +109,7 @@ export function VerseCommentGutter({ verse, entry, onOpen, onHighlight }: Props)
         onBlur={() => {
           if (!highlightedByFocus.current) return
           highlightedByFocus.current = false
-          onHighlight?.(null)
+          releaseHighlight(onHighlight)
         }}
         onContextMenu={(e) => e.preventDefault()}
         className="w-full h-full flex items-start justify-start gap-1 pl-1 pt-3 select-none rounded-md transition-colors hover:bg-[var(--verse-highlight)] active:bg-[var(--verse-highlight)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lagoon)]"

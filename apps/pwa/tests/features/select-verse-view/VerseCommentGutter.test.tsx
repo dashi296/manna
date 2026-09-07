@@ -174,6 +174,14 @@ describe('VerseCommentGutter 長押し', () => {
 })
 
 describe('VerseCommentGutter', () => {
+  // jsdom の :focus-visible はテスト順で揺れるため、実ブラウザの
+  // 「輪郭の出るフォーカス」を明示的に作る
+  function makeFocusVisible(el: HTMLElement) {
+    const matches = el.matches.bind(el)
+    el.matches = ((sel: string) =>
+      sel === ':focus-visible' ? true : matches(sel)) as typeof el.matches
+  }
+
   const anchorEntry = {
     anchoredCount: 1,
     commenters: [alice],
@@ -271,6 +279,72 @@ describe('VerseCommentGutter', () => {
 
     await user.tab()
     expect(onHighlight).toHaveBeenLastCalledWith(null)
+  })
+
+  it('キーボードで塗った後にマウスが通り過ぎてもハイライトを消さない', () => {
+    // フォーカスの輪郭は残るのに塗りだけ消えると、両者が食い違う
+    const onHighlight = vi.fn()
+    render(
+      <VerseCommentGutter
+        verse={3}
+        entry={anchorEntry}
+        onOpen={vi.fn()}
+        onHighlight={onHighlight}
+      />,
+    )
+
+    const btn = screen.getByRole('button', { name: /3節/ })
+    makeFocusVisible(btn)
+    fireEvent.focus(btn)
+    expect(onHighlight).toHaveBeenLastCalledWith([3, 4, 5])
+
+    onHighlight.mockClear()
+    fireEvent.pointerEnter(btn)
+    fireEvent.pointerLeave(btn)
+
+    expect(onHighlight).not.toHaveBeenCalledWith(null)
+  })
+
+  it('ホバーで塗った後にフォーカスが外れてもハイライトを消さない', () => {
+    // 逆向き。ポインタが乗っている間は blur で消さない
+    const onHighlight = vi.fn()
+    render(
+      <VerseCommentGutter
+        verse={3}
+        entry={anchorEntry}
+        onOpen={vi.fn()}
+        onHighlight={onHighlight}
+      />,
+    )
+
+    const btn = screen.getByRole('button', { name: /3節/ })
+    makeFocusVisible(btn)
+    fireEvent.focus(btn)
+    fireEvent.pointerEnter(btn)
+    onHighlight.mockClear()
+    fireEvent.blur(btn)
+
+    expect(onHighlight).not.toHaveBeenCalledWith(null)
+  })
+
+  it('輪郭の出るフォーカスならハイライトする', () => {
+    // jsdom は fireEvent.focus で activeElement を変えないため :focus-visible が
+    // 常に偽になる。実ブラウザの「輪郭が出るフォーカス」を matches で明示して固定する
+    const onHighlight = vi.fn()
+    render(
+      <VerseCommentGutter
+        verse={3}
+        entry={anchorEntry}
+        onOpen={vi.fn()}
+        onHighlight={onHighlight}
+      />,
+    )
+
+    const btn = screen.getByRole('button', { name: /3節/ })
+    makeFocusVisible(btn)
+    fireEvent.focus(btn)
+
+    expect(onHighlight).toHaveBeenCalledWith([3, 4, 5])
   })
 
   it('輪郭の出ないフォーカス（シートを閉じたときの復帰）ではハイライトしない', () => {
