@@ -222,6 +222,21 @@ describe('VerseCommentGutter', () => {
     expect(screen.getByText('4')).toBeInTheDocument()
   })
 
+  it('判定はアイコンの大きさに収め、印のセル全体には広げない', () => {
+    // jsdom はレイアウトを持たないためクラスで固定する。セル全体が判定だと、
+    // アイコンから離れた余白を通っただけで節が塗られ、クリックでシートが開く
+    render(<VerseCommentGutter verse={3} entry={anchorEntry} onOpen={vi.fn()} />)
+
+    const btn = screen.getByRole('button', { name: /3節/ })
+    // 中身の幅に収まることを明示する。button の暗黙の shrink-to-fit に頼ると、
+    // display や box-sizing の変更で気付かないうちに広がる
+    expect(btn).toHaveClass('w-fit')
+    expect(btn).not.toHaveClass('w-full')
+    expect(btn).not.toHaveClass('h-full')
+    // 件数が増えても行の高さが変わらないよう、幅と高さの確保は外側のセルが持ち続ける
+    expect(btn.parentElement).toHaveClass('w-12', 'lg:w-24', 'shrink-0', 'self-stretch')
+  })
+
   it('継続節には押せる要素を置かない（見た目が空のフォーカス地点を作らない）', () => {
     render(
       <VerseCommentGutter

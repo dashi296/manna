@@ -87,7 +87,9 @@ export function VerseCommentGutter({ verse, entry, onOpen, onHighlight }: Props)
   const avatars = entry!.commenters.slice(0, MAX_AVATARS)
 
   return (
-    <div className={`${VERSE_GUTTER_WIDTH} shrink-0 self-stretch`}>
+    // 幅の確保はセル側が持ち続ける（件数が増えても行の高さを変えないため）。
+    // 判定はアイコンの大きさに収め、余白を通っただけでは反応しないようにする
+    <div className={`${VERSE_GUTTER_WIDTH} shrink-0 self-stretch pl-1 pt-3`}>
       <button
         type="button"
         aria-label={label}
@@ -142,7 +144,7 @@ export function VerseCommentGutter({ verse, entry, onOpen, onHighlight }: Props)
           releaseHighlight()
         }}
         onContextMenu={(e) => e.preventDefault()}
-        className="w-full h-full flex items-start justify-start gap-1 pl-1 pt-3 select-none rounded-md transition-colors hover:bg-[var(--verse-highlight)] active:bg-[var(--verse-highlight)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lagoon)]"
+        className="flex w-fit items-center gap-1 select-none rounded-md transition-colors hover:bg-[var(--verse-highlight)] active:bg-[var(--verse-highlight)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lagoon)]"
         style={{ WebkitTouchCallout: 'none', touchAction: 'manipulation' }}
       >
         {avatars.map((c, i) => (
