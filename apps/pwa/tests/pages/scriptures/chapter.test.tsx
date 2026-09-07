@@ -746,6 +746,88 @@ describe('ChapterPage', () => {
     })
   })
 
+  // jsdom の :focus-visible はテスト順で揺れるため、実ブラウザの
+  // 「輪郭の出るフォーカス」を明示的に作る
+  function makeFocusVisible(el: HTMLElement) {
+    const matches = el.matches.bind(el)
+    el.matches = ((sel: string) =>
+      sel === ':focus-visible' ? true : matches(sel)) as typeof el.matches
+  }
+
+  // 印をまたぐ塗りの所有権。印1つ分の中だけで持つと、別の印から離脱しただけで
+  // フォーカスが残っている印の塗りまで消える
+  const twoMarks = () => ({
+    ...baseChapterData,
+    chapterCommenters: [{ userId: 'u1', name: '中村さん', avatarUrl: null }],
+    circlePosts: [
+      circlePost('p1', 'u1', '中村さん', [3, 4, 5], 'A の投稿'),
+      circlePost('p2', 'u1', '中村さん', [10, 11], 'B の投稿'),
+    ],
+  })
+
+  it('A をキーボードで塗ったまま B にホバーして離れても、A の塗りが残る', async () => {
+    const { useSelectedUserStore } = await import('@/features/select-verse-view')
+    useSelectedUserStore.setState({ selectedUserId: null })
+    loaderData = twoMarks()
+    search = {}
+    const { container } = render(<ChapterPage />)
+
+    const a = await screen.findByRole('button', { name: /3節のコメントを見る/ })
+    const b = screen.getByRole('button', { name: /10節のコメントを見る/ })
+    makeFocusVisible(a)
+    fireEvent.focus(a)
+    await waitFor(() => {
+      expect(container.querySelectorAll('[data-highlighted="true"]')).toHaveLength(3)
+    })
+
+    fireEvent.pointerEnter(b)
+    await waitFor(() => {
+      expect(container.querySelectorAll('[data-highlighted="true"]')).toHaveLength(2)
+    })
+
+    fireEvent.pointerLeave(b)
+    await waitFor(() => {
+      expect(container.querySelectorAll('[data-highlighted="true"]')).toHaveLength(3)
+    })
+  })
+
+  it('A のフォーカスが外れたら、ホバー中の B の塗りに戻る', async () => {
+    const { useSelectedUserStore } = await import('@/features/select-verse-view')
+    useSelectedUserStore.setState({ selectedUserId: null })
+    loaderData = twoMarks()
+    search = {}
+    const { container } = render(<ChapterPage />)
+
+    const a = await screen.findByRole('button', { name: /3節のコメントを見る/ })
+    const b = screen.getByRole('button', { name: /10節のコメントを見る/ })
+    makeFocusVisible(a)
+    fireEvent.focus(a)
+    fireEvent.pointerEnter(b)
+    fireEvent.blur(a)
+
+    await waitFor(() => {
+      expect(container.querySelectorAll('[data-highlighted="true"]')).toHaveLength(2)
+    })
+  })
+
+  it('A をフォーカスしたまま B で pointercancel が起きても、A の塗りが残る', async () => {
+    const { useSelectedUserStore } = await import('@/features/select-verse-view')
+    useSelectedUserStore.setState({ selectedUserId: null })
+    loaderData = twoMarks()
+    search = {}
+    const { container } = render(<ChapterPage />)
+
+    const a = await screen.findByRole('button', { name: /3節のコメントを見る/ })
+    const b = screen.getByRole('button', { name: /10節のコメントを見る/ })
+    makeFocusVisible(a)
+    fireEvent.focus(a)
+    fireEvent.pointerCancel(b)
+
+    await waitFor(() => {
+      expect(container.querySelectorAll('[data-highlighted="true"]')).toHaveLength(3)
+    })
+  })
+
   it('シートが開いている間は、コメントが指す節すべてが塗られたままになる', async () => {
     // 印を押して開くとフォーカスが印からシートへ移り、印には blur が飛ぶ。
     // 塗りの持ち主を分けていないと、開いた直後に塗りが消える。

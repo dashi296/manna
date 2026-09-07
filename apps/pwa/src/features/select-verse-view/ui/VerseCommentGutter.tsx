@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { UserAvatar } from '@/shared/ui'
 import type { AvatarStackItem } from '@/shared/ui'
 
@@ -22,7 +22,10 @@ type Props = {
   verse: number
   entry: VerseGutterEntry | undefined
   onOpen: (verse: number) => void
-  onHighlight?: (verses: number[] | null) => void
+  // どの印からの通知かを伝える。印ごとの塗りは重なりうるので、受け手が
+  // 「誰の塗りか」で束ねられないと、別の印から離脱しただけで
+  // フォーカスの残っている印の塗りまで消える
+  onHighlight?: (verse: number, verses: number[] | null) => void
 }
 
 export function VerseCommentGutter({ verse, entry, onOpen, onHighlight }: Props) {
@@ -38,23 +41,38 @@ export function VerseCommentGutter({ verse, entry, onOpen, onHighlight }: Props)
   const highlightedByFocus = useRef(false)
   const highlightedByPointer = useRef(false)
 
-  // どちらも持っていないときだけ消す
-  function releaseHighlight(onHighlight?: (verses: number[] | null) => void) {
+  // どちらも持っていないときだけ手放す
+  function releaseHighlight() {
     if (highlightedByFocus.current || highlightedByPointer.current) return
-    onHighlight?.(null)
+    onHighlight?.(verse, null)
   }
 
   // 印を置くのはアンカー節だけ。範囲の途中の節にボタンを置くと、見た目が空のまま
   // フォーカスできる地点がキーボード利用者の前に並んでしまう
-  if (!entry || entry.anchoredCount === 0) {
+  const hasButton = !!entry && entry.anchoredCount > 0
+
+  // ボタンが消えると pointerleave も blur も飛ばないため、自分で手放す。
+  // onHighlight は毎描画で作り直されうるので ref 経由で読む
+  const onHighlightRef = useRef(onHighlight)
+  onHighlightRef.current = onHighlight
+  useEffect(() => {
+    if (!hasButton) return
+    return () => {
+      highlightedByFocus.current = false
+      highlightedByPointer.current = false
+      onHighlightRef.current?.(verse, null)
+    }
+  }, [hasButton, verse])
+
+  if (!hasButton) {
     return <div className={`${VERSE_GUTTER_WIDTH} shrink-0`} aria-hidden="true" />
   }
 
   // 件数はラベルに入れない。視覚表示はこの節から始まる件数だが、シートに出るのは
   // この節に関わる全件で、両者は一致しない
   const label = `${verse}節のコメントを見る`
-  const avatars = entry.commenters.slice(0, MAX_AVATARS)
-  const highlight = entry.highlightVerses?.length ? entry.highlightVerses : null
+  const avatars = entry!.commenters.slice(0, MAX_AVATARS)
+  const highlight = entry!.highlightVerses?.length ? entry!.highlightVerses : null
 
   return (
     <div className={`${VERSE_GUTTER_WIDTH} shrink-0 self-stretch`}>
@@ -83,20 +101,20 @@ export function VerseCommentGutter({ verse, entry, onOpen, onHighlight }: Props)
         }}
         onPointerEnter={() => {
           highlightedByPointer.current = true
-          onHighlight?.(highlight)
+          onHighlight?.(verse, highlight)
         }}
         onPointerLeave={() => {
           // 押しかけて外へ移動した場合。確定済みの押下時間は tap の一部なので残す
           pressStartedAt.current = 0
           highlightedByPointer.current = false
-          releaseHighlight(onHighlight)
+          releaseHighlight()
         }}
         // 押したままスクロールに移ると pointercancel だけが来て pointerleave が来ない
         onPointerCancel={() => {
           pressStartedAt.current = 0
           lastPressDuration.current = null
           highlightedByPointer.current = false
-          releaseHighlight(onHighlight)
+          releaseHighlight()
         }}
         // 輪郭は focus-visible で出し分けているので、塗りも同じ条件に揃える。
         // シートを閉じたときのフォーカス復帰はプログラム的で輪郭が出ないため、
@@ -104,12 +122,12 @@ export function VerseCommentGutter({ verse, entry, onOpen, onHighlight }: Props)
         onFocus={(e) => {
           if (!e.currentTarget.matches(':focus-visible')) return
           highlightedByFocus.current = true
-          onHighlight?.(highlight)
+          onHighlight?.(verse, highlight)
         }}
         onBlur={() => {
           if (!highlightedByFocus.current) return
           highlightedByFocus.current = false
-          releaseHighlight(onHighlight)
+          releaseHighlight()
         }}
         onContextMenu={(e) => e.preventDefault()}
         className="w-full h-full flex items-start justify-start gap-1 pl-1 pt-3 select-none rounded-md transition-colors hover:bg-[var(--verse-highlight)] active:bg-[var(--verse-highlight)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lagoon)]"
@@ -124,7 +142,7 @@ export function VerseCommentGutter({ verse, entry, onOpen, onHighlight }: Props)
             <UserAvatar name={c.name} url={c.avatarUrl} size="2xs" />
           </span>
         ))}
-        {entry.anchoredCount >= 2 && (
+        {entry!.anchoredCount >= 2 && (
           <span className="text-[11px] leading-6" style={{ color: 'var(--sea-ink-soft)' }}>
             {entry.anchoredCount}
           </span>
