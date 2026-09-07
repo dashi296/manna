@@ -160,10 +160,16 @@ export function VerseCommentGutter({ verse, entry, onOpen, onHighlight }: Props)
         {entry!.anchoredCount >= 2 && (
           // 通知バッジと同じ置き方。横に並べるとその分だけ列が広がる。
           // 10px の小さい文字なのでコントラストは 4.5:1 が要る。白文字＋lagoon-deep
-          // では 3.81 で足りず、lagoon 地に sea-ink の文字で 5.15 にしている
+          // では 3.81 で足りず、lagoon 地に sea-ink の文字で 5.15 にしている。
+          // アバターは flex アイテムに z-index を持つ（static でも効く）ので、
+          // それより前に出さないとバッジが下に潜る
           <span
             className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] leading-none font-medium"
-            style={{ background: 'var(--lagoon)', color: 'var(--sea-ink)' }}
+            style={{
+              background: 'var(--lagoon)',
+              color: 'var(--sea-ink)',
+              zIndex: avatars.length + 1,
+            }}
           >
             {entry!.anchoredCount}
           </span>

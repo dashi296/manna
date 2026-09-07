@@ -237,6 +237,26 @@ describe('VerseCommentGutter', () => {
     expect(badge.closest('button')).toHaveClass('relative')
   })
 
+  it('件数バッジはアイコンより前面に出す', () => {
+    // アバターは flex アイテムに z-index を直接持たせている。flex アイテムは
+    // position: static でも z-index が効くため、指定の無いバッジは下に潜る
+    render(
+      <VerseCommentGutter
+        verse={3}
+        entry={{ anchoredCount: 3, commenters: [alice, bob, carol], highlightVerses: [3] }}
+        onOpen={vi.fn()}
+      />,
+    )
+
+    const btn = screen.getByRole('button', { name: /3節/ })
+    const badge = screen.getByText('3')
+    const avatarZ = Array.from(
+      btn.querySelectorAll<HTMLElement>(':scope > span:not(.absolute)'),
+    ).map((a) => Number(a.style.zIndex || 0))
+
+    expect(Number(badge.style.zIndex || 0)).toBeGreaterThan(Math.max(...avatarZ))
+  })
+
   it('印の列はアイコン1枚ぶんの幅に収める', () => {
     // 件数を重ねたので、列はアイコン + バッジのはみ出しがあれば足りる
     render(<VerseCommentGutter verse={3} entry={anchorEntry} onOpen={vi.fn()} />)
