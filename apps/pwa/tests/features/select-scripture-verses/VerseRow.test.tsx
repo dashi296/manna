@@ -19,6 +19,7 @@ type RenderOptions = {
 }
 
 function renderInRouter(ui: React.ReactNode, options: RenderOptions = {}) {
+  const { chapterLoader, ...routerOptions } = options
   const rootRoute = createRootRoute({
     component: () => <Outlet />,
     notFoundComponent: () => <div>404</div>,
@@ -31,14 +32,14 @@ function renderInRouter(ui: React.ReactNode, options: RenderOptions = {}) {
   const chapterRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/scriptures/$collection/$book/$chapter',
-    loader: options.chapterLoader,
+    loader: chapterLoader,
     component: () => <div>chapter</div>,
   })
   const router = createRouter({
     routeTree: rootRoute.addChildren([indexRoute, chapterRoute]),
     history: createMemoryHistory({ initialEntries: ['/'] }),
-    defaultPreload: options.defaultPreload,
-    defaultPreloadDelay: options.defaultPreloadDelay,
+    // 明示的な undefined でも Router 内部の既定値を潰すため、渡されたキーだけを展開する
+    ...routerOptions,
   })
   return render(<RouterProvider router={router} />)
 }
@@ -258,8 +259,7 @@ describe('VerseRow preload', () => {
     const controlLink = screen.getByRole('link', { name: '対照リンク' })
 
     await userEvent.hover(verseLink)
-    // 対照リンクは preload を切っていないので必ずプリロードされる。後から hover した
-    // こちらの記録を待てば、節リンクのプリロードが遅れて走っていないことも言える
+    // 後から hover した対照リンクの記録を待てば、節リンクが遅れてプリロードしていないと言える
     await userEvent.hover(controlLink)
     await waitFor(() => expect(loadedChapters).toContain('99'))
 
