@@ -142,6 +142,8 @@ export function VerseRow({
         to="/scriptures/$collection/$book/$chapter"
         params={{ collection, book, chapter: String(chapter) }}
         search={{ verses: [verse] }}
+        // 節は1画面に数十個並ぶため、スクロールでカーソル下を通過しただけで intent プリロードが発火する
+        preload={false}
         className="verse-item block"
         data-bilingual={textHtmlSecondary ? '' : undefined}
       >

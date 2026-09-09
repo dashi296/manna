@@ -6,12 +6,19 @@ import {
   createRoute,
   createRouter,
   createMemoryHistory,
+  Link,
   Outlet,
   RouterProvider,
 } from '@tanstack/react-router'
 import { VerseRow } from '@/features/select-scripture-verses/ui/VerseRow'
 
-function renderInRouter(ui: React.ReactNode) {
+type RenderOptions = {
+  chapterLoader?: (ctx: { params: { chapter: string } }) => void
+  defaultPreload?: 'intent'
+  defaultPreloadDelay?: number
+}
+
+function renderInRouter(ui: React.ReactNode, options: RenderOptions = {}) {
   const rootRoute = createRootRoute({
     component: () => <Outlet />,
     notFoundComponent: () => <div>404</div>,
@@ -24,11 +31,14 @@ function renderInRouter(ui: React.ReactNode) {
   const chapterRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/scriptures/$collection/$book/$chapter',
+    loader: options.chapterLoader,
     component: () => <div>chapter</div>,
   })
   const router = createRouter({
     routeTree: rootRoute.addChildren([indexRoute, chapterRoute]),
     history: createMemoryHistory({ initialEntries: ['/'] }),
+    defaultPreload: options.defaultPreload,
+    defaultPreloadDelay: options.defaultPreloadDelay,
   })
   return render(<RouterProvider router={router} />)
 }
@@ -222,5 +232,37 @@ describe('VerseRow bilingual', () => {
     })
     const numberSpan = screen.getByText('19')
     expect(numberSpan.nextElementSibling?.tagName).toBe('SPAN')
+  })
+})
+
+describe('VerseRow preload', () => {
+  it("mode='read' のリンクはホバーしてもプリロードしない", async () => {
+    const loadedChapters: string[] = []
+    renderInRouter(
+      <>
+        <VerseRow {...baseProps} mode="read" selected={false} onSelect={vi.fn()} />
+        <Link
+          to="/scriptures/$collection/$book/$chapter"
+          params={{ collection: 'bofm', book: 'mosiah', chapter: '99' }}
+        >
+          対照リンク
+        </Link>
+      </>,
+      {
+        chapterLoader: ({ params }) => void loadedChapters.push(params.chapter),
+        defaultPreload: 'intent',
+        defaultPreloadDelay: 0,
+      },
+    )
+    const verseLink = await screen.findByRole('link', { name: /主のみもとに帰る道/ })
+    const controlLink = screen.getByRole('link', { name: '対照リンク' })
+
+    await userEvent.hover(verseLink)
+    // 対照リンクは preload を切っていないので必ずプリロードされる。後から hover した
+    // こちらの記録を待てば、節リンクのプリロードが遅れて走っていないことも言える
+    await userEvent.hover(controlLink)
+    await waitFor(() => expect(loadedChapters).toContain('99'))
+
+    expect(loadedChapters).not.toContain(String(baseProps.chapter))
   })
 })
