@@ -162,6 +162,17 @@ VITE_SUPABASE_KEY=<npx supabase status の publishable key>
 
 ---
 
+## テスト実行
+
+```bash
+pnpm --filter @manna/pwa test          # 通常
+pnpm --filter @manna/pwa test:sandbox  # 書き込み不可の環境（サンドボックス下のエージェントなど）
+```
+
+`test` が使う Vite の既定の設定ローダーは、TS 設定を `node_modules/.vite-temp/` に書き出してから読み込むため、書き込みを禁じられた環境では `EPERM` / `EACCES` でテスト本体の実行前に落ちる。`test:sandbox` は `--configLoader native` で一時ファイルを介さずに設定を読む。
+
+---
+
 ## コーディング規約
 
 - コメントは原則不要。WHY が自明でない場合のみ1行で記載
