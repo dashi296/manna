@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import {
   createRootRoute,
@@ -237,33 +237,43 @@ describe('VerseRow bilingual', () => {
   })
 })
 
+// TanStack Router の intent プリロードは hover だけでなく focus と touchstart でも発火する
+const preloadTriggers: Array<[string, (el: HTMLElement) => Promise<unknown> | void]> = [
+  ['ホバー', (el) => userEvent.hover(el)],
+  ['キーボードフォーカス', (el) => el.focus()],
+  ['タッチ', (el) => fireEvent.touchStart(el)],
+]
+
 describe('VerseRow preload', () => {
-  it("mode='read' のリンクはホバーしてもプリロードしない", async () => {
-    const loadedChapters: string[] = []
-    renderInRouter(
-      <>
-        <VerseRow {...baseProps} mode="read" selected={false} onSelect={vi.fn()} />
-        <Link
-          to="/scriptures/$collection/$book/$chapter"
-          params={{ collection: 'bofm', book: 'mosiah', chapter: '99' }}
-        >
-          対照リンク
-        </Link>
-      </>,
-      {
-        chapterLoader: ({ params }) => void loadedChapters.push(params.chapter),
-        defaultPreload: 'intent',
-        defaultPreloadDelay: 0,
-      },
-    )
-    const verseLink = await screen.findByRole('link', { name: /主のみもとに帰る道/ })
-    const controlLink = screen.getByRole('link', { name: '対照リンク' })
+  it.each(preloadTriggers)(
+    "mode='read' のリンクは%sしてもプリロードしない",
+    async (_label, trigger) => {
+      const loadedChapters: string[] = []
+      renderInRouter(
+        <>
+          <VerseRow {...baseProps} mode="read" selected={false} onSelect={vi.fn()} />
+          <Link
+            to="/scriptures/$collection/$book/$chapter"
+            params={{ collection: 'bofm', book: 'mosiah', chapter: '99' }}
+          >
+            対照リンク
+          </Link>
+        </>,
+        {
+          chapterLoader: ({ params }) => void loadedChapters.push(params.chapter),
+          defaultPreload: 'intent',
+          defaultPreloadDelay: 0,
+        },
+      )
+      const verseLink = await screen.findByRole('link', { name: /主のみもとに帰る道/ })
+      const controlLink = screen.getByRole('link', { name: '対照リンク' })
 
-    await userEvent.hover(verseLink)
-    // 後から hover した対照リンクの記録を待てば、節リンクが遅れてプリロードしていないと言える
-    await userEvent.hover(controlLink)
-    await waitFor(() => expect(loadedChapters).toContain('99'))
+      await trigger(verseLink)
+      // 後から操作した対照リンクの記録を待てば、節リンクが遅れてプリロードしていないと言える
+      await trigger(controlLink)
+      await waitFor(() => expect(loadedChapters).toContain('99'))
 
-    expect(loadedChapters).not.toContain(String(baseProps.chapter))
-  })
+      expect(loadedChapters).not.toContain(String(baseProps.chapter))
+    },
+  )
 })
