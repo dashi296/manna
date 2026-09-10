@@ -10,7 +10,7 @@ import {
   Outlet,
   RouterProvider,
 } from '@tanstack/react-router'
-import { VerseRow } from '@/features/select-scripture-verses/ui/VerseRow'
+import { VerseRow } from '@/features/select-scripture-verses'
 
 type RenderOptions = {
   chapterLoader?: (ctx: { params: { chapter: string } }) => void
@@ -19,7 +19,7 @@ type RenderOptions = {
 }
 
 function renderInRouter(ui: React.ReactNode, options: RenderOptions = {}) {
-  const { chapterLoader, ...routerOptions } = options
+  const { chapterLoader, defaultPreload, defaultPreloadDelay } = options
   const rootRoute = createRootRoute({
     component: () => <Outlet />,
     notFoundComponent: () => <div>404</div>,
@@ -38,8 +38,9 @@ function renderInRouter(ui: React.ReactNode, options: RenderOptions = {}) {
   const router = createRouter({
     routeTree: rootRoute.addChildren([indexRoute, chapterRoute]),
     history: createMemoryHistory({ initialEntries: ['/'] }),
-    // 明示的な undefined でも Router 内部の既定値を潰すため、渡されたキーだけを展開する
-    ...routerOptions,
+    // 明示的な undefined でも Router 内部の既定値を潰すため、指定されたものだけを載せる
+    ...(defaultPreload !== undefined && { defaultPreload }),
+    ...(defaultPreloadDelay !== undefined && { defaultPreloadDelay }),
   })
   return render(<RouterProvider router={router} />)
 }
