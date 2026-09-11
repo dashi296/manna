@@ -75,16 +75,10 @@ const openConfirmSheet = async () => {
 }
 
 describe('PostActionsMenu', () => {
+  // 履歴は clearMocks が消す。ここは個別のテストが恒久上書きする戻り値の張り直し
   beforeEach(() => {
-    mockDelete.mockClear()
-    mockDeleteEq.mockClear()
-    mockDeleteResult.mockClear().mockResolvedValue({ data: [{ id: 'p1' }], error: null })
-    mockInvalidatePostLists.mockClear()
-    mockBack.mockClear()
-    mockCanGoBack.mockClear().mockReturnValue(true)
-    mockNavigate.mockClear()
-    mockToast.mockClear()
-    mockToastError.mockClear()
+    mockDeleteResult.mockResolvedValue({ data: [{ id: 'p1' }], error: null })
+    mockCanGoBack.mockReturnValue(true)
   })
 
   it('開くまでメニュー項目は出ない', () => {
