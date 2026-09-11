@@ -162,6 +162,24 @@ VITE_SUPABASE_KEY=<npx supabase status の publishable key>
 
 ---
 
+## テスト実行
+
+```bash
+pnpm --filter @manna/pwa test          # 通常
+pnpm --filter @manna/pwa test:sandbox  # 書き込み不可の環境（サンドボックス下のエージェントなど）
+```
+
+既定の `test` は2箇所でディスクに書くため、書き込みを禁じられた環境では `EPERM` / `EACCES` で落ちる。
+
+| 書き込み先 | 主体 | `test:sandbox` の回避策 |
+|---|---|---|
+| `node_modules/.vite-temp/` | Vite の設定ローダー（TS 設定をバンドルして書き出してから読む）| `--configLoader native` で一時ファイルを介さず読む |
+| `os.tmpdir()` 配下 | Vitest 4 の既定プール `forks` | `--pool threads` でワーカースレッドに切り替える |
+
+`test:sandbox` はプールが違うぶんテスト間の分離特性も変わる。CI と同じ条件で確かめたいときは通常の `test` を使う。
+
+---
+
 ## コーディング規約
 
 - コメントは原則不要。WHY が自明でない場合のみ1行で記載

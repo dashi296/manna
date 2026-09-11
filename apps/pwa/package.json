@@ -12,6 +12,7 @@
     "cf:deploy": "vite build && wrangler deploy",
     "cf-typegen": "wrangler types",
     "test": "vitest run",
+    "test:sandbox": "vitest run --configLoader native --pool threads",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
