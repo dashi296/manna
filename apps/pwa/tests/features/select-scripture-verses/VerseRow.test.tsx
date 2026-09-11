@@ -1,17 +1,25 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import {
   createRootRoute,
   createRoute,
   createRouter,
   createMemoryHistory,
+  Link,
   Outlet,
   RouterProvider,
 } from '@tanstack/react-router'
-import { VerseRow } from '@/features/select-scripture-verses/ui/VerseRow'
+import { VerseRow } from '@/features/select-scripture-verses'
 
-function renderInRouter(ui: React.ReactNode) {
+type RenderOptions = {
+  chapterLoader?: (ctx: { params: { chapter: string } }) => void
+  defaultPreload?: 'intent'
+  defaultPreloadDelay?: number
+}
+
+function renderInRouter(ui: React.ReactNode, options: RenderOptions = {}) {
+  const { chapterLoader, defaultPreload, defaultPreloadDelay } = options
   const rootRoute = createRootRoute({
     component: () => <Outlet />,
     notFoundComponent: () => <div>404</div>,
@@ -24,11 +32,15 @@ function renderInRouter(ui: React.ReactNode) {
   const chapterRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/scriptures/$collection/$book/$chapter',
+    loader: chapterLoader,
     component: () => <div>chapter</div>,
   })
   const router = createRouter({
     routeTree: rootRoute.addChildren([indexRoute, chapterRoute]),
     history: createMemoryHistory({ initialEntries: ['/'] }),
+    // 明示的な undefined でも Router 内部の既定値を潰すため、指定されたものだけを載せる
+    ...(defaultPreload !== undefined && { defaultPreload }),
+    ...(defaultPreloadDelay !== undefined && { defaultPreloadDelay }),
   })
   return render(<RouterProvider router={router} />)
 }
@@ -223,4 +235,45 @@ describe('VerseRow bilingual', () => {
     const numberSpan = screen.getByText('19')
     expect(numberSpan.nextElementSibling?.tagName).toBe('SPAN')
   })
+})
+
+// TanStack Router の intent プリロードは hover だけでなく focus と touchstart でも発火する
+const preloadTriggers: Array<[string, (el: HTMLElement) => Promise<unknown> | void]> = [
+  ['ホバー', (el) => userEvent.hover(el)],
+  ['キーボードフォーカス', (el) => el.focus()],
+  ['タッチ', (el) => fireEvent.touchStart(el)],
+]
+
+describe('VerseRow preload', () => {
+  it.each(preloadTriggers)(
+    "mode='read' のリンクは%sしてもプリロードしない",
+    async (_label, trigger) => {
+      const loadedChapters: string[] = []
+      renderInRouter(
+        <>
+          <VerseRow {...baseProps} mode="read" selected={false} onSelect={vi.fn()} />
+          <Link
+            to="/scriptures/$collection/$book/$chapter"
+            params={{ collection: 'bofm', book: 'mosiah', chapter: '99' }}
+          >
+            対照リンク
+          </Link>
+        </>,
+        {
+          chapterLoader: ({ params }) => void loadedChapters.push(params.chapter),
+          defaultPreload: 'intent',
+          defaultPreloadDelay: 0,
+        },
+      )
+      const verseLink = await screen.findByRole('link', { name: /主のみもとに帰る道/ })
+      const controlLink = screen.getByRole('link', { name: '対照リンク' })
+
+      await trigger(verseLink)
+      // 後から操作した対照リンクの記録を待てば、節リンクが遅れてプリロードしていないと言える
+      await trigger(controlLink)
+      await waitFor(() => expect(loadedChapters).toContain('99'))
+
+      expect(loadedChapters).not.toContain(String(baseProps.chapter))
+    },
+  )
 })
