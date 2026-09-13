@@ -200,6 +200,14 @@ describe('ChapterPager', () => {
     expect(navigate).not.toHaveBeenCalled()
   })
 
+  it('disabled のときも、ずれたら本文のパネルに戻す', () => {
+    // overflow: hidden でもプログラムからのスクロールは通る。放っておくと
+    // シートを閉じた先が空のパネルになる
+    renderPager({ collection: 'bofm', book: '1-ne', chapter: 5 }, true)
+    scrollTo(PANEL_WIDTH * 2)
+    expect(pager().scrollLeft).toBe(PANEL_WIDTH)
+  })
+
   it('デスクトップではパネルを描画せず、スクロールもさせない', () => {
     isMobile = false
     renderPager()

@@ -119,8 +119,9 @@ export function useChapterPager({ loc, disabled }: Params) {
 
     // 指が触れるまでは本文のパネルに留める。両脇のパネルはマウント後に現れるため、
     // 挿入ぶんを打ち消すスクロールアンカリングや、ルーターのスクロール復元、
-    // ブラウザによるスナップのやり直しが、中央合わせの後から位置を動かしうる
-    if (!touched.current) {
+    // ブラウザによるスナップのやり直しが、中央合わせの後から位置を動かしうる。
+    // overflow: hidden でもプログラムからのスクロールは通るので、無効化中も見張る
+    if (!scrollable || !touched.current) {
       const center = centerOffset(el)
       if (el.scrollLeft !== center) el.scrollLeft = center
       return
@@ -132,14 +133,14 @@ export function useChapterPager({ loc, disabled }: Params) {
     )
 
     scheduleSettle()
-  }, [centerOffset, scheduleSettle])
+  }, [centerOffset, scrollable, scheduleSettle])
 
   return {
     containerRef,
     prev,
     next,
     scrollable,
-    onScroll: scrollable ? onScroll : undefined,
+    onScroll,
     onTouchStart: scrollable ? onTouchStart : undefined,
     onTouchEnd: scrollable ? onTouchEnd : undefined,
     destination: pointing === 'next' ? next : pointing === 'prev' ? prev : null,
