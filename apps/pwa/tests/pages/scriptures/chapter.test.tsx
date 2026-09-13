@@ -1360,7 +1360,7 @@ describe('ChapterPage', () => {
       search = {}
       render(<ChapterPage />)
 
-      expect(screen.getByRole('link', { name: '第6章' })).toHaveAttribute(
+      expect(screen.getByRole('link', { name: '次の章: 第6章' })).toHaveAttribute(
         'href',
         expect.stringContaining('/scriptures/bofm/1-ne/6'),
       )
@@ -1371,7 +1371,7 @@ describe('ChapterPage', () => {
       search = {}
       render(<ChapterPage />)
 
-      expect(screen.getByRole('link', { name: '第4章' })).toHaveAttribute(
+      expect(screen.getByRole('link', { name: '前の章: 第4章' })).toHaveAttribute(
         'href',
         expect.stringContaining('/scriptures/bofm/1-ne/4'),
       )
@@ -1383,11 +1383,11 @@ describe('ChapterPage', () => {
       search = {}
       render(<ChapterPage />)
 
-      expect(screen.getByRole('link', { name: '第2ニーファイ書 第1章' })).toHaveAttribute(
+      expect(screen.getByRole('link', { name: '次の章: 第2ニーファイ書 第1章' })).toHaveAttribute(
         'href',
         expect.stringContaining('/scriptures/bofm/2-ne/1'),
       )
-      expect(screen.getByRole('link', { name: '第21章' })).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: '前の章: 第21章' })).toBeInTheDocument()
     })
 
     // 前付け文書はスキップするため、1-ne 1章の手前には移動先が無い
@@ -1396,8 +1396,26 @@ describe('ChapterPage', () => {
       search = {}
       render(<ChapterPage />)
 
-      const nav = screen.getByTestId('chapter-nav')
-      expect(within(nav).getByRole('link', { name: '第2章' })).toBeInTheDocument()
+      const nav = screen.getByRole('navigation', { name: '章の移動' })
+      expect(within(nav).getByRole('link', { name: '次の章: 第2章' })).toBeInTheDocument()
+      expect(within(nav).getAllByRole('link')).toHaveLength(1)
+    })
+
+    // 前付け文書は移動先から外れるので、隣が前付けでも通常の書まで飛ばす
+    it('前付け文書からは残りの前付けを飛ばして最初の書へ送る', () => {
+      loaderData = {
+        ...baseChapterData,
+        book: { id: 'bofm-title', name: 'モルモン書のタイトルページ', chapters: 1, verses: [4], isFrontMatter: true },
+        chapter: 1,
+      }
+      search = {}
+      render(<ChapterPage />)
+
+      const nav = screen.getByRole('navigation', { name: '章の移動' })
+      expect(within(nav).getByRole('link', { name: '次の章: 第1ニーファイ書 第1章' })).toHaveAttribute(
+        'href',
+        expect.stringContaining('/scriptures/bofm/1-ne/1'),
+      )
       expect(within(nav).getAllByRole('link')).toHaveLength(1)
     })
 

@@ -34,6 +34,11 @@ describe('getAdjacentChapterRef', () => {
       .toEqual({ collection: 'bofm', book: '1-ne', chapter: 1 })
   })
 
+  it('前付け文書が連続していてもまとめて飛ばす（先頭のタイトルページの次は1-neの1章）', () => {
+    expect(getAdjacentChapterRef({ collection: 'bofm', book: 'bofm-title', chapter: 1 }, 'next'))
+      .toEqual({ collection: 'bofm', book: '1-ne', chapter: 1 })
+  })
+
   it('前付け文書は後方スキップの対象になる（1-neの1章の前は前付け文書を全て飛ばしてnull）', () => {
     expect(getAdjacentChapterRef({ collection: 'bofm', book: '1-ne', chapter: 1 }, 'prev'))
       .toBeNull()

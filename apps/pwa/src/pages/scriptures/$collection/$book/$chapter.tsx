@@ -446,19 +446,28 @@ function ChapterNav({ collection, book, chapter }: ChapterRef) {
     <nav
       data-testid="chapter-nav"
       aria-label="章の移動"
-      className="flex items-center justify-between gap-2 px-4 py-4 border-t"
+      className="flex items-center gap-2 px-4 py-4 border-t"
       style={{ borderColor: 'var(--line)', color: 'var(--lagoon-deep)' }}
     >
-      {prev ? (
-        <Link to="/scriptures/$collection/$book/$chapter" params={refToParams(prev)} className={linkClass}>
+      {prev && (
+        <Link
+          to="/scriptures/$collection/$book/$chapter"
+          params={refToParams(prev)}
+          // 矢印は読み上げから外れるため、名前に方向が残らないと行き先しか伝わらない
+          aria-label={`前の章: ${chapterNavLabel(prev, book)}`}
+          className={linkClass}
+        >
           <ChevronLeft size={16} aria-hidden="true" />
           {chapterNavLabel(prev, book)}
         </Link>
-      ) : (
-        <span />
       )}
       {next && (
-        <Link to="/scriptures/$collection/$book/$chapter" params={refToParams(next)} className={linkClass}>
+        <Link
+          to="/scriptures/$collection/$book/$chapter"
+          params={refToParams(next)}
+          aria-label={`次の章: ${chapterNavLabel(next, book)}`}
+          className={`${linkClass} ml-auto`}
+        >
           {chapterNavLabel(next, book)}
           <ChevronRight size={16} aria-hidden="true" />
         </Link>
@@ -794,8 +803,9 @@ function ChapterView({
           ))}
         </div>
       )}
-      {/* 末尾が節一覧か章移動かで変わるため、FAB のぶんの余白はまとめて外側で確保する */}
-      <div className="pb-[var(--fab-clearance)]">
+      {/* 末尾が節一覧か章移動かで変わるため、FAB のぶんの余白はまとめて外側で確保する。
+          FAB が出ない場面（未ログイン・選択モード・lg 以上）では余らせない */}
+      <div className={composeFab ? 'pb-[var(--fab-clearance)] lg:pb-0' : undefined}>
         {verseList}
         {mode !== 'select' && chapterNav}
       </div>
