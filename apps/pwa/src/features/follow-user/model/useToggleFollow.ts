@@ -12,10 +12,11 @@ export function useToggleFollow({ currentUserId, targetUserId, isFollowing }: Ar
         ? supabase.from('follows').insert({
             follower_id: currentUserId,
             following_id: targetUserId,
-          })
+          }).select('follower_id')
         : supabase.from('follows').delete()
             .eq('follower_id', currentUserId)
-            .eq('following_id', targetUserId),
+            .eq('following_id', targetUserId)
+            .select('follower_id'),
     errorMessage: () => 'フォローを更新できませんでした',
   })
 }
