@@ -21,7 +21,6 @@ vi.mock('@tanstack/react-router', () => ({
 describe('PostComposerSheet', () => {
   beforeEach(() => {
     localStorage.clear()
-    mockInsert.mockClear()
     window.innerWidth = 1024
   })
 

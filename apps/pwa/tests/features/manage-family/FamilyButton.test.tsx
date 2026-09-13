@@ -41,7 +41,6 @@ describe('FamilyButton', () => {
     insertResult = Promise.resolve({ error: null })
     updateError = null
     deleteError = null
-    vi.clearAllMocks()
   })
 
   it('関係が無いときは「ファミリーに追加」を表示する', () => {

@@ -43,7 +43,6 @@ const renderButton = (isFollowing: boolean) => {
 describe('FollowButton', () => {
   beforeEach(() => {
     insertResult = Promise.resolve({ error: null })
-    vi.clearAllMocks()
   })
 
   it('未フォロー時に「フォロー」ボタンを表示する', () => {
