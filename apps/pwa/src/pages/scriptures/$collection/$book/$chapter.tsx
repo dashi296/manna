@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   createFileRoute,
+  Link,
   notFound,
   useRouter,
   type HistoryState,
 } from '@tanstack/react-router'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { createServerFn } from '@tanstack/react-start'
 import { useQuery } from '@tanstack/react-query'
-import { getBook, getCollection, buildScriptureUrl, getChapterLabel, getScriptureLabel } from '@/entities/scripture'
+import { getBook, getCollection, buildScriptureUrl, getChapterLabel, getScriptureLabel, getAdjacentChapterRef } from '@/entities/scripture'
 import { PostCard, POST_SELECT, type PostWithUser } from '@/entities/post'
 import { createSupabaseServer } from '@/shared/lib/auth'
 import { supabase } from '@/shared/lib/supabase'
@@ -422,6 +424,44 @@ type ChapterViewProps = {
   circlePosts: PostWithUser[]
 }
 
+// 読み終えた位置に置く。前付け文書は移動先から外れ、コレクションの端では片側だけになる
+function ChapterNav({ collection, book, chapter }: ChapterRef) {
+  const prev = getAdjacentChapterRef({ collection, book, chapter }, 'prev')
+  const next = getAdjacentChapterRef({ collection, book, chapter }, 'next')
+  if (!prev && !next) return null
+
+  const linkClass =
+    'flex items-center gap-1 px-3 py-2 text-sm rounded-md transition-colors hover:bg-[var(--chip-bg)]'
+
+  return (
+    <nav
+      data-testid="chapter-nav"
+      aria-label="章の移動"
+      className="flex items-center justify-between gap-2 px-4 py-4 border-t"
+      style={{ borderColor: 'var(--line)', color: 'var(--lagoon-deep)' }}
+    >
+      {prev ? (
+        <Link to="/scriptures/$collection/$book/$chapter" params={refToParams(prev)} className={linkClass}>
+          <ChevronLeft size={16} aria-hidden="true" />
+          {getScriptureLabel(prev)}
+        </Link>
+      ) : (
+        <span />
+      )}
+      {next && (
+        <Link to="/scriptures/$collection/$book/$chapter" params={refToParams(next)} className={linkClass}>
+          {getScriptureLabel(next)}
+          <ChevronRight size={16} aria-hidden="true" />
+        </Link>
+      )}
+    </nav>
+  )
+}
+
+function refToParams(ref: ChapterRef) {
+  return { collection: ref.collection, book: ref.book, chapter: String(ref.chapter) }
+}
+
 function ChapterView({
   book, chapter, collection, posts, verseTexts, canCompose,
   chapterCommenters, circlePosts,
@@ -543,6 +583,8 @@ function ChapterView({
   useEffect(() => {
     isMounted.current = true
   }, [])
+
+  const chapterNav = <ChapterNav collection={collection} book={book.id} chapter={chapter} />
 
   const patchSearch = (
     patch: Partial<ChapterSearch>,
@@ -744,6 +786,7 @@ function ChapterView({
         </div>
       )}
       {verseList}
+      {mode !== 'select' && chapterNav}
       {canCompose && (
         <PostComposerSheet
           open={sheetOpen}
