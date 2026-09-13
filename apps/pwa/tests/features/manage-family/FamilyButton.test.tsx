@@ -91,6 +91,8 @@ describe('FamilyButton', () => {
     await waitFor(() => expect(mockUpdate).toHaveBeenCalledWith({ status: 'accepted' }))
     expect(mockUpdateEq).toHaveBeenCalledWith('requester_id', 'u2')
     expect(mockUpdateEq).toHaveBeenCalledWith('addressee_id', 'u1')
+    // .select() が外れると data が null になり失敗分岐へ落ちる。成功経路を固定して配線を守る
+    expect(mockToastError).not.toHaveBeenCalled()
   })
 
   it('「ファミリー」で両方向の行を削除する', async () => {
@@ -99,6 +101,7 @@ describe('FamilyButton', () => {
     await waitFor(() => expect(mockDelete).toHaveBeenCalled())
     expect(mockDeleteIn).toHaveBeenCalledWith('requester_id', ['u1', 'u2'])
     expect(mockDeleteIn).toHaveBeenCalledWith('addressee_id', ['u1', 'u2'])
+    expect(mockToastError).not.toHaveBeenCalled()
   })
 
   it('送信中は押した結果を先に表示する', async () => {
@@ -138,8 +141,7 @@ describe('FamilyButton', () => {
     )
   })
 
-  // 相手が先に取り消す・別タブで承認済みだと status が pending でなくなり 0 行で返る。
-  // RLS は拒否をエラーにしないため、成功扱いすると押しても黙って元に戻る
+  // 別タブで承認済みだと status が pending でなくなり、RLS はエラーにせず 0 行で返す
   it('承認が 0 行なら失敗として扱う', async () => {
     updateRows = []
     renderButton('pending_received')

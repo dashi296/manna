@@ -96,6 +96,18 @@ describe('FollowButton', () => {
     await waitFor(() => expect(invalidate).toHaveBeenCalledWith({ queryKey: ['profile'] }))
   })
 
+  // 解除のクエリから .select() が外れると data が null になり失敗分岐へ落ちる。
+  // 成功経路を固定しておかないと、失敗を期待するテストだけでは付け忘れを見逃す
+  it('解除が成功したらエラーにしない', async () => {
+    const { client } = renderButton(true)
+    const invalidate = vi.spyOn(client, 'invalidateQueries')
+
+    await userEvent.click(screen.getByRole('button', { name: 'フォロー中' }))
+
+    await waitFor(() => expect(invalidate).toHaveBeenCalledWith({ queryKey: ['profile'] }))
+    expect(mockToastError).not.toHaveBeenCalled()
+  })
+
   it('再取得で prop が入れ替わっても表示が巻き戻らない', async () => {
     const { refetchAs } = renderButton(false)
     await userEvent.click(screen.getByRole('button', { name: 'フォロー' }))
