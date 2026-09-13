@@ -439,33 +439,42 @@ function ChapterNav({ collection, book, chapter }: ChapterRef) {
 // スワイプ中に見える移動先の冒頭。見えるのは画面1つぶんなので、それを超える節は描かない
 const PREVIEW_VERSE_LIMIT = 40
 
-function ChapterPreview({ texts, currentBook }: { texts: ChapterTexts; currentBook: string }) {
+// 余白・区切り線・節の組みは verseList と揃える。ここがずれると、指を離した瞬間に
+// 本文が横や縦に飛ぶ
+function ChapterPreview({ texts }: { texts: ChapterTexts }) {
   const target = getBook(texts.ref.collection, texts.ref.book)
-  const verses = [...texts.primary.keys()].slice(0, PREVIEW_VERSE_LIMIT)
+  const all = [...texts.primary.keys()]
+  const verses = all.slice(0, PREVIEW_VERSE_LIMIT)
 
   return (
-    <div>
-      <p className="px-4 pt-3 pb-1 text-xs font-medium" style={{ color: 'var(--sea-ink-soft)' }}>
-        {getChapterNavLabel(texts.ref, currentBook)}
-      </p>
+    <div className="p-4">
       <ul>
-        {verses.map((verse) => (
-          <li key={verse} className="border-b" style={{ borderColor: 'var(--line)' }}>
-            <VerseRow
-              collection={texts.ref.collection}
-              book={texts.ref.book}
-              chapter={texts.ref.chapter}
-              verse={verse}
-              textHtml={texts.primary.get(verse)}
-              textHtmlSecondary={texts.secondary.get(verse)}
-              secondaryLang={SECONDARY_LANGUAGE}
-              mode="read"
-              selected={false}
-              onSelect={() => {}}
-              showNumber={!target?.isFrontMatter}
-            />
-          </li>
-        ))}
+        {verses.map((verse, i) => {
+          const isLast = i === verses.length - 1 && verses.length === all.length
+          return (
+            <li
+              key={verse}
+              className={`flex items-stretch ${isLast ? '' : 'border-b'}`}
+              style={{ borderColor: 'var(--line)' }}
+            >
+              <div className="flex-1 min-w-0">
+                <VerseRow
+                  collection={texts.ref.collection}
+                  book={texts.ref.book}
+                  chapter={texts.ref.chapter}
+                  verse={verse}
+                  textHtml={texts.primary.get(verse)}
+                  textHtmlSecondary={texts.secondary.get(verse)}
+                  secondaryLang={SECONDARY_LANGUAGE}
+                  mode="read"
+                  selected={false}
+                  onSelect={() => {}}
+                  showNumber={!target?.isFrontMatter}
+                />
+              </div>
+            </li>
+          )
+        })}
       </ul>
     </div>
   )
@@ -794,7 +803,7 @@ function ChapterView({
         loc={{ collection, book: book.id, chapter }}
         // シートは背面を覆わないので、開いたままスワイプできてしまう
         disabled={mode === 'select' || sheetOpen || commentVerseForScroll !== undefined}
-        renderPreview={(texts) => <ChapterPreview texts={texts} currentBook={book.id} />}
+        renderPreview={(texts) => <ChapterPreview texts={texts} />}
       >
         {posts.length > 0 && (
           <div className="border-b" style={{ borderColor: 'var(--line)' }}>
