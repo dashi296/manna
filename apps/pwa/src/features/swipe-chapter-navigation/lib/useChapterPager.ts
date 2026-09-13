@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { getAdjacentChapterRef, type ChapterRef } from '@/entities/scripture'
+import { useBilingualEnabled } from '@/entities/bilingual-display'
 import { useIsMobile } from '@/shared/hooks/use-mobile'
+import { useAdjacentChapterTexts } from './useAdjacentChapterTexts'
 
 // 指を離した後もスナップのアニメーションが続く。最後のスクロールからこの時間
 // 動きがなければ着地とみなす。scrollend は Safari の対応が環境で割れるため使わない
@@ -46,8 +48,14 @@ export function useChapterPager({ loc, disabled }: Params) {
     }
   }, [interactive, collection, book, chapter])
 
+  const bilingual = useBilingualEnabled()
+  const adjacentTexts = useAdjacentChapterTexts({ loc, enabled: interactive, bilingual })
+
   const containerRef = useRef<HTMLDivElement>(null)
   const [pointing, setPointing] = useState<'prev' | 'next' | null>(null)
+  // 移動先のプレビューは指が触れている間だけ出す。章ぶんの節をずっと描いておく
+  // 必要はないし、縦位置の計測もジェスチャーごとに1回で足りる
+  const [gesture, setGesture] = useState<{ previewTop: number } | null>(null)
   // 遷移待ちの間に着地判定が二重で走らないようにする
   const navigated = useRef(false)
   const settleTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
@@ -84,7 +92,10 @@ export function useChapterPager({ loc, disabled }: Params) {
     const index = Math.round(el.scrollLeft / width)
     const centerIndex = prev ? 1 : 0
     const target = index < centerIndex ? prev : index > centerIndex ? next : null
-    if (!target) return
+    if (!target) {
+      setGesture(null)
+      return
+    }
 
     navigated.current = true
     navigate({
@@ -105,6 +116,14 @@ export function useChapterPager({ loc, disabled }: Params) {
   const onTouchStart = useCallback(() => {
     touched.current = true
     touchCount.current += 1
+
+    // パネルは章の高さぶん縦に伸びる。プレビューを先頭に置くと、下の方を
+    // 読んでいるときに画面の外へ出るため、いま見えている位置に合わせる。
+    // 横ドラッグ中は方向ロックで縦に動かないので、触れた時点の1回で足りる
+    const el = containerRef.current
+    if (!el) return
+    const containerTop = el.getBoundingClientRect().top + window.scrollY
+    setGesture({ previewTop: Math.max(0, window.scrollY - containerTop) })
   }, [])
 
   const onTouchEnd = useCallback(() => {
@@ -145,5 +164,7 @@ export function useChapterPager({ loc, disabled }: Params) {
     onTouchEnd: scrollable ? onTouchEnd : undefined,
     destination: pointing === 'next' ? next : pointing === 'prev' ? prev : null,
     direction: pointing,
+    previewTop: gesture?.previewTop ?? 0,
+    previews: gesture ? adjacentTexts : { prev: null, next: null },
   }
 }

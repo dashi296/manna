@@ -31,7 +31,7 @@ import {
   useSelectedUserStore,
 } from '@/features/select-verse-view'
 import { VerseCommentSheet } from '@/widgets/verse-comment-sheet'
-import { ChapterPager } from '@/features/swipe-chapter-navigation'
+import { ChapterPager, type ChapterTexts } from '@/features/swipe-chapter-navigation'
 import { getCircleUserIds } from '@/entities/user'
 import type { AvatarStackItem } from '@/shared/ui'
 import { useBookmarkStore } from '@/entities/bookmark'
@@ -431,6 +431,41 @@ function ChapterNav({ collection, book, chapter }: ChapterRef) {
   )
 }
 
+// スワイプ中に見える移動先の冒頭。見えるのは画面1つぶんなので、それを超える節は描かない
+const PREVIEW_VERSE_LIMIT = 40
+
+function ChapterPreview({ texts, currentBook }: { texts: ChapterTexts; currentBook: string }) {
+  const target = getBook(texts.ref.collection, texts.ref.book)
+  const verses = [...texts.primary.keys()].slice(0, PREVIEW_VERSE_LIMIT)
+
+  return (
+    <div>
+      <p className="px-4 pt-3 pb-1 text-xs font-medium" style={{ color: 'var(--sea-ink-soft)' }}>
+        {getChapterNavLabel(texts.ref, currentBook)}
+      </p>
+      <ul>
+        {verses.map((verse) => (
+          <li key={verse} className="border-b" style={{ borderColor: 'var(--line)' }}>
+            <VerseRow
+              collection={texts.ref.collection}
+              book={texts.ref.book}
+              chapter={texts.ref.chapter}
+              verse={verse}
+              textHtml={texts.primary.get(verse)}
+              textHtmlSecondary={texts.secondary.get(verse)}
+              secondaryLang={SECONDARY_LANGUAGE}
+              mode="read"
+              selected={false}
+              onSelect={() => {}}
+              showNumber={!target?.isFrontMatter}
+            />
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
 function refToParams(ref: ChapterRef) {
   return { collection: ref.collection, book: ref.book, chapter: String(ref.chapter) }
 }
@@ -754,6 +789,7 @@ function ChapterView({
         loc={{ collection, book: book.id, chapter }}
         // シートは背面を覆わないので、開いたままスワイプできてしまう
         disabled={mode === 'select' || sheetOpen || commentVerseForScroll !== undefined}
+        renderPreview={(texts) => <ChapterPreview texts={texts} currentBook={book.id} />}
       >
         {posts.length > 0 && (
           <div className="border-b" style={{ borderColor: 'var(--line)' }}>

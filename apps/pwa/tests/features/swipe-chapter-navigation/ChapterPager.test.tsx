@@ -1,10 +1,16 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { ChapterPager } from '@/features/swipe-chapter-navigation'
+import type { ChapterTexts } from '@/features/swipe-chapter-navigation'
 
 const navigate = vi.fn()
 vi.mock('@tanstack/react-router', () => ({
   useNavigate: () => navigate,
+}))
+
+let adjacentTexts: { prev: ChapterTexts | null; next: ChapterTexts | null } = { prev: null, next: null }
+vi.mock('@/features/swipe-chapter-navigation/lib/useAdjacentChapterTexts', () => ({
+  useAdjacentChapterTexts: () => adjacentTexts,
 }))
 
 let isMobile = true
@@ -36,8 +42,15 @@ beforeAll(() => {
   })
 })
 
+const chapterTexts = (chapter: number): ChapterTexts => ({
+  ref: { collection: 'bofm', book: '1-ne', chapter },
+  primary: new Map([[1, `第${chapter}章の1節`]]),
+  secondary: new Map(),
+})
+
 beforeEach(() => {
   isMobile = true
+  adjacentTexts = { prev: null, next: null }
   navigate.mockClear()
   window.matchMedia = ((query: string) =>
     ({
@@ -78,13 +91,18 @@ function settle() {
 function renderPager(
   loc = { collection: 'bofm', book: '1-ne', chapter: 5 },
   disabled = false,
+  renderPreview?: (texts: ChapterTexts) => React.ReactNode,
 ) {
   return render(
-    <ChapterPager loc={loc} disabled={disabled}>
+    <ChapterPager loc={loc} disabled={disabled} renderPreview={renderPreview}>
       <p>章の本文</p>
     </ChapterPager>,
   )
 }
+
+const preview = (texts: ChapterTexts) => (
+  <p>プレビュー: {texts.ref.chapter}章 / {texts.primary.get(1)}</p>
+)
 
 describe('ChapterPager', () => {
   it('両隣に章があるとき、前後のパネルを描画する', () => {
@@ -248,5 +266,67 @@ describe('ChapterPager', () => {
     fireEvent.touchStart(pager())
     scrollTo(PANEL_WIDTH * 1.3)
     expect(screen.getByTestId('chapter-pager-label')).toHaveTextContent('第2ニーファイ書 第1章')
+  })
+})
+
+describe('ChapterPager の移動先プレビュー', () => {
+  it('指を置くと、先読み済みの隣の章を両脇に描く', () => {
+    adjacentTexts = { prev: chapterTexts(4), next: chapterTexts(6) }
+    renderPager({ collection: 'bofm', book: '1-ne', chapter: 5 }, false, preview)
+
+    expect(screen.queryByText(/プレビュー/)).not.toBeInTheDocument()
+
+    fireEvent.touchStart(pager())
+    expect(screen.getByText('プレビュー: 4章 / 第4章の1節')).toBeInTheDocument()
+    expect(screen.getByText('プレビュー: 6章 / 第6章の1節')).toBeInTheDocument()
+  })
+
+  it('先読みが間に合っていない側は描かない', () => {
+    adjacentTexts = { prev: null, next: chapterTexts(6) }
+    renderPager({ collection: 'bofm', book: '1-ne', chapter: 5 }, false, preview)
+    fireEvent.touchStart(pager())
+    expect(screen.getByText(/6章/)).toBeInTheDocument()
+    expect(screen.queryByText(/4章/)).not.toBeInTheDocument()
+  })
+
+  it('プレビューを出せる方向では行先ラベルを出さない', () => {
+    adjacentTexts = { prev: null, next: chapterTexts(6) }
+    renderPager({ collection: 'bofm', book: '1-ne', chapter: 5 }, false, preview)
+    fireEvent.touchStart(pager())
+    scrollTo(PANEL_WIDTH * 1.3)
+    expect(screen.queryByTestId('chapter-pager-label')).not.toBeInTheDocument()
+
+    // 先読みが無い側はこれまでどおりラベルで示す
+    scrollTo(PANEL_WIDTH * 0.7)
+    expect(screen.getByTestId('chapter-pager-label')).toHaveTextContent('第4章')
+  })
+
+  it('プレビューは画面の現在位置に合わせて置く', () => {
+    adjacentTexts = { prev: null, next: chapterTexts(6) }
+    renderPager({ collection: 'bofm', book: '1-ne', chapter: 5 }, false, preview)
+
+    // 900px 読み進めた状態（コンテナの上端は画面より 900px 上にある）
+    Object.defineProperty(window, 'scrollY', { value: 900, configurable: true })
+    const rect = vi
+      .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+      .mockReturnValue({ top: -900 } as DOMRect)
+
+    fireEvent.touchStart(pager())
+    // 章の先頭に置くと、下の方を読んでいるときに画面の外へ出る
+    expect(screen.getByTestId('chapter-pager-preview-next')).toHaveStyle({ top: '900px' })
+
+    rect.mockRestore()
+    Object.defineProperty(window, 'scrollY', { value: 0, configurable: true })
+  })
+
+  it('指を離して元の位置に戻ったらプレビューを畳む', () => {
+    adjacentTexts = { prev: null, next: chapterTexts(6) }
+    renderPager({ collection: 'bofm', book: '1-ne', chapter: 5 }, false, preview)
+    fireEvent.touchStart(pager())
+    scrollTo(PANEL_WIDTH * 1.3)
+    fireEvent.touchEnd(pager())
+    scrollTo(PANEL_WIDTH)
+    settle()
+    expect(screen.queryByText(/プレビュー/)).not.toBeInTheDocument()
   })
 })
