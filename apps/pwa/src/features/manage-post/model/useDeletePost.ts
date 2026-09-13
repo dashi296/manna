@@ -20,8 +20,7 @@ export function useDeletePost(postId: string) {
       .eq('id', postId)
       .select('id')
 
-    // 0 行は RLS 拒否と別セッションでの削除済みの両方で返り区別できない。前者では
-    // 削除が起きていないため、成功として扱わない
+    // 0 行は RLS に拒否されたときも返る。削除が起きていない可能性があるので成功にしない
     if (error || !data?.length) {
       end()
       toast.error('削除に失敗しました')

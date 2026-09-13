@@ -214,8 +214,7 @@ describe('PostActionsMenu', () => {
     expect(mockBack).not.toHaveBeenCalled()
   })
 
-  // RLS に拒否された削除も 0 行で返る。成功として扱うと、消えていないのに
-  // 「削除されています」と出してフィードへ戻してしまう
+  // RLS に拒否された削除も 0 行で返るため、成功扱いすると嘘の成功になる
   it('0 行なら成功として扱わず、遷移もしない', async () => {
     mockDeleteResult.mockResolvedValue({ data: [], error: null })
     renderMenu()
@@ -229,7 +228,12 @@ describe('PostActionsMenu', () => {
     expect(mockBack).not.toHaveBeenCalled()
     expect(mockNavigate).not.toHaveBeenCalled()
     expect(mockInvalidatePostLists).not.toHaveBeenCalled()
+
+    // disabled が外れるだけでは足りない。single-flight の running も解除されて
+    // いなければ、押せるのに何も起きない状態になる
     expect(confirm).not.toBeDisabled()
+    await userEvent.click(confirm)
+    await waitFor(() => expect(mockDelete).toHaveBeenCalledTimes(2))
   })
 
   it('失敗したら遷移せず、もう一度押せる状態に戻す', async () => {
