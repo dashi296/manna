@@ -319,6 +319,26 @@ describe('ChapterPager の移動先プレビュー', () => {
     Object.defineProperty(window, 'scrollY', { value: 0, configurable: true })
   })
 
+  it('貼り付いているヘッダーの高さぶんだけプレビューを下げる', () => {
+    adjacentTexts = { prev: null, next: chapterTexts(6) }
+    render(
+      <div>
+        <header>ヘッダー</header>
+        <ChapterPager loc={{ collection: 'bofm', book: '1-ne', chapter: 5 }} disabled={false} renderPreview={preview}>
+          <p>章の本文</p>
+        </ChapterPager>
+      </div>,
+    )
+    const rect = vi
+      .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+      .mockReturnValue({ top: 0, height: 56 } as DOMRect)
+
+    fireEvent.touchStart(pager())
+    // 画面の上端に置くと、そこに貼り付いているヘッダーの下に潜る
+    expect(screen.getByTestId('chapter-pager-preview-next')).toHaveStyle({ top: '56px' })
+    rect.mockRestore()
+  })
+
   it('指を離して元の位置に戻ったらプレビューを畳む', () => {
     adjacentTexts = { prev: null, next: chapterTexts(6) }
     renderPager({ collection: 'bofm', book: '1-ne', chapter: 5 }, false, preview)

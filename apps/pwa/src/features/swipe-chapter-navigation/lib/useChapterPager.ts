@@ -123,7 +123,11 @@ export function useChapterPager({ loc, disabled }: Params) {
     const el = containerRef.current
     if (!el) return
     const containerTop = el.getBoundingClientRect().top + window.scrollY
-    setGesture({ previewTop: Math.max(0, window.scrollY - containerTop) })
+    // 画面の上端に合わせると、そこに貼り付いているヘッダーの下に潜る。
+    // 遷移した先では本文がヘッダーの下から始まるので、その分だけ下げて揃える
+    const header = el.parentElement?.querySelector('header')
+    const headerHeight = header?.getBoundingClientRect().height ?? 0
+    setGesture({ previewTop: Math.max(0, window.scrollY + headerHeight - containerTop) })
   }, [])
 
   const onTouchEnd = useCallback(() => {

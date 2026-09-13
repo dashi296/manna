@@ -94,10 +94,15 @@ export function useAdjacentChapterTexts({ loc, enabled, bilingual }: Params) {
     const preload = async (ref: ChapterRef | null, side: Side) => {
       if (!ref) return
       try {
-        const matches = await routerRef.current.preloadRoute({ to: CHAPTER_ROUTE, params: refToParams(ref) })
-        const data = matches?.at(-1)?.loaderData as { verseTexts?: VerseTextRow[] } | undefined
-        if (cancelled || !data?.verseTexts) return
-        setPrimary((current) => ({ ...current, [side]: toMap(data.verseTexts) }))
+        const router = routerRef.current
+        const matches = await router.preloadRoute({ to: CHAPTER_ROUTE, params: refToParams(ref) })
+        // preloadRoute が返すのは読み込み前の写しで loaderData を持たない。
+        // 読み込み済みの実体はルーターのキャッシュ側にある
+        const id = matches?.at(-1)?.id
+        const loaded = id ? router.getMatch(id) : undefined
+        const rows = (loaded?.loaderData as { verseTexts?: VerseTextRow[] } | undefined)?.verseTexts
+        if (cancelled || !rows) return
+        setPrimary((current) => ({ ...current, [side]: toMap(rows) }))
       } catch {
         // 先読みが失敗しても本体の表示には影響しない。移動先はラベルにとどまる
       }

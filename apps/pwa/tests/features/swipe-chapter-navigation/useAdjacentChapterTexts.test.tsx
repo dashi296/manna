@@ -4,7 +4,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useAdjacentChapterTexts } from '@/features/swipe-chapter-navigation'
 
 const preloadRoute = vi.fn()
-const router = { preloadRoute }
+const getMatch = vi.fn()
+const router = { preloadRoute, getMatch }
 vi.mock('@tanstack/react-router', () => ({
   useRouter: () => router,
 }))
@@ -24,16 +25,18 @@ function wrapper({ children }: { children: React.ReactNode }) {
 
 const loc = { collection: 'bofm', book: '1-ne', chapter: 5 }
 
-// ルートの先読みは loader のデータを返す。そこに節本文が入っている
-const matchesFor = (chapter: string) => [
-  { loaderData: { verseTexts: [{ verse: 1, text_html: `${chapter}章の1節` }] } },
-]
+// preloadRoute が返すのは読み込み前の写し。中身はルーターのキャッシュから引く
+const matchesFor = (chapter: string) => [{ id: `match-${chapter}` }]
 
 beforeEach(() => {
   preloadRoute.mockReset()
   preloadRoute.mockImplementation(({ params }: { params: { chapter: string } }) =>
     Promise.resolve(matchesFor(params.chapter)),
   )
+  getMatch.mockReset()
+  getMatch.mockImplementation((id: string) => ({
+    loaderData: { verseTexts: [{ verse: 1, text_html: `${id.replace('match-', '')}章の1節` }] },
+  }))
   queryVerseTexts.mockReset()
   queryVerseTexts.mockResolvedValue([{ verse: 1, text_html: 'english' }])
 })
