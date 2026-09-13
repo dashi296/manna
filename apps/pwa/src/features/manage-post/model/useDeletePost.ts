@@ -20,15 +20,15 @@ export function useDeletePost(postId: string) {
       .eq('id', postId)
       .select('id')
 
-    if (error) {
+    // 0 行は RLS 拒否と別セッションでの削除済みの両方で返り区別できない。前者では
+    // 削除が起きていないため、成功として扱わない
+    if (error || !data?.length) {
       end()
       toast.error('削除に失敗しました')
       return
     }
 
-    // RLS 違反も別セッションでの削除済みも 0 行で返る。削除の意図は達成されて
-    // いるので、どちらもエラーにせず一覧を取り直して戻す
-    toast(data && data.length > 0 ? '投稿を削除しました' : '投稿は既に削除されています')
+    toast('投稿を削除しました')
 
     await invalidatePostLists(queryClient)
 
