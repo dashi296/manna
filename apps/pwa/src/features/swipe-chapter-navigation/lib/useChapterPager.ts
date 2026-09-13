@@ -119,15 +119,13 @@ export function useChapterPager({ loc, disabled }: Params) {
 
     // パネルは章の高さぶん縦に伸びる。プレビューを先頭に置くと、下の方を
     // 読んでいるときに画面の外へ出るため、いま見えている位置に合わせる。
-    // 横ドラッグ中は方向ロックで縦に動かないので、触れた時点の1回で足りる
-    const el = containerRef.current
-    if (!el) return
-    const containerTop = el.getBoundingClientRect().top + window.scrollY
-    // 画面の上端に合わせると、そこに貼り付いているヘッダーの下に潜る。
-    // 遷移した先では本文がヘッダーの下から始まるので、その分だけ下げて揃える
-    const header = el.parentElement?.querySelector('header')
-    const headerHeight = header?.getBoundingClientRect().height ?? 0
-    setGesture({ previewTop: Math.max(0, window.scrollY + headerHeight - containerTop) })
+    // 横ドラッグ中は方向ロックで縦に動かないので、触れた時点の1回で足りる。
+    //
+    // スクロール量をそのまま下げ幅にすると、プレビューはコンテナの先頭
+    // （＝章の本文が始まる位置）に重なる。遷移した先も本文はそこから始まるので、
+    // ヘッダーやその下の行の高さを知らなくても縦位置が揃う
+    if (!containerRef.current) return
+    setGesture({ previewTop: window.scrollY })
   }, [])
 
   const onTouchEnd = useCallback(() => {

@@ -305,38 +305,31 @@ describe('ChapterPager の移動先プレビュー', () => {
     adjacentTexts = { prev: null, next: chapterTexts(6) }
     renderPager({ collection: 'bofm', book: '1-ne', chapter: 5 }, false, preview)
 
-    // 900px 読み進めた状態（コンテナの上端は画面より 900px 上にある）
+    // 900px 読み進めた状態
     Object.defineProperty(window, 'scrollY', { value: 900, configurable: true })
-    const rect = vi
-      .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
-      .mockReturnValue({ top: -900 } as DOMRect)
-
     fireEvent.touchStart(pager())
     // 章の先頭に置くと、下の方を読んでいるときに画面の外へ出る
     expect(screen.getByTestId('chapter-pager-preview-next')).toHaveStyle({ top: '900px' })
-
-    rect.mockRestore()
     Object.defineProperty(window, 'scrollY', { value: 0, configurable: true })
   })
 
-  it('貼り付いているヘッダーの高さぶんだけプレビューを下げる', () => {
+  it('ヘッダーやその下の行があっても、下げ幅はスクロール量のまま', () => {
+    // コンテナの先頭に重ねれば、本文が始まる位置は遷移の前後で揃う。
+    // 上に何がどれだけ積まれているかを知る必要はない
     adjacentTexts = { prev: null, next: chapterTexts(6) }
     render(
       <div>
         <header>ヘッダー</header>
+        <div>投稿者の行</div>
         <ChapterPager loc={{ collection: 'bofm', book: '1-ne', chapter: 5 }} disabled={false} renderPreview={preview}>
           <p>章の本文</p>
         </ChapterPager>
       </div>,
     )
-    const rect = vi
-      .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
-      .mockReturnValue({ top: 0, height: 56 } as DOMRect)
-
+    Object.defineProperty(window, 'scrollY', { value: 1200, configurable: true })
     fireEvent.touchStart(pager())
-    // 画面の上端に置くと、そこに貼り付いているヘッダーの下に潜る
-    expect(screen.getByTestId('chapter-pager-preview-next')).toHaveStyle({ top: '56px' })
-    rect.mockRestore()
+    expect(screen.getByTestId('chapter-pager-preview-next')).toHaveStyle({ top: '1200px' })
+    Object.defineProperty(window, 'scrollY', { value: 0, configurable: true })
   })
 
   it('指を離して元の位置に戻ったらプレビューを畳む', () => {
