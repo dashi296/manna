@@ -17,8 +17,17 @@ const panelStyle = { scrollSnapStop: 'always' as const }
 // ジェスチャの処理をブラウザに任せるのが狙い。方向ロック・パン後のクリック抑止・
 // 慣性は、自前のポインタ処理では作り直しになる
 export function ChapterPager({ loc, disabled, children }: Props) {
-  const { containerRef, prev, next, scrollable, onScroll, destination, direction } =
-    useChapterPager({ loc, disabled })
+  const {
+    containerRef,
+    prev,
+    next,
+    scrollable,
+    onScroll,
+    onTouchStart,
+    onTouchEnd,
+    destination,
+    direction,
+  } = useChapterPager({ loc, disabled })
 
   return (
     <>
@@ -32,6 +41,9 @@ export function ChapterPager({ loc, disabled, children }: Props) {
           overscrollBehaviorX: 'contain',
         }}
         onScroll={onScroll}
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+        onTouchCancel={onTouchEnd}
       >
         {prev && (
           <div data-testid="chapter-pager-prev" aria-hidden className={panelClass} style={panelStyle} />

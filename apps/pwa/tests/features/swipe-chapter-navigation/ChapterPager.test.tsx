@@ -61,6 +61,14 @@ function scrollTo(px: number) {
   fireEvent.scroll(el)
 }
 
+// 指を置く → 引く → 離す。着地判定は指が離れるまで走らない
+function swipeTo(px: number) {
+  const el = pager()
+  fireEvent.touchStart(el)
+  scrollTo(px)
+  fireEvent.touchEnd(el)
+}
+
 function settle() {
   act(() => {
     vi.advanceTimersByTime(300)
@@ -109,7 +117,7 @@ describe('ChapterPager', () => {
 
   it('次のパネルまでスクロールして静止すると、次の章へ移動する', () => {
     renderPager()
-    scrollTo(PANEL_WIDTH * 2)
+    swipeTo(PANEL_WIDTH * 2)
     settle()
     expect(navigate).toHaveBeenCalledWith({
       to: '/scriptures/$collection/$book/$chapter',
@@ -119,7 +127,7 @@ describe('ChapterPager', () => {
 
   it('前のパネルまでスクロールして静止すると、前の章へ移動する', () => {
     renderPager()
-    scrollTo(0)
+    swipeTo(0)
     settle()
     expect(navigate).toHaveBeenCalledWith({
       to: '/scriptures/$collection/$book/$chapter',
@@ -129,7 +137,7 @@ describe('ChapterPager', () => {
 
   it('書の境界をまたぐ移動先も呼び出す', () => {
     renderPager({ collection: 'bofm', book: '1-ne', chapter: 22 })
-    scrollTo(PANEL_WIDTH * 2)
+    swipeTo(PANEL_WIDTH * 2)
     settle()
     expect(navigate).toHaveBeenCalledWith({
       to: '/scriptures/$collection/$book/$chapter',
@@ -139,16 +147,39 @@ describe('ChapterPager', () => {
 
   it('本文のパネルで静止しても移動しない', () => {
     renderPager()
+    fireEvent.touchStart(pager())
     scrollTo(PANEL_WIDTH * 1.4)
     scrollTo(PANEL_WIDTH)
+    fireEvent.touchEnd(pager())
     settle()
     expect(navigate).not.toHaveBeenCalled()
   })
 
   it('静止する前は移動しない', () => {
     renderPager()
-    scrollTo(PANEL_WIDTH * 2)
+    swipeTo(PANEL_WIDTH * 2)
     expect(navigate).not.toHaveBeenCalled()
+  })
+
+  it('指が触れていないのに位置が変わっても移動しない', () => {
+    // ブラウザはパネルの増減やフォントの到着でもスナップをやり直す。
+    // それを「隣まで引かれた」と読むと、読み込み直後に勝手に隣の章へ飛ぶ
+    renderPager()
+    scrollTo(PANEL_WIDTH * 2)
+    settle()
+    expect(navigate).not.toHaveBeenCalled()
+  })
+
+  it('指を止めていても、離すまでは移動しない', () => {
+    renderPager()
+    fireEvent.touchStart(pager())
+    scrollTo(PANEL_WIDTH * 2)
+    settle()
+    expect(navigate).not.toHaveBeenCalled()
+
+    fireEvent.touchEnd(pager())
+    settle()
+    expect(navigate).toHaveBeenCalledTimes(1)
   })
 
   it('disabled のときは本文を作り直さずにスクロールを止め、移動もしない', () => {
@@ -156,7 +187,7 @@ describe('ChapterPager', () => {
     // 読んでいた位置を失わないよう、パネルの構成自体は変えない
     expect(screen.getByTestId('chapter-pager-prev')).toBeInTheDocument()
     expect(pager()).toHaveStyle({ overflowX: 'hidden' })
-    scrollTo(PANEL_WIDTH * 2)
+    swipeTo(PANEL_WIDTH * 2)
     settle()
     expect(navigate).not.toHaveBeenCalled()
   })

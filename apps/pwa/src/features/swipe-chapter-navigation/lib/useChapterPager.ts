@@ -51,6 +51,14 @@ export function useChapterPager({ loc, disabled }: Params) {
   // 遷移待ちの間に着地判定が二重で走らないようにする
   const navigated = useRef(false)
   const settleTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  // 指が触れるまで着地判定を始めない。ブラウザはパネルの増減やフォントの到着でも
+  // スナップをやり直すことがあり、それを「隣まで引かれた」と読むと読み込み直後に
+  // 勝手に隣の章へ飛ぶ
+  const touched = useRef(false)
+  // 触れている指の数。指を止めているだけでスクロールは静止するので、
+  // 離すまでは着地とみなさない。ポインタイベントは横パンが始まると
+  // pointercancel で打ち切られるため、タッチイベントで数える
+  const touchCount = useRef(0)
 
   // CSS では中央のパネルから開始できないため、描画前に位置を合わせる
   useLayoutEffect(() => {
@@ -64,6 +72,7 @@ export function useChapterPager({ loc, disabled }: Params) {
   const settle = useCallback(() => {
     const el = containerRef.current
     if (!el || navigated.current) return
+    if (!touched.current || touchCount.current > 0) return
     const width = el.clientWidth
     if (width === 0) return
 
@@ -83,6 +92,22 @@ export function useChapterPager({ loc, disabled }: Params) {
     })
   }, [navigate, prev, next])
 
+  const scheduleSettle = useCallback(() => {
+    clearTimeout(settleTimer.current)
+    settleTimer.current = setTimeout(settle, SETTLE_MS)
+  }, [settle])
+
+  const onTouchStart = useCallback(() => {
+    touched.current = true
+    touchCount.current += 1
+  }, [])
+
+  const onTouchEnd = useCallback(() => {
+    touchCount.current = Math.max(0, touchCount.current - 1)
+    // 指を止めたまま離した場合、スクロールイベントはもう来ない
+    scheduleSettle()
+  }, [scheduleSettle])
+
   const onScroll = useCallback(() => {
     const el = containerRef.current
     if (!el || navigated.current) return
@@ -92,9 +117,8 @@ export function useChapterPager({ loc, disabled }: Params) {
       offset > LABEL_THRESHOLD_PX ? 'next' : offset < -LABEL_THRESHOLD_PX ? 'prev' : null,
     )
 
-    clearTimeout(settleTimer.current)
-    settleTimer.current = setTimeout(settle, SETTLE_MS)
-  }, [prev, settle])
+    scheduleSettle()
+  }, [prev, scheduleSettle])
 
   return {
     containerRef,
@@ -102,6 +126,8 @@ export function useChapterPager({ loc, disabled }: Params) {
     next,
     scrollable,
     onScroll: scrollable ? onScroll : undefined,
+    onTouchStart: scrollable ? onTouchStart : undefined,
+    onTouchEnd: scrollable ? onTouchEnd : undefined,
     destination: pointing === 'next' ? next : pointing === 'prev' ? prev : null,
     direction: pointing,
   }
