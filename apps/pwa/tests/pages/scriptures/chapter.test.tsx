@@ -1,5 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render as rtlRender, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render as rtlRender, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClientProvider } from '@tanstack/react-query'
 import type { PostWithUser } from '@/entities/post'
@@ -1352,5 +1352,87 @@ describe('ChapterPage', () => {
     await user.click(headerComposeTrigger())
 
     expect(await screen.findByRole('dialog')).toBeInTheDocument()
+  })
+
+  describe('前章・次章への導線', () => {
+    it('章末尾に次章へのリンクを出す', () => {
+      loaderData = { ...baseChapterData, chapter: 5 }
+      search = {}
+      render(<ChapterPage />)
+
+      expect(screen.getByRole('link', { name: '次の章: 第6章' })).toHaveAttribute(
+        'href',
+        expect.stringContaining('/scriptures/bofm/1-ne/6'),
+      )
+    })
+
+    it('章末尾に前章へのリンクを出す', () => {
+      loaderData = { ...baseChapterData, chapter: 5 }
+      search = {}
+      render(<ChapterPage />)
+
+      expect(screen.getByRole('link', { name: '前の章: 第4章' })).toHaveAttribute(
+        'href',
+        expect.stringContaining('/scriptures/bofm/1-ne/4'),
+      )
+    })
+
+    // 同じ書の中では書名が自明なので章だけにする。またぐときは書名が要る
+    it('書をまたぐ移動先には書名を付ける', () => {
+      loaderData = { ...baseChapterData, chapter: 22 }
+      search = {}
+      render(<ChapterPage />)
+
+      expect(screen.getByRole('link', { name: '次の章: 第2ニーファイ書 第1章' })).toHaveAttribute(
+        'href',
+        expect.stringContaining('/scriptures/bofm/2-ne/1'),
+      )
+      expect(screen.getByRole('link', { name: '前の章: 第21章' })).toBeInTheDocument()
+    })
+
+    // 前付け文書はスキップするため、1-ne 1章の手前には移動先が無い
+    it('コレクション先頭では前章リンクを出さない', () => {
+      loaderData = { ...baseChapterData, chapter: 1 }
+      search = {}
+      render(<ChapterPage />)
+
+      const nav = screen.getByRole('navigation', { name: '章の移動' })
+      expect(within(nav).getByRole('link', { name: '次の章: 第2章' })).toBeInTheDocument()
+      expect(within(nav).getAllByRole('link')).toHaveLength(1)
+    })
+
+    // 前付け文書は移動先から外れるので、隣が前付けでも通常の書まで飛ばす
+    it('前付け文書からは残りの前付けを飛ばして最初の書へ送る', () => {
+      loaderData = {
+        ...baseChapterData,
+        book: { id: 'bofm-title', name: 'モルモン書のタイトルページ', chapters: 1, verses: [4], isFrontMatter: true },
+        chapter: 1,
+      }
+      search = {}
+      render(<ChapterPage />)
+
+      const nav = screen.getByRole('navigation', { name: '章の移動' })
+      expect(within(nav).getByRole('link', { name: '次の章: 第1ニーファイ書 第1章' })).toHaveAttribute(
+        'href',
+        expect.stringContaining('/scriptures/bofm/1-ne/1'),
+      )
+      expect(within(nav).getAllByRole('link')).toHaveLength(1)
+    })
+
+    it('節を選んでいる最中は出さない', () => {
+      loaderData = { ...baseChapterData, chapter: 5 }
+      search = { mode: 'select', select: [1] }
+      render(<ChapterPage />)
+
+      expect(screen.queryByTestId('chapter-nav')).toBeNull()
+    })
+
+    it('節表示では出さない', () => {
+      loaderData = { ...baseChapterData, mode: 'verse', verses: [1] }
+      search = {}
+      render(<ChapterPage />)
+
+      expect(screen.queryByTestId('chapter-nav')).toBeNull()
+    })
   })
 })

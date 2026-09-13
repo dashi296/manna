@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   createFileRoute,
+  Link,
   notFound,
   useRouter,
   type HistoryState,
 } from '@tanstack/react-router'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { createServerFn } from '@tanstack/react-start'
 import { useQuery } from '@tanstack/react-query'
-import { getBook, getCollection, buildScriptureUrl, getChapterLabel, getScriptureLabel } from '@/entities/scripture'
+import { getBook, getCollection, buildScriptureUrl, getChapterLabel, getScriptureLabel, getAdjacentChapterRef, type ChapterRef } from '@/entities/scripture'
 import { PostCard, POST_SELECT, type PostWithUser } from '@/entities/post'
 import { createSupabaseServer } from '@/shared/lib/auth'
 import { supabase } from '@/shared/lib/supabase'
@@ -44,7 +46,6 @@ type SupabaseServer = Awaited<ReturnType<typeof createSupabaseServer>>
 // 呼ばれる。両者は構造的に同じ型（@supabase/ssr の SupabaseClient<Database>）なので
 // SupabaseServer をそのまま別名として使う。
 type SupabaseClientLike = SupabaseServer
-type ChapterRef = { collection: string; book: string; chapter: number }
 
 async function queryCurrentUserId(supabase: SupabaseServer) {
   const {
@@ -422,6 +423,62 @@ type ChapterViewProps = {
   circlePosts: PostWithUser[]
 }
 
+// 同じ書の中では書名が自明なうえ、狭い画面で「第1ニーファイ書 第21章」が折り返す
+function chapterNavLabel(ref: ChapterRef, currentBook: string) {
+  const target = getBook(ref.collection, ref.book)
+  if (!target) return ''
+  return ref.book === currentBook
+    ? getChapterLabel(target, ref.chapter)
+    : getScriptureLabel(ref, target)
+}
+
+// 読み終えた位置に置く。前付け文書は移動先から外れ、コレクションの端では片側だけになる
+function ChapterNav({ collection, book, chapter }: ChapterRef) {
+  const prev = getAdjacentChapterRef({ collection, book, chapter }, 'prev')
+  const next = getAdjacentChapterRef({ collection, book, chapter }, 'next')
+  if (!prev && !next) return null
+
+  const linkClass =
+    'flex items-center gap-1 px-3 py-2 text-sm rounded-md transition-colors hover:bg-[var(--chip-bg)]'
+
+  return (
+    <nav
+      data-testid="chapter-nav"
+      aria-label="章の移動"
+      className="flex items-center gap-2 px-4 py-4 border-t"
+      style={{ borderColor: 'var(--line)', color: 'var(--lagoon-deep)' }}
+    >
+      {prev && (
+        <Link
+          to="/scriptures/$collection/$book/$chapter"
+          params={refToParams(prev)}
+          // 矢印は読み上げから外れるため、名前に方向が残らないと行き先しか伝わらない
+          aria-label={`前の章: ${chapterNavLabel(prev, book)}`}
+          className={linkClass}
+        >
+          <ChevronLeft size={16} aria-hidden="true" />
+          {chapterNavLabel(prev, book)}
+        </Link>
+      )}
+      {next && (
+        <Link
+          to="/scriptures/$collection/$book/$chapter"
+          params={refToParams(next)}
+          aria-label={`次の章: ${chapterNavLabel(next, book)}`}
+          className={`${linkClass} ml-auto`}
+        >
+          {chapterNavLabel(next, book)}
+          <ChevronRight size={16} aria-hidden="true" />
+        </Link>
+      )}
+    </nav>
+  )
+}
+
+function refToParams(ref: ChapterRef) {
+  return { collection: ref.collection, book: ref.book, chapter: String(ref.chapter) }
+}
+
 function ChapterView({
   book, chapter, collection, posts, verseTexts, canCompose,
   chapterCommenters, circlePosts,
@@ -544,6 +601,8 @@ function ChapterView({
     isMounted.current = true
   }, [])
 
+  const chapterNav = <ChapterNav collection={collection} book={book.id} chapter={chapter} />
+
   const patchSearch = (
     patch: Partial<ChapterSearch>,
     replace = true,
@@ -664,7 +723,7 @@ function ChapterView({
   )
 
   const verseList = (
-    <div className="p-4 pb-[var(--fab-clearance)]">
+    <div className="p-4">
       <ul>
         {verseNumbers.map((verse, i) => {
           const textHtml = verseTextMap.get(verse)
@@ -743,7 +802,12 @@ function ChapterView({
           ))}
         </div>
       )}
-      {verseList}
+      {/* 末尾が節一覧か章移動かで変わるため、FAB のぶんの余白はまとめて外側で確保する。
+          FAB が出ない場面（未ログイン・選択モード・lg 以上）では余らせない */}
+      <div className={composeFab ? 'pb-[var(--fab-clearance)] lg:pb-0' : undefined}>
+        {verseList}
+        {mode !== 'select' && chapterNav}
+      </div>
       {canCompose && (
         <PostComposerSheet
           open={sheetOpen}
