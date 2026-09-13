@@ -1360,7 +1360,7 @@ describe('ChapterPage', () => {
       search = {}
       render(<ChapterPage />)
 
-      expect(screen.getByRole('link', { name: '第1ニーファイ書 第6章' })).toHaveAttribute(
+      expect(screen.getByRole('link', { name: '第6章' })).toHaveAttribute(
         'href',
         expect.stringContaining('/scriptures/bofm/1-ne/6'),
       )
@@ -1371,10 +1371,23 @@ describe('ChapterPage', () => {
       search = {}
       render(<ChapterPage />)
 
-      expect(screen.getByRole('link', { name: '第1ニーファイ書 第4章' })).toHaveAttribute(
+      expect(screen.getByRole('link', { name: '第4章' })).toHaveAttribute(
         'href',
         expect.stringContaining('/scriptures/bofm/1-ne/4'),
       )
+    })
+
+    // 同じ書の中では書名が自明なので章だけにする。またぐときは書名が要る
+    it('書をまたぐ移動先には書名を付ける', () => {
+      loaderData = { ...baseChapterData, chapter: 22 }
+      search = {}
+      render(<ChapterPage />)
+
+      expect(screen.getByRole('link', { name: '第2ニーファイ書 第1章' })).toHaveAttribute(
+        'href',
+        expect.stringContaining('/scriptures/bofm/2-ne/1'),
+      )
+      expect(screen.getByRole('link', { name: '第21章' })).toBeInTheDocument()
     })
 
     // 前付け文書はスキップするため、1-ne 1章の手前には移動先が無い
@@ -1384,7 +1397,7 @@ describe('ChapterPage', () => {
       render(<ChapterPage />)
 
       const nav = screen.getByTestId('chapter-nav')
-      expect(within(nav).getByRole('link', { name: '第1ニーファイ書 第2章' })).toBeInTheDocument()
+      expect(within(nav).getByRole('link', { name: '第2章' })).toBeInTheDocument()
       expect(within(nav).getAllByRole('link')).toHaveLength(1)
     })
 

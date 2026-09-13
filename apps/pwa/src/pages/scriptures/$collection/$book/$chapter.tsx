@@ -424,6 +424,15 @@ type ChapterViewProps = {
   circlePosts: PostWithUser[]
 }
 
+// 同じ書の中では書名が自明なうえ、狭い画面で「第1ニーファイ書 第21章」が折り返す
+function chapterNavLabel(ref: ChapterRef, currentBook: string) {
+  const target = getBook(ref.collection, ref.book)
+  if (!target) return ''
+  return ref.book === currentBook
+    ? getChapterLabel(target, ref.chapter)
+    : getScriptureLabel(ref, target)
+}
+
 // 読み終えた位置に置く。前付け文書は移動先から外れ、コレクションの端では片側だけになる
 function ChapterNav({ collection, book, chapter }: ChapterRef) {
   const prev = getAdjacentChapterRef({ collection, book, chapter }, 'prev')
@@ -443,14 +452,14 @@ function ChapterNav({ collection, book, chapter }: ChapterRef) {
       {prev ? (
         <Link to="/scriptures/$collection/$book/$chapter" params={refToParams(prev)} className={linkClass}>
           <ChevronLeft size={16} aria-hidden="true" />
-          {getScriptureLabel(prev)}
+          {chapterNavLabel(prev, book)}
         </Link>
       ) : (
         <span />
       )}
       {next && (
         <Link to="/scriptures/$collection/$book/$chapter" params={refToParams(next)} className={linkClass}>
-          {getScriptureLabel(next)}
+          {chapterNavLabel(next, book)}
           <ChevronRight size={16} aria-hidden="true" />
         </Link>
       )}
@@ -706,7 +715,7 @@ function ChapterView({
   )
 
   const verseList = (
-    <div className="p-4 pb-[var(--fab-clearance)]">
+    <div className="p-4">
       <ul>
         {verseNumbers.map((verse, i) => {
           const textHtml = verseTextMap.get(verse)
@@ -785,8 +794,11 @@ function ChapterView({
           ))}
         </div>
       )}
-      {verseList}
-      {mode !== 'select' && chapterNav}
+      {/* 末尾が節一覧か章移動かで変わるため、FAB のぶんの余白はまとめて外側で確保する */}
+      <div className="pb-[var(--fab-clearance)]">
+        {verseList}
+        {mode !== 'select' && chapterNav}
+      </div>
       {canCompose && (
         <PostComposerSheet
           open={sheetOpen}
