@@ -202,6 +202,11 @@ function parseCommentVerse(input: unknown): number | undefined {
 }
 
 export const Route = createFileRoute('/scriptures/$collection/$book/$chapter')({
+  // 隣の章はスワイプに備えて先読みする。既定の defaultPreloadStaleTime は 0 で、
+  // 先読みしたそばから古い扱いになり取り直しになるため、この章だけ猶予を持たせる。
+  // 投稿の反映が遅れうるが、投稿後は router.invalidate() で捨てている
+  preloadStaleTime: 60 * 1000,
+  preloadGcTime: 30 * 60 * 1000,
   validateSearch: (search: Record<string, unknown>): ChapterSearch => ({
     verses: search.verses !== undefined ? parseSelection(search.verses) : undefined,
     select: search.select !== undefined ? parseSelection(search.select) : undefined,
