@@ -2,6 +2,7 @@ import { findBook, findCollection } from '@/shared/lib/scriptureUtils'
 
 export type ChapterRef = { collection: string; book: string; chapter: number }
 
+// current.chapter は書の範囲内であることが前提。範囲外を渡すと存在しない章を返す
 export function getAdjacentChapterRef(
   current: ChapterRef,
   direction: 'next' | 'prev',

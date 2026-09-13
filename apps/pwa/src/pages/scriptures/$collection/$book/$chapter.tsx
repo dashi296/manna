@@ -9,7 +9,7 @@ import {
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { createServerFn } from '@tanstack/react-start'
 import { useQuery } from '@tanstack/react-query'
-import { getBook, getCollection, buildScriptureUrl, getChapterLabel, getScriptureLabel, getAdjacentChapterRef } from '@/entities/scripture'
+import { getBook, getCollection, buildScriptureUrl, getChapterLabel, getScriptureLabel, getAdjacentChapterRef, type ChapterRef } from '@/entities/scripture'
 import { PostCard, POST_SELECT, type PostWithUser } from '@/entities/post'
 import { createSupabaseServer } from '@/shared/lib/auth'
 import { supabase } from '@/shared/lib/supabase'
@@ -46,7 +46,6 @@ type SupabaseServer = Awaited<ReturnType<typeof createSupabaseServer>>
 // 呼ばれる。両者は構造的に同じ型（@supabase/ssr の SupabaseClient<Database>）なので
 // SupabaseServer をそのまま別名として使う。
 type SupabaseClientLike = SupabaseServer
-type ChapterRef = { collection: string; book: string; chapter: number }
 
 async function queryCurrentUserId(supabase: SupabaseServer) {
   const {
