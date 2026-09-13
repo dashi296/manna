@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { QueryClientProvider } from '@tanstack/react-query'
 import type { PostWithUser } from '@/entities/post'
 import { createQueryClient } from '@/shared/lib/queryClient'
+import { scriptureVerseTextKeys } from '@/entities/scripture'
 import { routeComponent } from '../../helpers/tanstack'
 import { createSupabaseQueryChain } from '../../helpers/supabase'
 
@@ -15,11 +16,31 @@ const withQueryClient = (ui: React.ReactElement) => (
   <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>
 )
 
+// 本番のローダーは ensureQueryData で第1言語の本文をキャッシュへ入れてから描画する。
+// テストでもその状態を作ってから描く
+function seedVerseTexts() {
+  const ref = {
+    collection: loaderData.collection,
+    book: loaderData.book.id,
+    chapter: loaderData.chapter,
+  }
+  const verses = loaderData.mode === 'verse' ? loaderData.verses : undefined
+  queryClient.setQueryData(
+    scriptureVerseTextKeys.chapter(ref, 'ja', verses),
+    loaderData.verseTexts,
+  )
+}
+
 function render(ui: React.ReactElement) {
+  seedVerseTexts()
   const utils = rtlRender(withQueryClient(ui))
   return {
     ...utils,
-    rerender: (nextUi: React.ReactElement) => utils.rerender(withQueryClient(nextUi)),
+    rerender: (nextUi: React.ReactElement) => {
+      // 遷移のたびにローダーが走るので、作り直しでも同じように温める
+      seedVerseTexts()
+      return utils.rerender(withQueryClient(nextUi))
+    },
   }
 }
 

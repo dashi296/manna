@@ -9,10 +9,9 @@ import {
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { createServerFn } from '@tanstack/react-start'
 import { useQuery } from '@tanstack/react-query'
-import { getBook, getCollection, buildScriptureUrl, getChapterLabel, getScriptureLabel, getAdjacentChapterRef, getChapterNavLabel, queryScriptureVerseTexts, type ChapterRef, type VerseTextRow } from '@/entities/scripture'
+import { getBook, getCollection, buildScriptureUrl, getChapterLabel, getScriptureLabel, getAdjacentChapterRef, getChapterNavLabel, scriptureVerseTextsQuery, type ChapterRef } from '@/entities/scripture'
 import { PostCard, POST_SELECT, type PostWithUser } from '@/entities/post'
 import { createSupabaseServer } from '@/shared/lib/auth'
-import { supabase } from '@/shared/lib/supabase'
 import { ComposePostButton, EmptyState, PageHeader, ScriptureText } from '@/shared/ui'
 import { PostComposerSheet } from '@/widgets/post-composer-sheet'
 import { ComposeMenu } from '@/widgets/compose-menu'
@@ -57,23 +56,17 @@ async function queryUserAndCircle(supabase: SupabaseServer) {
   return { userId, circle }
 }
 
-function useSecondaryVerseTexts(
+// 本文は SSR のローダーが同じキーで温めてある。隣章の先読みとも同じキャッシュを共有する
+function useVerseTexts(
   loc: ChapterRef,
-  verses: number[] | undefined,
-  enabled: boolean,
+  language: string,
+  verses?: number[],
+  enabled = true,
 ): Map<number, string> {
-  // useQuery の data は常に現在の queryKey に対応する値のみを返すため、章が
-  // 切り替わった瞬間に前章のデータへ自動的に戻ることはない（queryKey が変わると
-  // data は一旦 undefined に戻る）。staleTime: Infinity で ON/OFF の切り替えや
-  // 同じ章への再訪問での再取得も避ける。TanStack Query はクエリキーを構造的に
-  // 比較するため、verses 配列はそのまま渡せば良い（手動の文字列化は不要）。
   const { data } = useQuery({
-    queryKey: ['scripture-verse-secondary-text', loc.collection, loc.book, loc.chapter, verses ?? []],
-    queryFn: ({ signal }) => queryScriptureVerseTexts(supabase, loc, SECONDARY_LANGUAGE, verses, signal),
+    ...scriptureVerseTextsQuery(loc, language, verses),
     enabled,
-    staleTime: Infinity,
   })
-
   return useMemo(
     () => (enabled ? new Map((data ?? []).map((r) => [r.verse, r.text_html])) : new Map()),
     [enabled, data],
@@ -85,7 +78,7 @@ const fetchVerseData = createServerFn({ method: 'POST' })
   .handler(async (ctx) => {
     const { collection, book, chapter, verses } = ctx.data
     const serverSupabase = await createSupabaseServer()
-    const [{ data: posts }, verseTexts, userId] = await Promise.all([
+    const [{ data: posts }, userId] = await Promise.all([
       serverSupabase
         .from('posts')
         .select(POST_SELECT)
@@ -94,10 +87,9 @@ const fetchVerseData = createServerFn({ method: 'POST' })
         .eq('scripture_chapter', chapter)
         .overlaps('scripture_verses', verses)
         .order('created_at', { ascending: false }),
-      queryScriptureVerseTexts(serverSupabase, ctx.data, PRIMARY_LANGUAGE, verses),
       queryCurrentUserId(serverSupabase),
     ])
-    return { posts: (posts ?? []) as PostWithUser[], verseTexts, userId }
+    return { posts: (posts ?? []) as PostWithUser[], userId }
   })
 
 const fetchChapterData = createServerFn({ method: 'POST' })
@@ -109,7 +101,6 @@ const fetchChapterData = createServerFn({ method: 'POST' })
     const [
       { data: posts },
       { data: versePostsData },
-      verseTexts,
       { userId, circle },
     ] = await Promise.all([
       serverSupabase
@@ -128,7 +119,6 @@ const fetchChapterData = createServerFn({ method: 'POST' })
         .eq('scripture_chapter', chapter)
         .not('scripture_verses', 'is', null)
         .order('created_at', { ascending: false }),
-      queryScriptureVerseTexts(serverSupabase, ctx.data, PRIMARY_LANGUAGE),
       queryUserAndCircle(serverSupabase),
     ])
 
@@ -164,7 +154,6 @@ const fetchChapterData = createServerFn({ method: 'POST' })
 
     return {
       posts: (posts ?? []) as PostWithUser[],
-      verseTexts,
       userId,
       chapterCommenters,
       circlePosts,
@@ -202,11 +191,6 @@ function parseCommentVerse(input: unknown): number | undefined {
 }
 
 export const Route = createFileRoute('/scriptures/$collection/$book/$chapter')({
-  // 隣の章はスワイプに備えて先読みする。既定の defaultPreloadStaleTime は 0 で、
-  // 先読みしたそばから古い扱いになり取り直しになるため、この章だけ猶予を持たせる。
-  // 投稿の反映が遅れうるが、投稿後は router.invalidate() で捨てている
-  preloadStaleTime: 60 * 1000,
-  preloadGcTime: 30 * 60 * 1000,
   validateSearch: (search: Record<string, unknown>): ChapterSearch => ({
     verses: search.verses !== undefined ? parseSelection(search.verses) : undefined,
     select: search.select !== undefined ? parseSelection(search.select) : undefined,
@@ -216,7 +200,7 @@ export const Route = createFileRoute('/scriptures/$collection/$book/$chapter')({
   loaderDeps: ({ search }) => ({
     verses: search.verses,
   }),
-  loader: async ({ params, deps }) => {
+  loader: async ({ params, deps, context }) => {
     const book = getBook(params.collection, params.book)
     if (!book) throw notFound()
     if (!/^\d+$/.test(params.chapter)) throw notFound()
@@ -228,17 +212,27 @@ export const Route = createFileRoute('/scriptures/$collection/$book/$chapter')({
     if (deps.verses?.length) {
       const verseCount = book.verses[chapterNum - 1]
       if (deps.verses.some((v) => v < 1 || v > verseCount)) throw notFound()
-      const { posts, verseTexts, userId } = await fetchVerseData({ data: { ...base, verses: deps.verses } })
+      const [{ posts, userId }] = await Promise.all([
+        fetchVerseData({ data: { ...base, verses: deps.verses } }),
+        context.queryClient.ensureQueryData(
+          scriptureVerseTextsQuery(base, PRIMARY_LANGUAGE, deps.verses),
+        ),
+      ])
       return {
         book, chapter: chapterNum, collection: params.collection,
         mode: 'verse' as const, verses: deps.verses,
-        posts, verseTexts, userId,
+        posts, userId,
         chapterCommenters: [] as AvatarStackItem[],
         circlePosts: [] as PostWithUser[],
       }
     }
 
-    const data = await fetchChapterData({ data: base })
+    // 本文はキャッシュ側に置く。隣章の先読みと同じキーなので、スワイプで来たときは
+    // ここで取り直さない
+    const [data] = await Promise.all([
+      fetchChapterData({ data: base }),
+      context.queryClient.ensureQueryData(scriptureVerseTextsQuery(base, PRIMARY_LANGUAGE)),
+    ])
 
     return {
       book, chapter: chapterNum, collection: params.collection,
@@ -264,7 +258,6 @@ function ChapterPage() {
       collection={data.collection}
       verses={data.verses}
       posts={data.posts}
-      verseTexts={data.verseTexts}
       canCompose={Boolean(data.userId)}
     />
   }
@@ -273,7 +266,6 @@ function ChapterPage() {
     chapter={data.chapter}
     collection={data.collection}
     posts={data.posts}
-    verseTexts={data.verseTexts}
     canCompose={Boolean(data.userId)}
     chapterCommenters={data.chapterCommenters}
     circlePosts={data.circlePosts}
@@ -286,18 +278,18 @@ type VerseViewProps = {
   collection: string
   verses: number[]
   posts: PostWithUser[]
-  verseTexts: VerseTextRow[]
   canCompose: boolean
 }
 
-function VerseView({ book, chapter, collection, verses, posts, verseTexts, canCompose }: VerseViewProps) {
+function VerseView({ book, chapter, collection, verses, posts, canCompose }: VerseViewProps) {
   const router = useRouter()
   const [sheetOpen, setSheetOpen] = useState(false)
   const loc = { collection, book: book.id, chapter }
   const scriptureLabel = getScriptureLabel({ ...loc, verses }, book)
   const officialUrl = buildScriptureUrl({ ...loc, verses }, book)
   const bilingual = useBilingualEnabled()
-  const secondaryTexts = useSecondaryVerseTexts(loc, verses, bilingual)
+  const verseTexts = useVerseTexts(loc, PRIMARY_LANGUAGE, verses)
+  const secondaryTexts = useVerseTexts(loc, SECONDARY_LANGUAGE, verses, bilingual)
 
   const onSheetOpenChange = (open: boolean) => {
     setSheetOpen(open)
@@ -346,14 +338,14 @@ function VerseView({ book, chapter, collection, verses, posts, verseTexts, canCo
         </a>
         <span className="text-xs ml-3" style={{ color: 'var(--sea-ink-soft)' }}>新着順</span>
       </div>
-      {verseTexts.length > 0 && (
+      {verseTexts.size > 0 && (
         <div className="px-4 py-3 border-b" style={{ borderColor: 'var(--line)', background: 'var(--surface)' }}>
-          {verseTexts.map((vt) => (
+          {[...verseTexts].map(([verse, textHtml]) => (
             <ScriptureText
-              key={vt.verse}
-              verse={vt.verse}
-              textHtml={vt.text_html}
-              textHtmlSecondary={secondaryTexts.get(vt.verse)}
+              key={verse}
+              verse={verse}
+              textHtml={textHtml}
+              textHtmlSecondary={secondaryTexts.get(verse)}
               secondaryLang={SECONDARY_LANGUAGE}
               showNumber={!book.isFrontMatter}
             />
@@ -386,7 +378,6 @@ type ChapterViewProps = {
   chapter: number
   collection: string
   posts: PostWithUser[]
-  verseTexts: VerseTextRow[]
   canCompose: boolean
   chapterCommenters: AvatarStackItem[]
   circlePosts: PostWithUser[]
@@ -485,7 +476,7 @@ function refToParams(ref: ChapterRef) {
 }
 
 function ChapterView({
-  book, chapter, collection, posts, verseTexts, canCompose,
+  book, chapter, collection, posts, canCompose,
   chapterCommenters, circlePosts,
 }: ChapterViewProps) {
   const router = useRouter()
@@ -511,7 +502,8 @@ function ChapterView({
   const maxVerse = book.verses[chapter - 1]
   const loc = { collection, book: book.id, chapter }
   const bilingual = useBilingualEnabled()
-  const secondaryTexts = useSecondaryVerseTexts(loc, undefined, bilingual)
+  const verseTextMap = useVerseTexts(loc, PRIMARY_LANGUAGE)
+  const secondaryTexts = useVerseTexts(loc, SECONDARY_LANGUAGE, undefined, bilingual)
 
   const storedUserId = useSelectedUserId()
   const selectUser = useSelectedUserStore((s) => s.select)
@@ -541,10 +533,6 @@ function ChapterView({
   // 絞り込んでいると、送った側が見せたいコメントが無言で開かなくなるため
   const sheetIndex = allCommentIndex
 
-  const verseTextMap = useMemo(
-    () => new Map(verseTexts.map((vt) => [vt.verse, vt.text_html])),
-    [verseTexts],
-  )
   const verseNumbers = Array.from({ length: maxVerse }, (_, i) => i + 1)
   const selection = useMemo(
     () => parseSelection(search.select, maxVerse),

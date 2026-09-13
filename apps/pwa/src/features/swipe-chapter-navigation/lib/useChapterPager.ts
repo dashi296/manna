@@ -49,7 +49,8 @@ export function useChapterPager({ loc, disabled }: Params) {
   }, [interactive, collection, book, chapter])
 
   const bilingual = useBilingualEnabled()
-  const adjacentTexts = useAdjacentChapterTexts({ loc, enabled: interactive, bilingual })
+  // 選択モードやシートを開いている間は横スワイプを譲っている。先読みも止める
+  const adjacentTexts = useAdjacentChapterTexts({ loc, enabled: scrollable, bilingual })
 
   const containerRef = useRef<HTMLDivElement>(null)
   const [pointing, setPointing] = useState<'prev' | 'next' | null>(null)

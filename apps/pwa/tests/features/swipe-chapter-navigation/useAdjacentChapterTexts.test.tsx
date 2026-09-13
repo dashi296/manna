@@ -3,17 +3,21 @@ import { renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useAdjacentChapterTexts } from '@/features/swipe-chapter-navigation'
 
-const preloadRoute = vi.fn()
-const getMatch = vi.fn()
-const router = { preloadRoute, getMatch }
-vi.mock('@tanstack/react-router', () => ({
-  useRouter: () => router,
-}))
+// 節本文の取得そのものを差し替える。verseTextsQuery はこのモジュールから
+// 直接 import しているので、バレル（@/entities/scripture）越しでは差し替わらない
+const calls: { chapter: number; language: string }[] = []
+let failing = false
 
-const queryVerseTexts = vi.fn()
-vi.mock('@/entities/scripture', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/entities/scripture')>()),
-  queryScriptureVerseTexts: (...args: unknown[]) => queryVerseTexts(...args),
+vi.mock('@/entities/scripture/lib/verseTexts', () => ({
+  queryScriptureVerseTexts: async (
+    _client: unknown,
+    ref: { chapter: number },
+    language: string,
+  ) => {
+    calls.push({ chapter: ref.chapter, language })
+    if (failing) throw new Error('offline')
+    return [{ verse: 1, text_html: `${language}-${ref.chapter}` }]
+  },
 }))
 
 vi.mock('@/shared/lib/supabase', () => ({ supabase: {} }))
@@ -25,40 +29,29 @@ function wrapper({ children }: { children: React.ReactNode }) {
 
 const loc = { collection: 'bofm', book: '1-ne', chapter: 5 }
 
-// preloadRoute が返すのは読み込み前の写し。中身はルーターのキャッシュから引く
-const matchesFor = (chapter: string) => [{ id: `match-${chapter}` }]
-
 beforeEach(() => {
-  preloadRoute.mockReset()
-  preloadRoute.mockImplementation(({ params }: { params: { chapter: string } }) =>
-    Promise.resolve(matchesFor(params.chapter)),
-  )
-  getMatch.mockReset()
-  getMatch.mockImplementation((id: string) => ({
-    loaderData: { verseTexts: [{ verse: 1, text_html: `${id.replace('match-', '')}章の1節` }] },
-  }))
-  queryVerseTexts.mockReset()
-  queryVerseTexts.mockResolvedValue([{ verse: 1, text_html: 'english' }])
+  calls.length = 0
+  failing = false
 })
 
 describe('useAdjacentChapterTexts', () => {
-  it('前後の章をルートごと先読みし、その節本文を返す', async () => {
+  it('有効なとき、前後の章の節本文を先読みする', async () => {
     const { result } = renderHook(
       () => useAdjacentChapterTexts({ loc, enabled: true, bilingual: false }),
       { wrapper },
     )
-    await waitFor(() => expect(result.current.next?.primary.get(1)).toBe('6章の1節'))
-    expect(result.current.prev?.primary.get(1)).toBe('4章の1節')
+    await waitFor(() => expect(result.current.next?.primary.get(1)).toBe('ja-6'))
+    expect(result.current.prev?.primary.get(1)).toBe('ja-4')
     expect(result.current.next?.ref).toEqual({ collection: 'bofm', book: '1-ne', chapter: 6 })
   })
 
-  it('無効なときは先読みしない', async () => {
+  it('無効なときは1件も取りに行かない', async () => {
     renderHook(() => useAdjacentChapterTexts({ loc, enabled: false, bilingual: false }), { wrapper })
-    await new Promise((r) => setTimeout(r, 20))
-    expect(preloadRoute).not.toHaveBeenCalled()
+    await new Promise((r) => setTimeout(r, 30))
+    expect(calls).toHaveLength(0)
   })
 
-  it('移動先がない方向は先読みしない', async () => {
+  it('移動先がない方向は取りに行かない', async () => {
     const { result } = renderHook(
       () =>
         useAdjacentChapterTexts({
@@ -70,27 +63,16 @@ describe('useAdjacentChapterTexts', () => {
     )
     await waitFor(() => expect(result.current.next?.primary.size).toBe(1))
     expect(result.current.prev).toBeNull()
-    expect(preloadRoute).toHaveBeenCalledTimes(1)
+    expect(calls).toHaveLength(1)
   })
 
-  it('先読みが失敗しても落ちず、その方向は空のままになる', async () => {
-    preloadRoute.mockRejectedValue(new Error('offline'))
-    const { result } = renderHook(
-      () => useAdjacentChapterTexts({ loc, enabled: true, bilingual: false }),
-      { wrapper },
-    )
-    await new Promise((r) => setTimeout(r, 30))
-    expect(result.current.next).toBeNull()
-    expect(result.current.prev).toBeNull()
-  })
-
-  it('併記が有効なときだけ第2言語を別に取る', async () => {
+  it('併記が有効なときだけ第2言語も取る', async () => {
     const { result } = renderHook(
       () => useAdjacentChapterTexts({ loc, enabled: true, bilingual: true }),
       { wrapper },
     )
-    await waitFor(() => expect(result.current.next?.secondary.get(1)).toBe('english'))
-    expect(queryVerseTexts.mock.calls.every((c) => c[2] === 'en')).toBe(true)
+    await waitFor(() => expect(result.current.next?.secondary.get(1)).toBe('en-6'))
+    expect(calls.filter((c) => c.language === 'en').map((c) => c.chapter).sort()).toEqual([4, 6])
   })
 
   it('併記が無効なら第2言語は取らない', async () => {
@@ -99,6 +81,17 @@ describe('useAdjacentChapterTexts', () => {
       { wrapper },
     )
     await waitFor(() => expect(result.current.next?.primary.size).toBe(1))
-    expect(queryVerseTexts).not.toHaveBeenCalled()
+    expect(calls.every((c) => c.language === 'ja')).toBe(true)
+  })
+
+  it('取得に失敗しても落ちず、その方向は空のままになる', async () => {
+    failing = true
+    const { result } = renderHook(
+      () => useAdjacentChapterTexts({ loc, enabled: true, bilingual: false }),
+      { wrapper },
+    )
+    await new Promise((r) => setTimeout(r, 80))
+    expect(result.current.next).toBeNull()
+    expect(result.current.prev).toBeNull()
   })
 })
