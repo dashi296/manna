@@ -9,7 +9,7 @@ import {
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { createServerFn } from '@tanstack/react-start'
 import { useQuery } from '@tanstack/react-query'
-import { getBook, getCollection, buildScriptureUrl, getChapterLabel, getScriptureLabel, getAdjacentChapterRef, getChapterNavLabel, type ChapterRef } from '@/entities/scripture'
+import { getBook, getCollection, buildScriptureUrl, getChapterLabel, getScriptureLabel, getAdjacentChapterRef, getChapterNavLabel, queryScriptureVerseTexts, type ChapterRef, type VerseTextRow } from '@/entities/scripture'
 import { PostCard, POST_SELECT, type PostWithUser } from '@/entities/post'
 import { createSupabaseServer } from '@/shared/lib/auth'
 import { supabase } from '@/shared/lib/supabase'
@@ -40,13 +40,8 @@ import { useBilingualEnabled } from '@/entities/bilingual-display'
 import { BilingualToggleButton } from '@/features/toggle-bilingual'
 import { PRIMARY_LANGUAGE, SECONDARY_LANGUAGE } from '@/shared/config/scriptureLanguage'
 
-type VerseTextRow = { verse: number; text_html: string }
 type Book = NonNullable<ReturnType<typeof getBook>>
 type SupabaseServer = Awaited<ReturnType<typeof createSupabaseServer>>
-// queryScriptureVerseTexts は SSR の serverSupabase とブラウザの supabase の両方から
-// 呼ばれる。両者は構造的に同じ型（@supabase/ssr の SupabaseClient<Database>）なので
-// SupabaseServer をそのまま別名として使う。
-type SupabaseClientLike = SupabaseServer
 
 async function queryCurrentUserId(supabase: SupabaseServer) {
   const {
@@ -60,38 +55,6 @@ async function queryUserAndCircle(supabase: SupabaseServer) {
   const circle =
     userId !== null ? await getCircleUserIds(supabase, userId) : null
   return { userId, circle }
-}
-
-// SSR ローダー（PRIMARY_LANGUAGE、serverSupabase）とクライアント側の第2言語取得
-// （SECONDARY_LANGUAGE、ブラウザの supabase）の両方から呼ぶ共通クエリ。
-// エラーを空配列として握りつぶすと、
-// SSR では章表示が「0件」に見え、クライアントでは React Query が「取得成功」とみなして
-// staleTime: Infinity のキャッシュに乗ってしまう（通信復旧後も再取得されない）ため、
-// 必ず throw して呼び出し側にエラーとして伝える。
-export async function queryScriptureVerseTexts(
-  client: SupabaseClientLike,
-  { collection, book, chapter }: ChapterRef,
-  language: string,
-  verses?: number[],
-  signal?: AbortSignal,
-): Promise<VerseTextRow[]> {
-  let query = client
-    .from('scripture_verses')
-    .select('verse, text_html')
-    .eq('collection_id', collection)
-    .eq('book_id', book)
-    .eq('chapter', chapter)
-    .eq('language', language)
-    .order('verse', { ascending: true })
-  if (verses?.length) {
-    query = query.in('verse', verses)
-  }
-  if (signal) {
-    query = query.abortSignal(signal)
-  }
-  const { data, error } = await query
-  if (error) throw error
-  return (data ?? []) as VerseTextRow[]
 }
 
 function useSecondaryVerseTexts(
