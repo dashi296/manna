@@ -39,6 +39,9 @@ export function ChapterPager({ loc, disabled, children }: Props) {
           overflowX: scrollable ? 'auto' : 'hidden',
           scrollSnapType: scrollable ? 'x mandatory' : undefined,
           overscrollBehaviorX: 'contain',
+          // 両脇のパネルが後から挿入されると、ブラウザが見た目を保とうとして
+          // その幅だけスクロール位置をずらす。中央合わせと二重になる
+          overflowAnchor: 'none',
         }}
         onScroll={onScroll}
         onTouchStart={onTouchStart}

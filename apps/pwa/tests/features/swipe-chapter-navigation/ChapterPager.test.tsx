@@ -161,6 +161,14 @@ describe('ChapterPager', () => {
     expect(navigate).not.toHaveBeenCalled()
   })
 
+  it('指が触れていないうちにずれたら、本文のパネルに戻す', () => {
+    // 両脇のパネルはマウント後に現れる。その挿入ぶんを打ち消すスクロールアンカリングや
+    // ルーターのスクロール復元が、中央合わせの後から位置を動かす
+    renderPager()
+    scrollTo(PANEL_WIDTH * 2)
+    expect(pager().scrollLeft).toBe(PANEL_WIDTH)
+  })
+
   it('指が触れていないのに位置が変わっても移動しない', () => {
     // ブラウザはパネルの増減やフォントの到着でもスナップをやり直す。
     // それを「隣まで引かれた」と読むと、読み込み直後に勝手に隣の章へ飛ぶ
@@ -212,10 +220,11 @@ describe('ChapterPager', () => {
     expect(screen.queryByTestId('chapter-pager-next')).not.toBeInTheDocument()
   })
 
-  it('横にずれている間だけ行先のラベルを出す', () => {
+  it('指で引いている間だけ行先のラベルを出す', () => {
     renderPager()
     expect(screen.queryByTestId('chapter-pager-label')).not.toBeInTheDocument()
 
+    fireEvent.touchStart(pager())
     scrollTo(PANEL_WIDTH * 1.3)
     expect(screen.getByTestId('chapter-pager-label')).toHaveTextContent('第6章')
 
@@ -228,6 +237,7 @@ describe('ChapterPager', () => {
 
   it('書をまたぐ行先は書名つきで示す', () => {
     renderPager({ collection: 'bofm', book: '1-ne', chapter: 22 })
+    fireEvent.touchStart(pager())
     scrollTo(PANEL_WIDTH * 1.3)
     expect(screen.getByTestId('chapter-pager-label')).toHaveTextContent('第2ニーファイ書 第1章')
   })

@@ -60,12 +60,17 @@ export function useChapterPager({ loc, disabled }: Params) {
   // pointercancel で打ち切られるため、タッチイベントで数える
   const touchCount = useRef(0)
 
+  const centerOffset = useCallback(
+    (el: HTMLDivElement) => (prev ? el.clientWidth : 0),
+    [prev],
+  )
+
   // CSS では中央のパネルから開始できないため、描画前に位置を合わせる
   useLayoutEffect(() => {
     const el = containerRef.current
     if (!el) return
-    el.scrollLeft = prev ? el.clientWidth : 0
-  }, [prev, next])
+    el.scrollLeft = centerOffset(el)
+  }, [centerOffset, next])
 
   useEffect(() => () => clearTimeout(settleTimer.current), [])
 
@@ -112,13 +117,22 @@ export function useChapterPager({ loc, disabled }: Params) {
     const el = containerRef.current
     if (!el || navigated.current) return
 
-    const offset = el.scrollLeft - (prev ? el.clientWidth : 0)
+    // 指が触れるまでは本文のパネルに留める。両脇のパネルはマウント後に現れるため、
+    // 挿入ぶんを打ち消すスクロールアンカリングや、ルーターのスクロール復元、
+    // ブラウザによるスナップのやり直しが、中央合わせの後から位置を動かしうる
+    if (!touched.current) {
+      const center = centerOffset(el)
+      if (el.scrollLeft !== center) el.scrollLeft = center
+      return
+    }
+
+    const offset = el.scrollLeft - centerOffset(el)
     setPointing(
       offset > LABEL_THRESHOLD_PX ? 'next' : offset < -LABEL_THRESHOLD_PX ? 'prev' : null,
     )
 
     scheduleSettle()
-  }, [prev, scheduleSettle])
+  }, [centerOffset, scheduleSettle])
 
   return {
     containerRef,
