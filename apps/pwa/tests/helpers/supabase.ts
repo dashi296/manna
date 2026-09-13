@@ -6,8 +6,7 @@ type Result = { data?: unknown; error?: unknown }
 // getResponse 内で可変の状態を参照すればよい。
 // throwOnError を呼んでいて error があるときは、本物と同じく reject する。
 // 絞り込みの引数を検証したい場合は record にスパイを渡す（eq/in/or が呼ばれるたびに通る）。
-// 本物の insert/update/delete は select を繋がないと data を返さない。ここも同じにして
-// おかないと、.select() の付け忘れをテストが素通りさせてしまう。
+// select を繋ぐまで data を返さない（付け忘れ検知のため）。rpc は select 無しで返すので流用不可。
 export function createSupabaseQueryChain(
   getResponse: () => Result,
   record: (column: string, value: unknown) => void = () => {},

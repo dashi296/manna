@@ -96,8 +96,7 @@ describe('FollowButton', () => {
     await waitFor(() => expect(invalidate).toHaveBeenCalledWith({ queryKey: ['profile'] }))
   })
 
-  // 解除のクエリから .select() が外れると data が null になり失敗分岐へ落ちる。
-  // 成功経路を固定しておかないと、失敗を期待するテストだけでは付け忘れを見逃す
+  // 失敗を期待するテストだけでは、解除から .select() が外れて data が null になっても通る
   it('解除が成功したらエラーにしない', async () => {
     const { client } = renderButton(true)
     const invalidate = vi.spyOn(client, 'invalidateQueries')
