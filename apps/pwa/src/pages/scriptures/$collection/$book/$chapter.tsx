@@ -9,7 +9,7 @@ import {
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { createServerFn } from '@tanstack/react-start'
 import { useQuery } from '@tanstack/react-query'
-import { getBook, getCollection, buildScriptureUrl, getChapterLabel, getScriptureLabel, getAdjacentChapterRef, type ChapterRef } from '@/entities/scripture'
+import { getBook, getCollection, buildScriptureUrl, getChapterLabel, getScriptureLabel, getAdjacentChapterRef, getChapterNavLabel, type ChapterRef } from '@/entities/scripture'
 import { PostCard, POST_SELECT, type PostWithUser } from '@/entities/post'
 import { createSupabaseServer } from '@/shared/lib/auth'
 import { supabase } from '@/shared/lib/supabase'
@@ -31,6 +31,7 @@ import {
   useSelectedUserStore,
 } from '@/features/select-verse-view'
 import { VerseCommentSheet } from '@/widgets/verse-comment-sheet'
+import { ChapterPager } from '@/features/swipe-chapter-navigation'
 import { getCircleUserIds } from '@/entities/user'
 import type { AvatarStackItem } from '@/shared/ui'
 import { useBookmarkStore } from '@/entities/bookmark'
@@ -424,14 +425,6 @@ type ChapterViewProps = {
 }
 
 // 同じ書の中では書名が自明なうえ、狭い画面で「第1ニーファイ書 第21章」が折り返す
-function chapterNavLabel(ref: ChapterRef, currentBook: string) {
-  const target = getBook(ref.collection, ref.book)
-  if (!target) return ''
-  return ref.book === currentBook
-    ? getChapterLabel(target, ref.chapter)
-    : getScriptureLabel(ref, target)
-}
-
 // 読み終えた位置に置く。前付け文書は移動先から外れ、コレクションの端では片側だけになる
 function ChapterNav({ collection, book, chapter }: ChapterRef) {
   const prev = getAdjacentChapterRef({ collection, book, chapter }, 'prev')
@@ -453,21 +446,21 @@ function ChapterNav({ collection, book, chapter }: ChapterRef) {
           to="/scriptures/$collection/$book/$chapter"
           params={refToParams(prev)}
           // 矢印は読み上げから外れるため、名前に方向が残らないと行き先しか伝わらない
-          aria-label={`前の章: ${chapterNavLabel(prev, book)}`}
+          aria-label={`前の章: ${getChapterNavLabel(prev, book)}`}
           className={linkClass}
         >
           <ChevronLeft size={16} aria-hidden="true" />
-          {chapterNavLabel(prev, book)}
+          {getChapterNavLabel(prev, book)}
         </Link>
       )}
       {next && (
         <Link
           to="/scriptures/$collection/$book/$chapter"
           params={refToParams(next)}
-          aria-label={`次の章: ${chapterNavLabel(next, book)}`}
+          aria-label={`次の章: ${getChapterNavLabel(next, book)}`}
           className={`${linkClass} ml-auto`}
         >
-          {chapterNavLabel(next, book)}
+          {getChapterNavLabel(next, book)}
           <ChevronRight size={16} aria-hidden="true" />
         </Link>
       )}
@@ -792,22 +785,30 @@ function ChapterView({
     <div>
       {mode === 'select' ? selectionHeader : chapterHeader}
       {composeFab}
-      {posts.length > 0 && (
-        <div className="border-b" style={{ borderColor: 'var(--line)' }}>
-          <p className="px-4 pt-3 pb-1 text-xs font-medium" style={{ color: 'var(--sea-ink-soft)' }}>
-            この章への投稿
-          </p>
-          {posts.map((post) => (
-            <PostCard key={post.id} post={post} />
-          ))}
+      {/* 章が変わったら中央のパネルから始め直すため、章参照で作り直す */}
+      <ChapterPager
+        key={`${collection}/${book.id}/${chapter}`}
+        loc={{ collection, book: book.id, chapter }}
+        // シートは背面を覆わないので、開いたままスワイプできてしまう
+        disabled={mode === 'select' || sheetOpen || commentVerseForScroll !== undefined}
+      >
+        {posts.length > 0 && (
+          <div className="border-b" style={{ borderColor: 'var(--line)' }}>
+            <p className="px-4 pt-3 pb-1 text-xs font-medium" style={{ color: 'var(--sea-ink-soft)' }}>
+              この章への投稿
+            </p>
+            {posts.map((post) => (
+              <PostCard key={post.id} post={post} />
+            ))}
+          </div>
+        )}
+        {/* 末尾が節一覧か章移動かで変わるため、FAB のぶんの余白はまとめて外側で確保する。
+            FAB が出ない場面（未ログイン・選択モード・lg 以上）では余らせない */}
+        <div className={composeFab ? 'pb-[var(--fab-clearance)] lg:pb-0' : undefined}>
+          {verseList}
+          {mode !== 'select' && chapterNav}
         </div>
-      )}
-      {/* 末尾が節一覧か章移動かで変わるため、FAB のぶんの余白はまとめて外側で確保する。
-          FAB が出ない場面（未ログイン・選択モード・lg 以上）では余らせない */}
-      <div className={composeFab ? 'pb-[var(--fab-clearance)] lg:pb-0' : undefined}>
-        {verseList}
-        {mode !== 'select' && chapterNav}
-      </div>
+      </ChapterPager>
       {canCompose && (
         <PostComposerSheet
           open={sheetOpen}

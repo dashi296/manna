@@ -1,4 +1,4 @@
-import { findBook, findCollection } from '@/shared/lib/scriptureUtils'
+import { findBook, findCollection, getChapterLabel, getScriptureLabel } from '@/shared/lib/scriptureUtils'
 
 export type ChapterRef = { collection: string; book: string; chapter: number }
 
@@ -34,4 +34,13 @@ export function getAdjacentChapterRef(
     }
   }
   return null
+}
+
+// 移動先の呼び名。同じ書の中なら章だけ、書をまたぐなら書名から示す
+export function getChapterNavLabel(ref: ChapterRef, currentBook: string): string {
+  const target = findBook(ref)
+  if (!target) return ''
+  return ref.book === currentBook
+    ? getChapterLabel(target, ref.chapter)
+    : getScriptureLabel(ref, target)
 }
