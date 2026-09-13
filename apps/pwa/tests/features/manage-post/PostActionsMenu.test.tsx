@@ -214,16 +214,26 @@ describe('PostActionsMenu', () => {
     expect(mockBack).not.toHaveBeenCalled()
   })
 
-  it('0 行なら既に削除済みとして扱い、エラーにしない', async () => {
+  // RLS に拒否された削除も 0 行で返るため、成功扱いすると嘘の成功になる
+  it('0 行なら成功として扱わず、遷移もしない', async () => {
     mockDeleteResult.mockResolvedValue({ data: [], error: null })
     renderMenu()
     const sheet = await openConfirmSheet()
+    const confirm = within(sheet).getByRole('button', { name: '削除する' })
 
-    await userEvent.click(within(sheet).getByRole('button', { name: '削除する' }))
+    await userEvent.click(confirm)
 
-    await waitFor(() => expect(mockBack).toHaveBeenCalledOnce())
-    expect(mockToast).toHaveBeenCalledWith('投稿は既に削除されています')
-    expect(mockToastError).not.toHaveBeenCalled()
+    await waitFor(() => expect(mockToastError).toHaveBeenCalledWith('削除に失敗しました'))
+    expect(mockToast).not.toHaveBeenCalled()
+    expect(mockBack).not.toHaveBeenCalled()
+    expect(mockNavigate).not.toHaveBeenCalled()
+    expect(mockInvalidatePostLists).not.toHaveBeenCalled()
+
+    // disabled が外れるだけでは足りない。single-flight の running も解除されて
+    // いなければ、押せるのに何も起きない状態になる
+    expect(confirm).not.toBeDisabled()
+    await userEvent.click(confirm)
+    await waitFor(() => expect(mockDelete).toHaveBeenCalledTimes(2))
   })
 
   it('失敗したら遷移せず、もう一度押せる状態に戻す', async () => {
