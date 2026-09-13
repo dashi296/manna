@@ -5,7 +5,8 @@ import { invalidateRelationQueries } from './relationQueries'
 type Options<V, T> = {
   current: T
   optimistic: (variables: V) => T
-  run: (variables: V) => PromiseLike<{ error: unknown }>
+  // 0 行を検出するため .select() まで繋いだクエリを渡すこと
+  run: (variables: V) => PromiseLike<{ data: unknown[] | null; error: unknown }>
   errorMessage: (variables: V) => string
 }
 
@@ -16,9 +17,11 @@ export function useRelationMutation<V, T>({ current, optimistic, run, errorMessa
 
   const { mutate, isPending, variables } = useMutation({
     mutationFn: async (variables: V) => {
-      const { error } = await run(variables)
+      const { data, error } = await run(variables)
       // Supabase は失敗時も reject せず { error } を返すため、投げ直さないと成功扱いになる
       if (error) throw error
+      // 0 行は RLS に拒否されたときも返る。競合で操作が通っていないので成功にしない
+      if (!data?.length) throw new Error('操作対象の行がありません')
     },
     // Promise を返すと再取得の完了まで isPending が立ったままになり、楽観表示から実データへ
     // 切り替わる瞬間に表示が戻らない

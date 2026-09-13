@@ -11,15 +11,27 @@ const { mockToastError } = vi.hoisted(() => ({ mockToastError: vi.fn() }))
 
 vi.mock('@/shared/ui/sonner', () => ({ toast: { error: mockToastError } }))
 
-let insertResult: Promise<{ error: unknown }> = Promise.resolve({ error: null })
+const ROW = [{ requester_id: 'u2', addressee_id: 'u1' }]
+
+let insertResult: Promise<{ data: unknown[] | null; error: unknown }> = Promise.resolve({
+  data: ROW,
+  error: null,
+})
 let updateError: unknown = null
 let deleteError: unknown = null
+let updateRows: unknown[] | null = ROW
+let deleteRows: unknown[] | null = ROW
 
-const mockInsert = vi.fn(() => insertResult)
+// 本物は insert(...).select() まで繋いで初めて行が返る
+const mockInsert = vi.fn(() => ({ select: () => insertResult }))
 const mockUpdateEq = vi.fn()
 const mockDeleteIn = vi.fn()
-const mockUpdate = vi.fn(() => createSupabaseQueryChain(() => ({ error: updateError }), mockUpdateEq))
-const mockDelete = vi.fn(() => createSupabaseQueryChain(() => ({ error: deleteError }), mockDeleteIn))
+const mockUpdate = vi.fn(() =>
+  createSupabaseQueryChain(() => ({ data: updateRows, error: updateError }), mockUpdateEq),
+)
+const mockDelete = vi.fn(() =>
+  createSupabaseQueryChain(() => ({ data: deleteRows, error: deleteError }), mockDeleteIn),
+)
 
 vi.mock('@/shared/lib/supabase', () => ({
   supabase: {
@@ -38,9 +50,11 @@ const renderButton = (status: FamilyStatus) =>
 
 describe('FamilyButton', () => {
   beforeEach(() => {
-    insertResult = Promise.resolve({ error: null })
+    insertResult = Promise.resolve({ data: ROW, error: null })
     updateError = null
     deleteError = null
+    updateRows = ROW
+    deleteRows = ROW
   })
 
   it('関係が無いときは「ファミリーに追加」を表示する', () => {
@@ -88,18 +102,18 @@ describe('FamilyButton', () => {
   })
 
   it('送信中は押した結果を先に表示する', async () => {
-    const pending = deferred<{ error: unknown }>()
+    const pending = deferred<{ data: unknown[] | null; error: unknown }>()
     insertResult = pending.promise
     renderButton('none')
     await userEvent.click(screen.getByRole('button', { name: 'ファミリーに追加' }))
     expect(await screen.findByRole('button', { name: '招待送信済み' })).toBeInTheDocument()
-    pending.resolve({ error: null })
+    pending.resolve({ data: ROW, error: null })
   })
 
   // 成功後の無効化は FollowButton と同じ useRelationMutation の責務なので、そちらで固定する
 
   it('招待の作成に失敗したらトーストを出して表示を元に戻す', async () => {
-    insertResult = Promise.resolve({ error: { message: 'duplicate key value' } })
+    insertResult = Promise.resolve({ data: null, error: { message: 'duplicate key value' } })
     renderButton('none')
     await userEvent.click(screen.getByRole('button', { name: 'ファミリーに追加' }))
     await waitFor(() =>
@@ -119,6 +133,28 @@ describe('FamilyButton', () => {
     deleteError = { message: 'rls' }
     renderButton('accepted')
     await userEvent.click(screen.getByRole('button', { name: 'ファミリー' }))
+    await waitFor(() =>
+      expect(mockToastError).toHaveBeenCalledWith('ファミリーから外せませんでした'),
+    )
+  })
+
+  // 相手が先に取り消す・別タブで承認済みだと status が pending でなくなり 0 行で返る。
+  // RLS は拒否をエラーにしないため、成功扱いすると押しても黙って元に戻る
+  it('承認が 0 行なら失敗として扱う', async () => {
+    updateRows = []
+    renderButton('pending_received')
+
+    await userEvent.click(screen.getByRole('button', { name: '招待を承認' }))
+
+    await waitFor(() => expect(mockToastError).toHaveBeenCalledWith('招待を承認できませんでした'))
+  })
+
+  it('解除が 0 行なら失敗として扱う', async () => {
+    deleteRows = []
+    renderButton('accepted')
+
+    await userEvent.click(screen.getByRole('button', { name: 'ファミリー' }))
+
     await waitFor(() =>
       expect(mockToastError).toHaveBeenCalledWith('ファミリーから外せませんでした'),
     )

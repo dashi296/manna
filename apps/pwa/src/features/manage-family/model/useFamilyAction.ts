@@ -31,14 +31,17 @@ function runAction(action: FamilyAction, currentUserId: string, targetUserId: st
   const table = supabase.from('family_relationships')
   switch (action) {
     case 'request':
-      return table.insert({ requester_id: currentUserId, addressee_id: targetUserId })
+      return table
+        .insert({ requester_id: currentUserId, addressee_id: targetUserId })
+        .select('requester_id')
     case 'accept':
       // 招待を受けた側からの承認なので、相手が requester の行を更新する
       return table
         .update({ status: 'accepted' })
         .eq('requester_id', targetUserId)
         .eq('addressee_id', currentUserId)
+        .select('requester_id')
     case 'remove':
-      return filterFamilyPair(table.delete(), currentUserId, targetUserId)
+      return filterFamilyPair(table.delete(), currentUserId, targetUserId).select('requester_id')
   }
 }

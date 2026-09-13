@@ -10,11 +10,15 @@ const { mockToastError } = vi.hoisted(() => ({ mockToastError: vi.fn() }))
 
 vi.mock('@/shared/ui/sonner', () => ({ toast: { error: mockToastError } }))
 
-let insertResult: Promise<{ error: unknown }> = Promise.resolve({ error: null })
+type Result = { data: unknown[] | null; error: unknown }
 
-const mockInsert = vi.fn(() => insertResult)
+let insertResult: Promise<Result> = Promise.resolve({ data: [{ follower_id: 'u1' }], error: null })
+let deleteResult: Result = { data: [{ follower_id: 'u1' }], error: null }
+
+// 本物は insert(...).select() まで繋いで初めて行が返る
+const mockInsert = vi.fn(() => ({ select: () => insertResult }))
 const mockDeleteEq = vi.fn()
-const mockDelete = vi.fn(() => createSupabaseQueryChain(() => ({ error: null }), mockDeleteEq))
+const mockDelete = vi.fn(() => createSupabaseQueryChain(() => deleteResult, mockDeleteEq))
 
 vi.mock('@/shared/lib/supabase', () => ({
   supabase: {
@@ -42,7 +46,8 @@ const renderButton = (isFollowing: boolean) => {
 
 describe('FollowButton', () => {
   beforeEach(() => {
-    insertResult = Promise.resolve({ error: null })
+    insertResult = Promise.resolve({ data: [{ follower_id: 'u1' }], error: null })
+    deleteResult = { data: [{ follower_id: 'u1' }], error: null }
   })
 
   it('未フォロー時に「フォロー」ボタンを表示する', () => {
@@ -72,7 +77,7 @@ describe('FollowButton', () => {
   })
 
   it('送信中は押した結果を先に表示し、ボタンを無効化する', async () => {
-    const pending = deferred<{ error: unknown }>()
+    const pending = deferred<Result>()
     insertResult = pending.promise
     renderButton(false)
     await userEvent.click(screen.getByRole('button', { name: 'フォロー' }))
@@ -80,7 +85,7 @@ describe('FollowButton', () => {
     const button = await screen.findByRole('button', { name: 'フォロー中' })
     expect(button).toBeDisabled()
 
-    pending.resolve({ error: null })
+    pending.resolve({ data: [{ follower_id: 'u1' }], error: null })
   })
 
   // 落とすキーの全量は relationQueries.test.ts が持つ。ここは配線だけを見る
@@ -99,7 +104,10 @@ describe('FollowButton', () => {
   })
 
   it('失敗したらトーストを出して表示を元に戻す', async () => {
-    insertResult = Promise.resolve({ error: { message: 'new row violates row-level security' } })
+    insertResult = Promise.resolve({
+      data: null,
+      error: { message: 'new row violates row-level security' },
+    })
     renderButton(false)
     await userEvent.click(screen.getByRole('button', { name: 'フォロー' }))
 
@@ -109,9 +117,25 @@ describe('FollowButton', () => {
     expect(screen.getByRole('button', { name: 'フォロー' })).toBeEnabled()
   })
 
+  // RLS に拒否された解除も 0 行で返る。成功扱いすると、押しても表示が黙って元に戻る
+  it('解除が 0 行なら失敗として扱う', async () => {
+    deleteResult = { data: [], error: null }
+    renderButton(true)
+
+    await userEvent.click(screen.getByRole('button', { name: 'フォロー中' }))
+
+    await waitFor(() =>
+      expect(mockToastError).toHaveBeenCalledWith('フォローを更新できませんでした'),
+    )
+    expect(screen.getByRole('button', { name: 'フォロー中' })).toBeEnabled()
+  })
+
   // 失敗時も無効化する: 相手の操作と競合して弾かれた場合に古いキャッシュのまま固まらないようにする
   it('失敗しても関係で古くなる読み取りを無効化する', async () => {
-    insertResult = Promise.resolve({ error: { message: 'new row violates row-level security' } })
+    insertResult = Promise.resolve({
+      data: null,
+      error: { message: 'new row violates row-level security' },
+    })
     const { client } = renderButton(false)
     const invalidate = vi.spyOn(client, 'invalidateQueries')
     await userEvent.click(screen.getByRole('button', { name: 'フォロー' }))
