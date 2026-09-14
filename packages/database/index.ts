@@ -287,7 +287,7 @@ export type Database = {
           book_id: string
           chapter: number
           collection_id: string
-          language?: string
+          language: string
           summary?: string | null
           summary_html?: string | null
           title: string

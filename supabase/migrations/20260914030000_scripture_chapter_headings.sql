@@ -6,7 +6,8 @@ CREATE TABLE IF NOT EXISTS scripture_chapter_headings (
   collection_id text NOT NULL,
   book_id text NOT NULL,
   chapter integer NOT NULL,
-  language text NOT NULL DEFAULT 'ja',
+  -- キー列に既定値を置かない。言語を指定し忘れた行が黙って入るのを防ぐ
+  language text NOT NULL,
   title text NOT NULL,
   summary text,
   summary_html text,

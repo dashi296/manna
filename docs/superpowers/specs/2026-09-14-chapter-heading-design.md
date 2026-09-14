@@ -30,7 +30,7 @@ CREATE TABLE scripture_chapter_headings (
   collection_id text NOT NULL,
   book_id       text NOT NULL,
   chapter       integer NOT NULL,
-  language      text NOT NULL DEFAULT 'ja',
+  language      text NOT NULL,
   title         text NOT NULL,
   summary       text,
   summary_html  text,
@@ -41,6 +41,16 @@ CREATE TABLE scripture_chapter_headings (
 ```
 
 RLS は `scripture_verses` と同じく anon / authenticated に SELECT を開ける。概要が無い章は `summary` / `summary_html` を NULL にする（行自体は作る。タイトルは全章にある）。
+
+`language` に既定値は置かない。キー列に既定値があると、言語を指定し忘れた行が黙って入る。
+
+### 検討したが採らなかった形
+
+`title` は `第{n}{単位}` で導出できるため、列ごと落として `getChapterLabel` に一本化する案を検討した。行数は3,164から約796（概要を持つ章のみ）に減り、タイトルの出所も1つになる。
+
+採らなかったのは、**多言語対応の余地を残すため**。公式のタイトルは言語ごとに呼び方が違い、英語だけでも Chapter / Psalm（詩篇）/ Section（教義と聖約）の3種類ある。導出に寄せると、表示する言語が増えたときに取り直しになる。
+
+なお `scriptures.json` の `chapterUnit` は残る。投稿カードなど DB を引かない場所でも章ラベルが要るため、同期的に呼べる導出は別途必要になる。
 
 約3,174行（1,587章 × 2言語）。節テキストの84,052行に比べれば小さい。
 
