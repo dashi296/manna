@@ -27,6 +27,12 @@ export function createSupabaseQueryChain(
     or: (filterString: string) => filter('or', filterString),
     order: () => chain,
     abortSignal: () => chain,
+    // maybeSingle は配列ではなく1行（無ければ null）を返す
+    maybeSingle: () => {
+      const raw = getResponse()
+      const rows = (selected ? raw.data : null) as unknown[] | null | undefined
+      return Promise.resolve({ data: rows?.[0] ?? null, error: raw.error ?? null })
+    },
     throwOnError: () => {
       shouldThrow = true
       return chain

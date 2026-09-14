@@ -110,6 +110,8 @@ let canGoBack = true
 let clientVerseTexts: { verse: number; text_html: string }[] = []
 // scripture_verses へのクライアント側クエリが実行された回数（キャッシュ検証用）
 let clientVerseFetchCount = 0
+// 章の見出し（テストごとに差し替える）
+let clientChapterHeading: { title: string; summary: string | null; summary_html: string | null } | null = null
 
 vi.mock('@tanstack/react-router', async () => {
   const { routerMock } = await import('../../helpers/tanstack')
@@ -128,6 +130,9 @@ vi.mock('@tanstack/react-start', async () => (await import('../../helpers/tansta
 vi.mock('@/shared/lib/supabase', () => ({
   supabase: {
     from: (table: string) => {
+      if (table === 'scripture_chapter_headings') {
+        return createSupabaseQueryChain(() => ({ data: clientChapterHeading ? [clientChapterHeading] : [] }))
+      }
       if (table !== 'scripture_verses') {
         return { insert: vi.fn().mockResolvedValue({ error: null }) }
       }
@@ -157,6 +162,7 @@ describe('ChapterPage', () => {
     search = { select: [1, 2] }
     clientVerseTexts = []
     clientVerseFetchCount = 0
+    clientChapterHeading = null
     localStorage.clear()
     const { useSelectedUserStore } = await import('@/features/select-verse-view')
     useSelectedUserStore.setState({ selectedUserId: null })
@@ -1190,6 +1196,20 @@ describe('ChapterPage', () => {
     await user.click(screen.getByRole('button', { name: '日英併記表示をオンにする' }))
     expect(useBilingualDisplayStore.getState().enabled).toBe(true)
     expect(navigateSpy).not.toHaveBeenCalled()
+  })
+
+  it('章のタイトルと概要を本文の前に出す', async () => {
+    clientChapterHeading = { title: '第1章', summary: '要約', summary_html: '<b>要約</b>' }
+    render(<ChapterPage />)
+    expect(await screen.findByRole('heading', { name: '第1章', level: 2 })).toBeInTheDocument()
+    expect(await screen.findByText('要約')).toBeInTheDocument()
+  })
+
+  it('概要が無い章（旧約・新約）ではタイトルだけを出す', async () => {
+    clientChapterHeading = { title: '第1章', summary: null, summary_html: null }
+    render(<ChapterPage />)
+    expect(await screen.findByRole('heading', { name: '第1章', level: 2 })).toBeInTheDocument()
+    expect(screen.queryByText('要約')).not.toBeInTheDocument()
   })
 
   it('併記表示が有効なとき、クライアント側で取得した第2言語の節本文を表示する', async () => {

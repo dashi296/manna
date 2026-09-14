@@ -273,6 +273,44 @@ export type Database = {
           },
         ]
       }
+      scripture_chapter_headings: {
+        Row: {
+          book_id: string
+          chapter: number
+          collection_id: string
+          language: string
+          summary: string | null
+          summary_html: string | null
+          title: string
+        }
+        Insert: {
+          book_id: string
+          chapter: number
+          collection_id: string
+          language?: string
+          summary?: string | null
+          summary_html?: string | null
+          title: string
+        }
+        Update: {
+          book_id?: string
+          chapter?: number
+          collection_id?: string
+          language?: string
+          summary?: string | null
+          summary_html?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scripture_chapter_headings_collection_id_book_id_fkey"
+            columns: ["collection_id", "book_id"]
+            isOneToOne: false
+            referencedRelation: "scripture_books"
+            referencedColumns: ["collection_id", "id"]
+          },
+        ]
+      }
       scripture_collections: {
         Row: {
           id: string

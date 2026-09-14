@@ -20,7 +20,18 @@ vi.mock('@/entities/scripture/lib/verseTexts', () => ({
   },
 }))
 
-vi.mock('@/shared/lib/supabase', () => ({ supabase: {} }))
+// 見出しは別テーブルなので、節本文のモックとは別に応答を用意する
+vi.mock('@/shared/lib/supabase', async () => {
+  const { createSupabaseQueryChain } = await import('../../helpers/supabase')
+  return {
+    supabase: {
+      from: () =>
+        createSupabaseQueryChain(() => ({
+          data: [{ title: '見出し', summary: null, summary_html: null }],
+        })),
+    },
+  }
+})
 
 // クライアントはテストごとに1つ。描画のたびに作り直すと、再描画で
 // 取得中のクエリごと捨てられて結果が届かない
@@ -46,6 +57,8 @@ describe('useAdjacentChapterTexts', () => {
     )
     await waitFor(() => expect(result.current.next?.primary.get(1)).toBe('ja-6'))
     expect(result.current.prev?.primary.get(1)).toBe('ja-4')
+    // 本文の前に入るものなので、先読みの対象に含める
+    await waitFor(() => expect(result.current.next?.heading?.title).toBe('見出し'))
     expect(result.current.next?.ref).toEqual({ collection: 'bofm', book: '1-ne', chapter: 6 })
   })
 

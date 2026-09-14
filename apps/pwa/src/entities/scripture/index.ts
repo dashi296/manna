@@ -5,3 +5,5 @@ export { getAdjacentChapterRef, getChapterNavLabel } from './lib/scriptureNaviga
 export type { VerseTextRow } from './lib/verseTexts'
 export { queryScriptureVerseTexts } from './lib/verseTexts'
 export { scriptureVerseTextKeys, scriptureVerseTextsQuery } from './lib/verseTextsQuery'
+export type { ChapterHeading } from './lib/chapterHeading'
+export { chapterHeadingKeys, chapterHeadingQuery } from './lib/chapterHeading'

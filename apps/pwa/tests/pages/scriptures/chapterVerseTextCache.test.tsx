@@ -17,7 +17,20 @@ vi.mock('@/entities/scripture/lib/verseTexts', () => ({
   },
 }))
 
-vi.mock('@/shared/lib/supabase', () => ({ supabase: {} }))
+// 章の見出しは節本文と別のテーブルから引く
+let heading: { title: string; summary: string | null; summary_html: string | null } | null = {
+  title: '第5章',
+  summary: '概要',
+  summary_html: '概要',
+}
+vi.mock('@/shared/lib/supabase', async () => {
+  const { createSupabaseQueryChain } = await import('../../helpers/supabase')
+  return {
+    supabase: {
+      from: () => createSupabaseQueryChain(() => ({ data: heading ? [heading] : [] })),
+    },
+  }
+})
 
 let loaderData: unknown
 vi.mock('@tanstack/react-router', async () => {

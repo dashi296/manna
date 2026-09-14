@@ -96,6 +96,8 @@ SSR のローダーは節本文と並べて `ensureQueryData` で温める。
 - キャッシュ共有: ローダーが温めた見出しをページ本体が取り直さない（節本文と同じ形のテスト）
 - プレビューと遷移後で本文の縦位置が一致すること（既存の実測スクリプトを拡張）
 
-## 未確定
+## 決着した点
 
-`scripts/lib/*.test.mjs` は CI で実行されていない（CI の `pnpm test` はルートの `pnpm --filter @manna/pwa test` に解決される）。パーサのテストを足しても現状は誰も走らせない。CI に `node --test scripts/lib/` を足すかは別途判断する。
+`scripts/lib/*.test.mjs` は CI で実行されていなかった（CI の `pnpm test` はルートの
+`pnpm --filter @manna/pwa test` に解決される）。今回パーサを足すので、ルートに
+`test:scripts` を作り CI の check ジョブに加えた。
