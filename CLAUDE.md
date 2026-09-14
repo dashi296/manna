@@ -110,8 +110,14 @@ const needsAuth =
 
 - **URL**: https://manna.falcon0296.workers.dev/
 - **ホスティング**: Cloudflare Workers（Worker 名 `manna`。静的アセットは `apps/pwa/dist/client` を `[assets]` で配信）
-- **デプロイ**: `pnpm --filter @manna/pwa cf:deploy`（`vite build && wrangler deploy`）
-- `wrangler deployments list` などの CLI 操作には `npx wrangler login` が必要（未ログインだと 400 で失敗する）
+- **デプロイは CI が行う**: main への push で `.github/workflows/deploy.yml` が走り、Supabase の
+  マイグレーション適用 → Cloudflare Workers へのデプロイ、の順で実行される。手元からの
+  `cf:deploy` は基本的に不要
+  - `check` ジョブ（typecheck / test / build）が落ちると `deploy` はスキップされる。
+    **main が赤いままだと本番に出ない**
+  - 認証情報は GitHub Secrets（`CLOUDFLARE_API_TOKEN` ほか）にある
+- **手動デプロイ**: `pnpm --filter @manna/pwa cf:deploy`（`vite build && wrangler deploy`）。
+  `wrangler deployments list` などの CLI 操作には `npx wrangler login` が必要（未ログインだと 400 で失敗する）
 
 ---
 
@@ -177,6 +183,9 @@ pnpm --filter @manna/pwa test:sandbox  # 書き込み不可の環境（サンド
 | `os.tmpdir()` 配下 | Vitest 4 の既定プール `forks` | `--pool threads` でワーカースレッドに切り替える |
 
 `test:sandbox` はプールが違うぶんテスト間の分離特性も変わる。CI と同じ条件で確かめたいときは通常の `test` を使う。
+
+**push 前には必ず通常の `test` を通すこと。** `test:sandbox` だけで済ませると、プールの違いで
+隠れる不安定なテストを取りこぼし、main の CI が落ちてデプロイが止まる（実際に起きた）。
 
 ---
 
