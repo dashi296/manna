@@ -3,7 +3,7 @@ import { parseVerses, parseChapterHeading } from './lib/parse-verses.mjs'
 import { parseParagraphs } from './lib/parse-paragraphs.mjs'
 import { runPsql } from './lib/db.mjs'
 import { resolveLanguage } from './lib/languages.mjs'
-import { exitCodeFor } from './lib/fetch-outcome.mjs'
+import { createOutcome } from './lib/fetch-outcome.mjs'
 
 const API_BASE = 'https://www.churchofjesuschrist.org/study/api/v3/language-pages/type/content'
 const RATE_MS = 1000
@@ -139,7 +139,7 @@ async function main() {
   console.log(`Total: ${allChapters.length} chapters, Skipping: ${allChapters.length - todo.length}, Remaining: ${todo.length}`)
 
   let inserted = 0
-  let failed = 0
+  const outcome = createOutcome()
   for (let i = 0; i < todo.length; i++) {
     const { collectionId, bookId, chapter, expectedVerses, isFrontMatter, versesMissing } = todo[i]
     const label = `${collectionId}/${bookId}/${chapter}`
@@ -164,16 +164,14 @@ async function main() {
 
       if (heading) {
         upsertHeading(collectionId, bookId, chapter, heading, language.code)
-      } else if (!isFrontMatter) {
-        // 取得元のマークアップが変わると全章でここに落ちる。警告だけで
-        // 成功終了すると、見出しが空のまま seed の書き出しや本番投入へ進む
-        failed += 1
+      }
+      if (outcome.recordHeading({ isFrontMatter, heading })) {
         console.warn(`Warning: No chapter heading parsed for ${label}`)
       }
 
       console.log(`[${i + 1}/${todo.length}] ${label} ... ${verses.length} verses`)
     } catch (err) {
-      failed += 1
+      outcome.recordError()
       console.error(`[${i + 1}/${todo.length}] ${label} FAILED: ${err.message}`)
     }
 
@@ -184,10 +182,9 @@ async function main() {
 
   // 章ごとの失敗は握って続けるが、そのまま成功で終わると不完全なまま
   // seed の書き出しや本番への投入へ進んでしまう
-  const exitCode = exitCodeFor({ failed })
-  if (exitCode !== 0) {
-    console.error(`${failed} chapter(s) failed. Re-run to retry them.`)
-    process.exitCode = exitCode
+  if (outcome.exitCode !== 0) {
+    console.error(`${outcome.failed} chapter(s) failed. Re-run to retry them.`)
+    process.exitCode = outcome.exitCode
   }
 }
 

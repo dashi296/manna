@@ -92,6 +92,13 @@ export function useAdjacentChapterTexts({ loc, enabled, bilingual }: Params) {
   const prevReady = prevHeading.isSuccess && (!bilingual || (prevSecondary.isSuccess && prevSecondaryHeading.isSuccess))
   const nextReady = nextHeading.isSuccess && (!bilingual || (nextSecondary.isSuccess && nextSecondaryHeading.isSuccess))
 
+  // 併記を切ったあとも、無効にしたクエリのデータはキャッシュに残る。
+  // そのまま渡すと本体は日本語だけなのにプレビューだけ英語が並ぶ
+  const secondaryOf = (result: { data?: unknown }) =>
+    bilingual ? toMap(result.data as VerseTextRow[]) : new Map<number, string>()
+  const secondaryHeadingOf = (result: { data?: unknown }) =>
+    bilingual ? ((result.data as ChapterHeading | null) ?? null) : null
+
   return useMemo(
     () => ({
       // 本文だけ先に返った時点でプレビューを出すと、遅れて届いた見出しのぶん
@@ -100,18 +107,18 @@ export function useAdjacentChapterTexts({ loc, enabled, bilingual }: Params) {
         ? {
             ref: prevRef,
             primary: toMap(prevPrimary.data as VerseTextRow[]),
-            secondary: toMap(prevSecondary.data as VerseTextRow[]),
+            secondary: secondaryOf(prevSecondary),
             heading: (prevHeading.data as ChapterHeading | null) ?? null,
-            secondaryHeading: (prevSecondaryHeading.data as ChapterHeading | null) ?? null,
+            secondaryHeading: secondaryHeadingOf(prevSecondaryHeading),
           }
         : null,
       next: nextRef && nextPrimary.data && nextReady
         ? {
             ref: nextRef,
             primary: toMap(nextPrimary.data as VerseTextRow[]),
-            secondary: toMap(nextSecondary.data as VerseTextRow[]),
+            secondary: secondaryOf(nextSecondary),
             heading: (nextHeading.data as ChapterHeading | null) ?? null,
-            secondaryHeading: (nextSecondaryHeading.data as ChapterHeading | null) ?? null,
+            secondaryHeading: secondaryHeadingOf(nextSecondaryHeading),
           }
         : null,
     }),
@@ -120,6 +127,8 @@ export function useAdjacentChapterTexts({ loc, enabled, bilingual }: Params) {
       prevPrimary.data, nextPrimary.data, prevSecondary.data, nextSecondary.data,
       prevHeading.data, nextHeading.data, prevSecondaryHeading.data, nextSecondaryHeading.data,
       prevReady, nextReady,
+      // 併記の切り替えは同じデータのまま見せ方だけを変える。依存に入れないと作り直されない
+      bilingual,
     ],
   )
 }
