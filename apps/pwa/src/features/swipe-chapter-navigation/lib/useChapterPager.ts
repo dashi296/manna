@@ -67,9 +67,13 @@ export function useChapterPager({ loc, disabled }: Params) {
 
   const containerRef = useRef<HTMLDivElement>(null)
   const [pointing, setPointing] = useState<'prev' | 'next' | null>(null)
-  // 移動先のプレビューは指が触れている間だけ出す。章ぶんの節をずっと描いておく
-  // 必要はないし、縦位置の計測もジェスチャーごとに1回で足りる
-  const [gesture, setGesture] = useState<{ previewTop: number } | null>(null)
+  // 移動先のプレビューは横に動き始めてから出す。章ぶんの節をずっと描いておく
+  // 必要はない。触れた時点で組むと、タップや縦スクロールのたびに隣の章ぶんの
+  // マウントとアンマウントを払うことになり、指を離すまでの処理が丸ごと遅れる
+  const [previewing, setPreviewing] = useState(false)
+  // 縦位置の計測はジェスチャーごとに1回でよく、描き直す理由にもならないので
+  // 状態に置かない
+  const previewTop = useRef(0)
   // 遷移待ちの間に着地判定が二重で走らないようにする
   const navigated = useRef(false)
   const settleTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
@@ -109,7 +113,7 @@ export function useChapterPager({ loc, disabled }: Params) {
     touched.current = false
     activeTouches.current.clear()
     setPointing(null)
-    setGesture(null)
+    setPreviewing(false)
     const el = containerRef.current
     if (el) el.scrollLeft = centerOffset(el)
   }, [scrollable, centerOffset])
@@ -130,7 +134,7 @@ export function useChapterPager({ loc, disabled }: Params) {
       // ここでジェスチャーは終わり。次に触れるまでは本文のパネルに留める側へ戻す
       touched.current = false
       setPointing(null)
-      setGesture(null)
+      setPreviewing(false)
       return
     }
 
@@ -163,8 +167,7 @@ export function useChapterPager({ loc, disabled }: Params) {
     // スクロール量をそのまま下げ幅にすると、プレビューはコンテナの先頭
     // （＝章の本文が始まる位置）に重なる。遷移した先も本文はそこから始まるので、
     // ヘッダーやその下の行の高さを知らなくても縦位置が揃う
-    if (!containerRef.current) return
-    setGesture({ previewTop: window.scrollY })
+    previewTop.current = window.scrollY
   }, [])
 
   const onTouchEnd = useCallback(
@@ -193,6 +196,8 @@ export function useChapterPager({ loc, disabled }: Params) {
     }
 
     const offset = el.scrollLeft - centerOffset(el)
+    // 横に動いたことをブラウザが認めた時点で組む。触れただけでは組まない
+    if (offset !== 0) setPreviewing(true)
     setPointing(
       offset > LABEL_THRESHOLD_PX ? 'next' : offset < -LABEL_THRESHOLD_PX ? 'prev' : null,
     )
@@ -210,7 +215,7 @@ export function useChapterPager({ loc, disabled }: Params) {
     onTouchEnd: scrollable ? onTouchEnd : undefined,
     destination: pointing === 'next' ? next : pointing === 'prev' ? prev : null,
     direction: pointing,
-    previewTop: gesture?.previewTop ?? 0,
-    previews: gesture ? adjacentTexts : { prev: null, next: null },
+    previewTop: previewTop.current,
+    previews: previewing ? adjacentTexts : { prev: null, next: null },
   }
 }
