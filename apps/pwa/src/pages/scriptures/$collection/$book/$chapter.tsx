@@ -450,12 +450,12 @@ function ChapterHeadingBlock({
 }) {
   if (!heading) return null
   return (
-    <div className="px-4 pt-4">
+    <div className="px-4 pt-6 pb-4">
       {/* 同じ文字列が貼り付くヘッダーの h1 にもある。ここも見出しにすると
           読み上げの見出し一覧に「第n章」が続けて二度並び、区別できない */}
       <p
         data-testid="chapter-heading"
-        className="text-base font-display"
+        className="text-center text-base font-display"
         style={{ color: 'var(--sea-ink)' }}
       >
         {heading.title}
@@ -497,7 +497,8 @@ const ChapterPreview = memo(function ChapterPreview({ texts }: { texts: ChapterT
   return (
     <div>
       <ChapterHeadingBlock heading={texts.heading} secondary={texts.secondaryHeading} />
-      <div className="p-4 pt-0">
+      {/* 折り返しが本体とずれないよう、余白は verseList と同じにする */}
+      <div className="pb-4 pr-1">
         <ul>
           {verses.map((verse, i) => {
             const isLast = i === verses.length - 1 && verses.length === all.length
@@ -778,7 +779,8 @@ function ChapterView({
   )
 
   const verseList = (
-    <div className="p-4 pt-0">
+    // 右の 4px は印のバッジ（gutter の -right-1）の逃げ場。無いとページャに切られる
+    <div className="pb-4 pr-1">
       <ul>
         {verseNumbers.map((verse, i) => {
           const textHtml = verseTextMap.get(verse)
