@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert'
-import { parseVerses } from './parse-verses.mjs'
+import { parseVerses, parseChapterHeading } from './parse-verses.mjs'
 
 const SAMPLE_HTML = `
 <header><h1 data-aid="1" id="title1">Title</h1></header>
@@ -64,5 +64,44 @@ describe('parseVerses with trailing space in verse-number (OT format)', () => {
 
   it('produces correct plain text', () => {
     assert.strictEqual(verses[0].text, 'はじめに神は天と地とを創造された。')
+  })
+})
+
+describe('parseChapterHeading', () => {
+  it('タイトルと概要を取り出す', () => {
+    const heading = parseChapterHeading(`
+      <p class="title-number" id="title_number1">第5章</p>
+      <p class="study-summary" id="study_summary1">サライア、<ruby><rb>不</rb><rt>ふ</rt></ruby>平を言う。</p>
+      <p class="verse"><span class="verse-number">1</span>本文</p>
+    `)
+    assert.strictEqual(heading.title, '第5章')
+    assert.strictEqual(heading.summary, 'サライア、不平を言う。')
+    assert.ok(heading.summaryHtml.includes('<ruby><rb>不</rb><rt>ふ</rt></ruby>'))
+  })
+
+  it('概要が無い章（旧約・新約）ではタイトルだけを返す', () => {
+    const heading = parseChapterHeading(`
+      <p class="title-number" id="title_number1">第1章</p>
+      <p class="verse"><span class="verse-number">1</span>本文</p>
+    `)
+    assert.strictEqual(heading.title, '第1章')
+    assert.strictEqual(heading.summary, null)
+    assert.strictEqual(heading.summaryHtml, null)
+  })
+
+  it('詩篇のように章以外の呼び方でもそのまま返す', () => {
+    assert.strictEqual(parseChapterHeading('<p class="title-number">第23篇</p>').title, '第23篇')
+  })
+
+  it('タイトルが無ければ null を返す（前付け文書など）', () => {
+    assert.strictEqual(parseChapterHeading('<p class="verse">本文</p>'), null)
+  })
+
+  it('注釈の記号や study-note-ref は落とす', () => {
+    const heading = parseChapterHeading(`
+      <p class="title-number">第1章</p>
+      <p class="study-summary"><a class="study-note-ref" href="#n"><sup class="marker" data-value="①"></sup>ニーファイ</a>が語る。</p>
+    `)
+    assert.strictEqual(heading.summary, 'ニーファイが語る。')
   })
 })

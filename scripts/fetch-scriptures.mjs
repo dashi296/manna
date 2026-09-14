@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs'
-import { parseVerses } from './lib/parse-verses.mjs'
+import { parseVerses, parseChapterHeading } from './lib/parse-verses.mjs'
 import { parseParagraphs } from './lib/parse-paragraphs.mjs'
 import { runPsql } from './lib/db.mjs'
 import { resolveLanguage } from './lib/languages.mjs'
@@ -34,6 +34,18 @@ function buildChapterList() {
     }
   }
   return chapters
+}
+
+function getCompletedHeadings(languageCode) {
+  const result = runPsql(
+    `SELECT collection_id, book_id, chapter FROM scripture_chapter_headings WHERE language='${sqlQuote(languageCode)}';`
+  )
+  const set = new Set()
+  for (const line of result.trim().split('\n').filter(Boolean)) {
+    const [collectionId, bookId, chapter] = line.split('|')
+    set.add(`${collectionId}/${bookId}/${chapter}`)
+  }
+  return set
 }
 
 function getCompletedChapters(languageCode) {
@@ -89,38 +101,69 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
+function upsertHeading(collectionId, bookId, chapter, heading, languageCode) {
+  const nullable = v => (v === null || v === undefined ? 'NULL' : `'${sqlQuote(v)}'`)
+  const sql = `INSERT INTO scripture_chapter_headings
+      (collection_id, book_id, chapter, language, title, summary, summary_html)
+    VALUES ('${sqlQuote(collectionId)}','${sqlQuote(bookId)}',${chapter},'${sqlQuote(languageCode)}',
+      '${sqlQuote(heading.title)}',${nullable(heading.summary)},${nullable(heading.summaryHtml)})
+    ON CONFLICT (collection_id, book_id, chapter, language) DO UPDATE
+      SET title = EXCLUDED.title,
+          summary = EXCLUDED.summary,
+          summary_html = EXCLUDED.summary_html;`
+  runPsql(sql)
+}
+
 async function main() {
   const language = parseArgs()
   const allChapters = buildChapterList()
   const completedCounts = getCompletedChapters(language.code)
-  const todo = allChapters.filter(c => {
-    const key = `${c.collectionId}/${c.bookId}/${c.chapter}`
-    const count = completedCounts.get(key)
-    return count === undefined || count !== c.expectedVerses
-  })
+  const completedHeadings = getCompletedHeadings(language.code)
+  // 節が揃っていない章か、見出しがまだ無い章。どちらも同じレスポンスから取れるので
+  // 通信は1章あたり1回のまま
+  const todo = allChapters
+    .map(c => {
+      const key = `${c.collectionId}/${c.bookId}/${c.chapter}`
+      const count = completedCounts.get(key)
+      return {
+        ...c,
+        versesMissing: count === undefined || count !== c.expectedVerses,
+        // 前付け文書には章のタイトルが無いので、見出しの有無では判定しない
+        headingMissing: !c.isFrontMatter && !completedHeadings.has(key),
+      }
+    })
+    .filter(c => c.versesMissing || c.headingMissing)
 
   console.log(`Language: ${language.code} (${language.label})`)
   console.log(`Total: ${allChapters.length} chapters, Skipping: ${allChapters.length - todo.length}, Remaining: ${todo.length}`)
 
   let inserted = 0
   for (let i = 0; i < todo.length; i++) {
-    const { collectionId, bookId, chapter, expectedVerses, isFrontMatter } = todo[i]
+    const { collectionId, bookId, chapter, expectedVerses, isFrontMatter, versesMissing } = todo[i]
     const label = `${collectionId}/${bookId}/${chapter}`
 
     try {
       const html = await fetchChapter(collectionId, bookId, chapter, isFrontMatter, language.apiCode)
       const verses = isFrontMatter ? parseParagraphs(html) : parseVerses(html)
+      const heading = isFrontMatter ? null : parseChapterHeading(html)
 
       if (verses.length !== expectedVerses) {
         console.warn(`Warning: Expected ${expectedVerses} verses but parsed ${verses.length} for ${label}`)
       }
 
-      if (verses.length > 0) {
+      // 節が揃っている章は見出しだけを足しに来ている。入れ直さない
+      if (verses.length > 0 && versesMissing) {
         if (completedCounts.has(label)) {
           runPsql(`DELETE FROM scripture_verses WHERE collection_id='${sqlQuote(collectionId)}' AND book_id='${sqlQuote(bookId)}' AND chapter=${chapter} AND language='${sqlQuote(language.code)}';`)
         }
         insertVerses(collectionId, bookId, chapter, verses, language.code)
         inserted += verses.length
+      }
+
+      if (heading) {
+        upsertHeading(collectionId, bookId, chapter, heading, language.code)
+      } else if (!isFrontMatter) {
+        console.warn(`Warning: No chapter heading parsed for ${label}`)
       }
 
       console.log(`[${i + 1}/${todo.length}] ${label} ... ${verses.length} verses`)
