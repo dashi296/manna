@@ -8,6 +8,14 @@ const bob = { userId: 'u2', name: 'ボブ', avatarUrl: null }
 const carol = { userId: 'u3', name: 'キャロル', avatarUrl: null }
 const dave = { userId: 'u4', name: 'デイブ', avatarUrl: null }
 
+// 押下時間は「イベントが起きた時刻」で測る。ハンドラが呼ばれた時刻で測ると、
+// 描画で主スレッドが詰まった分まで押下時間に混ざる
+function pressEvent(type: string, timeStamp: number) {
+  const event = new Event(type, { bubbles: true, cancelable: true })
+  Object.defineProperty(event, 'timeStamp', { value: timeStamp })
+  return event
+}
+
 describe('VerseCommentGutter 長押し', () => {
   afterEach(() => {
     vi.useRealTimers()
@@ -28,6 +36,22 @@ describe('VerseCommentGutter 長押し', () => {
     fireEvent.pointerDown(btn)
     vi.advanceTimersByTime(120)
     fireEvent.pointerUp(btn)
+    fireEvent.click(btn)
+
+    expect(onOpen).toHaveBeenCalledWith(3)
+  })
+
+  it('押している間に描画で主スレッドが詰まっても、短押しならシートが開く', () => {
+    vi.useFakeTimers()
+    const onOpen = vi.fn()
+    render(<VerseCommentGutter verse={3} entry={anchorEntry} onOpen={onOpen} />)
+
+    const btn = screen.getByRole('button', { name: /3節/ })
+    // 指が触れてから離すまでは 100ms。その間にページャが隣の章のプレビューを
+    // 組み上げてハンドラの実行が 800ms 遅れる、という並び
+    fireEvent(btn, pressEvent('pointerdown', 1_000))
+    vi.advanceTimersByTime(800)
+    fireEvent(btn, pressEvent('pointerup', 1_100))
     fireEvent.click(btn)
 
     expect(onOpen).toHaveBeenCalledWith(3)

@@ -31,7 +31,9 @@ type Props = {
 }
 
 export function VerseCommentGutter({ verse, entry, onOpen, onHighlight }: Props) {
-  const pressStartedAt = useRef(0)
+  // 押し始めの時刻。押していない間は null。イベント自身の時刻を入れるため、
+  // 0 は「押していない」印には使えない（時刻の原点は読み込み時）
+  const pressStartedAt = useRef<number | null>(null)
   // pointerup の時点で押下時間を確定させる。タッチでは pointerleave が click より
   // 先に来るため、leave 側で押下時間ごと捨てると長押しが判定できなくなる
   const lastPressDuration = useRef<number | null>(null)
@@ -106,14 +108,17 @@ export function VerseCommentGutter({ verse, entry, onOpen, onHighlight }: Props)
             onOpen(verse)
           }
         }}
-        onPointerDown={() => {
-          pressStartedAt.current = Date.now()
+        // 押下時間はイベント自身の時刻で測る。ハンドラが呼ばれた時刻で測ると、
+        // 触れた直後の描画（ページャが隣の章のプレビューを組む）で主スレッドが
+        // 詰まったぶんまで押下時間に足され、短いタップが長押し扱いで捨てられる
+        onPointerDown={(e) => {
+          pressStartedAt.current = e.timeStamp
           lastPressDuration.current = null
         }}
-        onPointerUp={() => {
-          if (pressStartedAt.current === 0) return
-          lastPressDuration.current = Date.now() - pressStartedAt.current
-          pressStartedAt.current = 0
+        onPointerUp={(e) => {
+          if (pressStartedAt.current === null) return
+          lastPressDuration.current = e.timeStamp - pressStartedAt.current
+          pressStartedAt.current = null
         }}
         onPointerEnter={() => {
           highlightedByPointer.current = true
@@ -121,13 +126,13 @@ export function VerseCommentGutter({ verse, entry, onOpen, onHighlight }: Props)
         }}
         onPointerLeave={() => {
           // 押しかけて外へ移動した場合。確定済みの押下時間は tap の一部なので残す
-          pressStartedAt.current = 0
+          pressStartedAt.current = null
           highlightedByPointer.current = false
           releaseHighlight()
         }}
         // 押したままスクロールに移ると pointercancel だけが来て pointerleave が来ない
         onPointerCancel={() => {
-          pressStartedAt.current = 0
+          pressStartedAt.current = null
           lastPressDuration.current = null
           highlightedByPointer.current = false
           releaseHighlight()
