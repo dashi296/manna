@@ -4,10 +4,24 @@
 
 詳細計画: [`docs/superpowers/plans/2026-05-19-manna-phase1.md`](docs/superpowers/plans/2026-05-19-manna-phase1.md)
 
-## 現在の状態（2026-07-18 時点）
+## 現在の状態（2026-09-14 時点）
 
 - **Phase 1（PWA）完了**: PR #37 で main にマージ済み
-- **次は Phase 2（Chrome 拡張 / Plasmo）**: 着手前に [`docs/superpowers/specs/2026-07-18-phase2-handoff.md`](docs/superpowers/specs/2026-07-18-phase2-handoff.md) を読むこと（再利用資産・見送った改善候補・環境のハマりどころを記載）
+- 章画面の機能追加が続いている。直近で入ったもの:
+  - 章末尾の前章・次章リンク（#151）
+  - **章画面のスワイプナビゲーション**（#65 / PR #152）。CSS scroll-snap でブラウザにジェスチャを任せる方式。
+    **実機（iOS ホーム画面 PWA / Android Chrome）での確認が未了**。チェックリストは #65 のコメントにある
+  - **章タイトルと概要文の表示**（#154 / PR #155）。詩篇の章ラベル（第n篇）の不具合もここで修正
+- **Phase 2（Chrome 拡張 / Plasmo）は未着手**: 着手前に
+  [`docs/superpowers/specs/2026-07-18-phase2-handoff.md`](docs/superpowers/specs/2026-07-18-phase2-handoff.md) を読むこと
+
+### 開いている issue
+
+| # | 内容 | 状態 |
+|---|---|---|
+| #65 | 章画面のスワイプナビゲーション | 実装は本番稼働中。**実機確認だけが残っている** |
+| #156 | バレル import と FSD 規約の衝突 | 計測済み。現状バレルはコストになっていない。`sideEffects` 未宣言だけが実際の穴 |
+| #157 | ヘッダーの章タイトルが中央に揃っていない | `PageHeader` は10画面で共有。全画面に適用するかの判断が要る |
 
 ---
 
@@ -119,8 +133,15 @@ const needsAuth =
 - **聖典データは git に入っていない**（`supabase/seed-verses.sql` は `.gitignore`）。本番へ入れるときは
   ローカルで取り込んだものを流し込む:
   ```bash
-  pg_dump --data-only --table=<テーブル名> "postgresql://postgres:postgres@127.0.0.1:55322/postgres" | psql "<本番の接続文字列>"
+  pg_dump --data-only --table=<テーブル名> "postgresql://postgres:postgres@127.0.0.1:55322/postgres" \
+    | psql "postgresql://postgres.graqagamejjwxdlscjvt:<DBパスワード>@aws-1-ap-northeast-1.pooler.supabase.com:5432/postgres"
   ```
+  - **直結（`db.<ref>.supabase.co`）は使えない。** AAAA レコードしか無く、手元の `getaddrinfo` が解決に失敗する
+    （`dig` は引けるので紛らわしい）。必ず**プーラー**を使う
+  - プーラーのホストは **`aws-1-`**（`aws-0-` は `tenant/user not found` を返す）。ユーザー名は
+    `postgres` ではなく **`postgres.<プロジェクトID>`**
+  - どのホストにテナントが居るかは、ダミーのパスワードで判定できる。
+    「パスワードが違う」＝到達、「tenant/user not found」＝別ホスト
 - **手動デプロイ**: `pnpm --filter @manna/pwa cf:deploy`（`vite build && wrangler deploy`）。
   `wrangler deployments list` などの CLI 操作には `npx wrangler login` が必要（未ログインだと 400 で失敗する）
 
