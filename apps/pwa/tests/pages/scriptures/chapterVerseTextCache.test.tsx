@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, renderHook, screen, waitFor } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider, dehydrate, hydrate } from '@tanstack/react-query'
 import { routeComponent, routeLoader } from '../../helpers/tanstack'
 
 // ローダー・ページ本体・隣章の先読みが同じキーを見ているかを、実際にローダーを
@@ -108,5 +108,38 @@ describe('章の節本文のキャッシュ', () => {
 
     // 先読みと同じキーなので取り直さない
     expect(fetched.map((f) => f.chapter).sort()).toEqual([3, 5])
+  })
+
+  it('SSR で温めたキャッシュは、直列化して渡した先でも使える', async () => {
+    const mod = await import('@/pages/scriptures/$collection/$book/$chapter')
+    const serverClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+
+    loaderData = await routeLoader(mod)({ params, deps: {}, context: { queryClient: serverClient } })
+    expect(fetched).toHaveLength(1)
+
+    // 本番の SSR はここを JSON で通してブラウザへ渡す
+    const payload = JSON.parse(JSON.stringify(dehydrate(serverClient)))
+    const browserClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    hydrate(browserClient, payload)
+
+    const Route = mod.Route as unknown as {
+      useSearch: () => Record<string, unknown>
+      useNavigate: () => ReturnType<typeof vi.fn>
+    }
+    Route.useSearch = () => ({})
+    Route.useNavigate = () => vi.fn()
+
+    render(
+      <QueryClientProvider client={browserClient}>
+        {(() => {
+          const ChapterPage = routeComponent(mod)
+          return <ChapterPage />
+        })()}
+      </QueryClientProvider>,
+    )
+
+    expect(await screen.findByText('ja の本文')).toBeInTheDocument()
+    // 直列化で落ちていれば、ここで取り直しが走る
+    expect(fetched).toHaveLength(1)
   })
 })

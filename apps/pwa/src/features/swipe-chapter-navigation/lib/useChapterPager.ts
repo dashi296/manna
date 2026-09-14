@@ -77,13 +77,15 @@ export function useChapterPager({ loc, disabled }: Params) {
   // スナップをやり直すことがあり、それを「隣まで引かれた」と読むと読み込み直後に
   // 勝手に隣の章へ飛ぶ
   const touched = useRef(false)
-  // 触れている指の数。指を止めているだけでスクロールは静止するので、
-  // 離すまでは着地とみなさない。ポインタイベントは横パンが始まると
-  // pointercancel で打ち切られるため、タッチイベントで数える。
-  // イベントの数ではなく event.touches を見る。touchend / touchcancel は
-  // 複数の接触点を1イベントでまとめて終わらせるので、1件ずつ減らすと
-  // 指が残っている扱いのままになり、その章では二度と着地しなくなる
-  const touchCount = useRef(0)
+  // ページャの上で始まった指を identifier で覚えておく。指を止めているだけでも
+  // スクロールは静止するので、離すまでは着地とみなさない。
+  // ポインタイベントは横パンが始まると pointercancel で打ち切られるため、
+  // タッチイベントで追う。
+  // 件数を数えるのではなく identifier の集合で持つ理由は2つある。
+  // touchend / touchcancel は複数の接触点を1イベントでまとめて終わらせるので
+  // 1件ずつ減らすと指が残っている扱いのままになる。また event.touches は
+  // 画面上の全接触点で、ページャの外に置かれた指まで含んでしまう
+  const activeTouches = useRef(new Set<number>())
 
   const centerOffset = useCallback(
     (el: HTMLDivElement) => (prev ? el.clientWidth : 0),
@@ -99,12 +101,25 @@ export function useChapterPager({ loc, disabled }: Params) {
 
   useEffect(() => () => clearTimeout(settleTimer.current), [])
 
+  // 無効化されたらジェスチャーを畳む。判定を止めるだけだと、引きかけの位置と
+  // 「触れた」状態が残り、シートを閉じた後のスナップのやり直しを章移動と読んでしまう
+  useEffect(() => {
+    if (scrollable) return
+    clearTimeout(settleTimer.current)
+    touched.current = false
+    activeTouches.current.clear()
+    setPointing(null)
+    setGesture(null)
+    const el = containerRef.current
+    if (el) el.scrollLeft = centerOffset(el)
+  }, [scrollable, centerOffset])
+
   const settle = useCallback(() => {
     const el = containerRef.current
     if (!el || navigated.current) return
     // 判定待ちの間にシートが開くこともある
     if (!scrollableRef.current) return
-    if (!touched.current || touchCount.current > 0) return
+    if (!touched.current || activeTouches.current.size > 0) return
     const width = el.clientWidth
     if (width === 0) return
 
@@ -137,7 +152,9 @@ export function useChapterPager({ loc, disabled }: Params) {
 
   const onTouchStart = useCallback((event: TouchEvent<HTMLDivElement>) => {
     touched.current = true
-    touchCount.current = event.touches.length
+    for (const touch of Array.from(event.changedTouches)) {
+      activeTouches.current.add(touch.identifier)
+    }
 
     // パネルは章の高さぶん縦に伸びる。プレビューを先頭に置くと、下の方を
     // 読んでいるときに画面の外へ出るため、いま見えている位置に合わせる。
@@ -152,7 +169,9 @@ export function useChapterPager({ loc, disabled }: Params) {
 
   const onTouchEnd = useCallback(
     (event: TouchEvent<HTMLDivElement>) => {
-      touchCount.current = event.touches.length
+      for (const touch of Array.from(event.changedTouches)) {
+        activeTouches.current.delete(touch.identifier)
+      }
       // 指を止めたまま離した場合、スクロールイベントはもう来ない
       scheduleSettle()
     },
