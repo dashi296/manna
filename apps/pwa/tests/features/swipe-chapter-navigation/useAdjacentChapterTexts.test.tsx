@@ -22,8 +22,11 @@ vi.mock('@/entities/scripture/lib/verseTexts', () => ({
 
 vi.mock('@/shared/lib/supabase', () => ({ supabase: {} }))
 
+// クライアントはテストごとに1つ。描画のたびに作り直すと、再描画で
+// 取得中のクエリごと捨てられて結果が届かない
+let client: QueryClient
+
 function wrapper({ children }: { children: React.ReactNode }) {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return <QueryClientProvider client={client}>{children}</QueryClientProvider>
 }
 
@@ -32,6 +35,7 @@ const loc = { collection: 'bofm', book: '1-ne', chapter: 5 }
 beforeEach(() => {
   calls.length = 0
   failing = false
+  client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
 })
 
 describe('useAdjacentChapterTexts', () => {

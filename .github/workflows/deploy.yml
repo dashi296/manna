@@ -39,8 +39,14 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
+      # Supabase クライアントは生成時に URL とキーを要求する。未設定だと
+      # クライアントを作る経路のテストが「取得に失敗した」形で静かに落ちる。
+      # 本番に載せる値ではないので Build と同じダミーでよい
       - name: Test
         run: pnpm test
+        env:
+          VITE_SUPABASE_URL: http://127.0.0.1:55321
+          VITE_SUPABASE_KEY: ci-dummy-key
 
       # 本番に載せる成果物ではないので固定のダミー値を使う。
       # secrets に依存させないことで fork からの PR でも動く

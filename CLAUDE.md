@@ -110,8 +110,14 @@ const needsAuth =
 
 - **URL**: https://manna.falcon0296.workers.dev/
 - **ホスティング**: Cloudflare Workers（Worker 名 `manna`。静的アセットは `apps/pwa/dist/client` を `[assets]` で配信）
-- **デプロイ**: `pnpm --filter @manna/pwa cf:deploy`（`vite build && wrangler deploy`）
-- `wrangler deployments list` などの CLI 操作には `npx wrangler login` が必要（未ログインだと 400 で失敗する）
+- **デプロイは CI が行う**: main への push で `.github/workflows/deploy.yml` が走り、Supabase の
+  マイグレーション適用 → Cloudflare Workers へのデプロイ、の順で実行される。手元からの
+  `cf:deploy` は基本的に不要
+  - `check` ジョブ（typecheck / test / build）が落ちると `deploy` はスキップされる。
+    **main が赤いままだと本番に出ない**
+  - 認証情報は GitHub Secrets（`CLOUDFLARE_API_TOKEN` ほか）にある
+- **手動デプロイ**: `pnpm --filter @manna/pwa cf:deploy`（`vite build && wrangler deploy`）。
+  `wrangler deployments list` などの CLI 操作には `npx wrangler login` が必要（未ログインだと 400 で失敗する）
 
 ---
 
@@ -177,6 +183,16 @@ pnpm --filter @manna/pwa test:sandbox  # 書き込み不可の環境（サンド
 | `os.tmpdir()` 配下 | Vitest 4 の既定プール `forks` | `--pool threads` でワーカースレッドに切り替える |
 
 `test:sandbox` はプールが違うぶんテスト間の分離特性も変わる。CI と同じ条件で確かめたいときは通常の `test` を使う。
+
+**push 前には必ず通常の `test` を通すこと。** 加えて、CI には `.env.local` が無い。
+`VITE_SUPABASE_URL` / `VITE_SUPABASE_KEY` が未設定だと Supabase クライアントの生成が
+`Your project's URL and API key are required` で落ち、そのクライアントを作る経路のテストが
+「取得に失敗した」形で静かに落ちる。手元だけで確かめると気づけないので、CI と同じ条件を
+再現するなら `.env.local` を外し、ダミー値を渡して走らせる:
+
+```bash
+VITE_SUPABASE_URL=http://127.0.0.1:55321 VITE_SUPABASE_KEY=ci-dummy-key pnpm --filter @manna/pwa test
+```
 
 ---
 

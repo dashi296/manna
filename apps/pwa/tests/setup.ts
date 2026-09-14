@@ -24,3 +24,15 @@ if (!window.matchMedia) {
 if (!Element.prototype.scrollIntoView) {
   Element.prototype.scrollIntoView = () => {}
 }
+
+// jsdom は requestIdleCallback を実装していない（隣章の先読みが「アイドルまで待つ」
+// 判断に使う）。本番のフォールバックは固定待ちのため、テストが待ち時間に依存する
+if (!globalThis.requestIdleCallback) {
+  globalThis.requestIdleCallback = ((cb: IdleRequestCallback) =>
+    setTimeout(
+      () => cb({ didTimeout: false, timeRemaining: () => 0 }),
+      0,
+    ) as unknown as number) as typeof requestIdleCallback
+  globalThis.cancelIdleCallback = ((handle: number) =>
+    clearTimeout(handle as unknown as NodeJS.Timeout)) as typeof cancelIdleCallback
+}
