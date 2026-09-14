@@ -37,3 +37,18 @@ export function parseVerses(html) {
 
   return verses
 }
+
+// 章のタイトルと概要文。概要があるのは回復された聖典だけで、
+// 旧約・新約には段落自体が無い。前付け文書にはタイトルも無い
+export function parseChapterHeading(html) {
+  const titleMatch = html.match(/<p class="title-number"[^>]*>\s*(.*?)\s*<\/p>/s)
+  if (!titleMatch) return null
+
+  const { text: title } = cleanVerseHtml(titleMatch[1])
+
+  const summaryMatch = html.match(/<p class="study-summary"[^>]*>\s*(.*?)\s*<\/p>/s)
+  if (!summaryMatch) return { title, summary: null, summaryHtml: null }
+
+  const { text, textHtml } = cleanVerseHtml(summaryMatch[1])
+  return { title, summary: text, summaryHtml: textHtml }
+}

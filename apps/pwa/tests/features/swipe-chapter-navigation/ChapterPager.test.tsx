@@ -46,6 +46,8 @@ const chapterTexts = (chapter: number): ChapterTexts => ({
   ref: { collection: 'bofm', book: '1-ne', chapter },
   primary: new Map([[1, `第${chapter}章の1節`]]),
   secondary: new Map(),
+  heading: { title: `第${chapter}章`, summary: `第${chapter}章の概要`, summaryHtml: `第${chapter}章の概要` },
+  secondaryHeading: null,
 })
 
 beforeEach(() => {

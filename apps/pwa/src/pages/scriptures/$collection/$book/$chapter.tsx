@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import {
   createFileRoute,
   Link,
@@ -9,10 +9,10 @@ import {
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { createServerFn } from '@tanstack/react-start'
 import { useQuery } from '@tanstack/react-query'
-import { getBook, getCollection, buildScriptureUrl, getChapterLabel, getScriptureLabel, getAdjacentChapterRef, getChapterNavLabel, scriptureVerseTextsQuery, type ChapterRef } from '@/entities/scripture'
+import { getBook, getCollection, buildScriptureUrl, getChapterLabel, getScriptureLabel, getAdjacentChapterRef, getChapterNavLabel, scriptureVerseTextsQuery, chapterHeadingQuery, type ChapterRef, type ChapterHeading } from '@/entities/scripture'
 import { PostCard, POST_SELECT, type PostWithUser } from '@/entities/post'
 import { createSupabaseServer } from '@/shared/lib/auth'
-import { ComposePostButton, EmptyState, PageHeader, ScriptureText } from '@/shared/ui'
+import { ComposePostButton, EmptyState, PageHeader, SanitizedVerseHtml, ScriptureText } from '@/shared/ui'
 import { PostComposerSheet } from '@/widgets/post-composer-sheet'
 import { ComposeMenu } from '@/widgets/compose-menu'
 import {
@@ -54,6 +54,11 @@ async function queryUserAndCircle(supabase: SupabaseServer) {
   const circle =
     userId !== null ? await getCircleUserIds(supabase, userId) : null
   return { userId, circle }
+}
+
+function useChapterHeading(loc: ChapterRef, language: string, enabled: boolean) {
+  const { data } = useQuery({ ...chapterHeadingQuery(loc, language), enabled })
+  return enabled ? (data ?? null) : null
 }
 
 // 本文は SSR のローダーが同じキーで温めてある。隣章の先読みとも同じキャッシュを共有する
@@ -232,6 +237,13 @@ export const Route = createFileRoute('/scriptures/$collection/$book/$chapter')({
     const [data] = await Promise.all([
       fetchChapterData({ data: base }),
       context.queryClient.ensureQueryData(scriptureVerseTextsQuery(base, PRIMARY_LANGUAGE)),
+      // 見出しは飾りなので、取れなくても本文や投稿まで巻き添えにしない。
+      // 前付け文書にはそもそも章のタイトルが無い
+      book.isFrontMatter
+        ? Promise.resolve(null)
+        : context.queryClient
+            .ensureQueryData(chapterHeadingQuery(base, PRIMARY_LANGUAGE))
+            .catch(() => null),
     ])
 
     return {
@@ -427,51 +439,101 @@ function ChapterNav({ collection, book, chapter }: ChapterRef) {
   )
 }
 
+// 章の先頭に置くタイトルと概要。概要があるのは回復された聖典だけで、
+// 旧約・新約はタイトルだけになる
+function ChapterHeadingBlock({
+  heading,
+  secondary,
+}: {
+  heading: ChapterHeading | null
+  secondary?: ChapterHeading | null
+}) {
+  if (!heading) return null
+  return (
+    <div className="px-4 pt-6 pb-4">
+      {/* 同じ文字列が貼り付くヘッダーの h1 にもある。ここも見出しにすると
+          読み上げの見出し一覧に「第n章」が続けて二度並び、区別できない */}
+      <p
+        data-testid="chapter-heading"
+        className="text-center text-base font-display"
+        style={{ color: 'var(--sea-ink)' }}
+      >
+        {heading.title}
+      </p>
+      {heading.summaryHtml && (
+        <SanitizedVerseHtml
+          html={heading.summaryHtml}
+          className="mt-2 block pl-[3px] text-sm leading-relaxed"
+          style={{ color: 'var(--sea-ink-soft)' }}
+        />
+      )}
+      {secondary?.summaryHtml && (
+        <SanitizedVerseHtml
+          html={secondary.summaryHtml}
+          // 節の行は選択表示用に左へ 3px の境界を持つ（VerseRow の borderLeft）。
+          // 同じ分だけ空けないと節番号と左端がずれる。タイトルは画面の中央に
+          // 合わせたいので、この調整は概要だけに入れる
+          className="mt-2 block pl-[3px] text-sm leading-relaxed"
+          style={{ color: 'var(--sea-ink-soft)' }}
+          lang={SECONDARY_LANGUAGE}
+        />
+      )}
+    </div>
+  )
+}
+
 // スワイプ中に見える移動先の冒頭。見えるのは画面1つぶんなので、それを超える節は描かない。
 // 指を置いた時点で前後ぶんまとめてマウントし、節ごとにサニタイズが走るため、
 // 画面に入る見込みより大きく取ると入力の応答が鈍る
 const PREVIEW_VERSE_LIMIT = 20
 
 // 余白・区切り線・節の組みは verseList と揃える。ここがずれると、指を離した瞬間に
-// 本文が横や縦に飛ぶ
-function ChapterPreview({ texts }: { texts: ChapterTexts }) {
+// 本文が横や縦に飛ぶ。
+//
+// memo で包むのは、ドラッグ中にページャの状態（行先・プレビューの縦位置）が
+// 変わるたびに前後20節ぶんの再調整が走るため。実測で1ドラッグあたり16回→4回
+const ChapterPreview = memo(function ChapterPreview({ texts }: { texts: ChapterTexts }) {
   const target = getBook(texts.ref.collection, texts.ref.book)
   const all = [...texts.primary.keys()]
   const verses = all.slice(0, PREVIEW_VERSE_LIMIT)
 
   return (
-    <div className="p-4">
-      <ul>
-        {verses.map((verse, i) => {
-          const isLast = i === verses.length - 1 && verses.length === all.length
-          return (
-            <li
-              key={verse}
-              className={`flex items-stretch ${isLast ? '' : 'border-b'}`}
-              style={{ borderColor: 'var(--line)' }}
-            >
-              <div className="flex-1 min-w-0">
-                <VerseRow
-                  collection={texts.ref.collection}
-                  book={texts.ref.book}
-                  chapter={texts.ref.chapter}
-                  verse={verse}
-                  textHtml={texts.primary.get(verse)}
-                  textHtmlSecondary={texts.secondary.get(verse)}
-                  secondaryLang={SECONDARY_LANGUAGE}
-                  mode="read"
-                  selected={false}
-                  onSelect={() => {}}
-                  showNumber={!target?.isFrontMatter}
-                />
-              </div>
-            </li>
-          )
-        })}
-      </ul>
+    <div>
+      <ChapterHeadingBlock heading={texts.heading} secondary={texts.secondaryHeading} />
+      {/* 折り返しが本体とずれないよう、余白は verseList と同じにする */}
+      <div className="pb-4 pr-1">
+        <ul>
+          {verses.map((verse, i) => {
+            const isLast = i === verses.length - 1 && verses.length === all.length
+            return (
+              <li
+                key={verse}
+                className={`flex items-stretch ${isLast ? '' : 'border-b'}`}
+                style={{ borderColor: 'var(--line)' }}
+              >
+                <div className="flex-1 min-w-0">
+                  <VerseRow
+                    collection={texts.ref.collection}
+                    book={texts.ref.book}
+                    chapter={texts.ref.chapter}
+                    verse={verse}
+                    textHtml={texts.primary.get(verse)}
+                    textHtmlSecondary={texts.secondary.get(verse)}
+                    secondaryLang={SECONDARY_LANGUAGE}
+                    mode="read"
+                    selected={false}
+                    onSelect={() => {}}
+                    showNumber={!target?.isFrontMatter}
+                  />
+                </div>
+              </li>
+            )
+          })}
+        </ul>
+      </div>
     </div>
   )
-}
+})
 
 function refToParams(ref: ChapterRef) {
   return { collection: ref.collection, book: ref.book, chapter: String(ref.chapter) }
@@ -506,6 +568,8 @@ function ChapterView({
   const bilingual = useBilingualEnabled()
   const verseTextMap = useVerseTexts(loc, PRIMARY_LANGUAGE)
   const secondaryTexts = useVerseTexts(loc, SECONDARY_LANGUAGE, undefined, bilingual)
+  const heading = useChapterHeading(loc, PRIMARY_LANGUAGE, !book.isFrontMatter)
+  const secondaryHeading = useChapterHeading(loc, SECONDARY_LANGUAGE, !book.isFrontMatter && bilingual)
 
   const storedUserId = useSelectedUserId()
   const selectUser = useSelectedUserStore((s) => s.select)
@@ -718,7 +782,8 @@ function ChapterView({
   )
 
   const verseList = (
-    <div className="p-4">
+    // 右の 4px は印のバッジ（gutter の -right-1）の逃げ場。無いとページャに切られる
+    <div className="pb-4 pr-1">
       <ul>
         {verseNumbers.map((verse, i) => {
           const textHtml = verseTextMap.get(verse)
@@ -808,6 +873,7 @@ function ChapterView({
         {/* 末尾が節一覧か章移動かで変わるため、FAB のぶんの余白はまとめて外側で確保する。
             FAB が出ない場面（未ログイン・選択モード・lg 以上）では余らせない */}
         <div className={composeFab ? 'pb-[var(--fab-clearance)] lg:pb-0' : undefined}>
+          <ChapterHeadingBlock heading={heading} secondary={secondaryHeading} />
           {verseList}
           {mode !== 'select' && chapterNav}
         </div>

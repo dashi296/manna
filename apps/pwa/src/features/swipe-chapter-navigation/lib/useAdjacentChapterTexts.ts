@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useQueries } from '@tanstack/react-query'
 import {
+  chapterHeadingQuery,
   getAdjacentChapterRef,
   scriptureVerseTextsQuery,
+  type ChapterHeading,
   type ChapterRef,
   type VerseTextRow,
 } from '@/entities/scripture'
@@ -15,6 +17,10 @@ export type ChapterTexts = {
   ref: ChapterRef
   primary: Map<number, string>
   secondary: Map<number, string>
+  // 移動先の章タイトルと概要。本文の前に入るので、プレビューに出さないと
+  // 指を離した瞬間に本文がその高さぶん飛ぶ
+  heading: ChapterHeading | null
+  secondaryHeading: ChapterHeading | null
 }
 
 type Params = { loc: ChapterRef; enabled: boolean; bilingual: boolean }
@@ -51,32 +57,78 @@ export function useAdjacentChapterTexts({ loc, enabled, bilingual }: Params) {
 
   const ready = useIdle(enabled) && enabled
 
+  const sides = [
+    { ref: prevRef, language: PRIMARY_LANGUAGE, on: true },
+    { ref: nextRef, language: PRIMARY_LANGUAGE, on: true },
+    { ref: prevRef, language: SECONDARY_LANGUAGE, on: bilingual },
+    { ref: nextRef, language: SECONDARY_LANGUAGE, on: bilingual },
+  ]
+
+  // 取得を始めるかどうかだけを決める（始まっている取得は中断されない）。
+  // 先読みなので、落ちたらラベル表示に落ちるだけでよく、粘って通信を増やさない
+  const gate = (ref: ChapterRef | null, on: boolean) => ({
+    enabled: ready && on && ref !== null,
+    retry: false as const,
+  })
+
   const results = useQueries({
     queries: [
-      { ref: prevRef, language: PRIMARY_LANGUAGE, on: true },
-      { ref: nextRef, language: PRIMARY_LANGUAGE, on: true },
-      { ref: prevRef, language: SECONDARY_LANGUAGE, on: bilingual },
-      { ref: nextRef, language: SECONDARY_LANGUAGE, on: bilingual },
-    ].map(({ ref, language, on }) => ({
-      ...scriptureVerseTextsQuery(ref ?? loc, language),
-      // 取得を始めるかどうかだけを決める。始まっている取得は中断されない
-      enabled: ready && on && ref !== null,
-      // 先読みなので、落ちたらラベル表示に落ちるだけでよい。粘って通信を増やさない
-      retry: false,
-    })),
+      ...sides.map(({ ref, language, on }) => ({
+        ...scriptureVerseTextsQuery(ref ?? loc, language),
+        ...gate(ref, on),
+      })),
+      ...sides.map(({ ref, language, on }) => ({
+        ...chapterHeadingQuery(ref ?? loc, language),
+        ...gate(ref, on),
+      })),
+    ],
   })
 
   const [prevPrimary, nextPrimary, prevSecondary, nextSecondary] = results
+  const [prevHeading, nextHeading, prevSecondaryHeading, nextSecondaryHeading] = results.slice(4)
+
+  // 併記のときは第2言語ぶんも本文の前後に入る。そろう前に出すと、
+  // 第1言語だけのときと同じく遷移後に高さが変わる
+  const prevReady = prevHeading.isSuccess && (!bilingual || (prevSecondary.isSuccess && prevSecondaryHeading.isSuccess))
+  const nextReady = nextHeading.isSuccess && (!bilingual || (nextSecondary.isSuccess && nextSecondaryHeading.isSuccess))
+
+  // 併記を切ったあとも、無効にしたクエリのデータはキャッシュに残る。
+  // そのまま渡すと本体は日本語だけなのにプレビューだけ英語が並ぶ
+  const secondaryOf = (result: { data?: unknown }) =>
+    bilingual ? toMap(result.data as VerseTextRow[]) : new Map<number, string>()
+  const secondaryHeadingOf = (result: { data?: unknown }) =>
+    bilingual ? ((result.data as ChapterHeading | null) ?? null) : null
 
   return useMemo(
     () => ({
-      prev: prevRef && prevPrimary.data
-        ? { ref: prevRef, primary: toMap(prevPrimary.data), secondary: toMap(prevSecondary.data) }
+      // 本文だけ先に返った時点でプレビューを出すと、遅れて届いた見出しのぶん
+      // 遷移後に本文が下へ飛ぶ。見出しの取得が終わる（中身が無い章でも）まで待つ
+      prev: prevRef && prevPrimary.data && prevReady
+        ? {
+            ref: prevRef,
+            primary: toMap(prevPrimary.data as VerseTextRow[]),
+            secondary: secondaryOf(prevSecondary),
+            heading: (prevHeading.data as ChapterHeading | null) ?? null,
+            secondaryHeading: secondaryHeadingOf(prevSecondaryHeading),
+          }
         : null,
-      next: nextRef && nextPrimary.data
-        ? { ref: nextRef, primary: toMap(nextPrimary.data), secondary: toMap(nextSecondary.data) }
+      next: nextRef && nextPrimary.data && nextReady
+        ? {
+            ref: nextRef,
+            primary: toMap(nextPrimary.data as VerseTextRow[]),
+            secondary: secondaryOf(nextSecondary),
+            heading: (nextHeading.data as ChapterHeading | null) ?? null,
+            secondaryHeading: secondaryHeadingOf(nextSecondaryHeading),
+          }
         : null,
     }),
-    [prevRef, nextRef, prevPrimary.data, nextPrimary.data, prevSecondary.data, nextSecondary.data],
+    [
+      prevRef, nextRef,
+      prevPrimary.data, nextPrimary.data, prevSecondary.data, nextSecondary.data,
+      prevHeading.data, nextHeading.data, prevSecondaryHeading.data, nextSecondaryHeading.data,
+      prevReady, nextReady,
+      // 併記の切り替えは同じデータのまま見せ方だけを変える。依存に入れないと作り直されない
+      bilingual,
+    ],
   )
 }

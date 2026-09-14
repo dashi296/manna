@@ -110,6 +110,8 @@ let canGoBack = true
 let clientVerseTexts: { verse: number; text_html: string }[] = []
 // scripture_verses へのクライアント側クエリが実行された回数（キャッシュ検証用）
 let clientVerseFetchCount = 0
+// 章の見出し（テストごとに差し替える）
+let clientChapterHeading: { title: string; summary: string | null; summary_html: string | null } | null = null
 
 vi.mock('@tanstack/react-router', async () => {
   const { routerMock } = await import('../../helpers/tanstack')
@@ -128,6 +130,9 @@ vi.mock('@tanstack/react-start', async () => (await import('../../helpers/tansta
 vi.mock('@/shared/lib/supabase', () => ({
   supabase: {
     from: (table: string) => {
+      if (table === 'scripture_chapter_headings') {
+        return createSupabaseQueryChain(() => ({ data: clientChapterHeading ? [clientChapterHeading] : [] }))
+      }
       if (table !== 'scripture_verses') {
         return { insert: vi.fn().mockResolvedValue({ error: null }) }
       }
@@ -157,6 +162,7 @@ describe('ChapterPage', () => {
     search = { select: [1, 2] }
     clientVerseTexts = []
     clientVerseFetchCount = 0
+    clientChapterHeading = null
     localStorage.clear()
     const { useSelectedUserStore } = await import('@/features/select-verse-view')
     useSelectedUserStore.setState({ selectedUserId: null })
@@ -1190,6 +1196,36 @@ describe('ChapterPage', () => {
     await user.click(screen.getByRole('button', { name: '日英併記表示をオンにする' }))
     expect(useBilingualDisplayStore.getState().enabled).toBe(true)
     expect(navigateSpy).not.toHaveBeenCalled()
+  })
+
+  it('章のタイトルと概要を本文の前に出す', async () => {
+    clientChapterHeading = { title: '第1章', summary: '要約', summary_html: '<b>要約</b>' }
+    render(<ChapterPage />)
+    expect(await screen.findByText('要約')).toBeInTheDocument()
+    // 同じ文字列がヘッダーの見出しにもあるので、本文側は見出しにしない
+    expect(screen.getAllByText('第1章')).toHaveLength(2)
+    expect(screen.getAllByRole('heading', { name: '第1章' })).toHaveLength(1)
+
+    // 節の前に出す。後ろに付くと本文を読み始めてから概要に出会う
+    const title = screen.getByTestId('chapter-heading')
+    const firstVerse = document.querySelector('li[data-verse="1"]')!
+    expect(title.compareDocumentPosition(firstVerse) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('概要が無い章（旧約・新約）ではタイトルだけを出す', async () => {
+    clientChapterHeading = { title: '第1章', summary: null, summary_html: null }
+    render(<ChapterPage />)
+    await waitFor(() => expect(screen.getAllByText('第1章')).toHaveLength(2))
+    expect(screen.queryByText('要約')).not.toBeInTheDocument()
+  })
+
+  it('併記が有効なら概要も両言語を出す', async () => {
+    const { useBilingualDisplayStore } = await import('@/entities/bilingual-display')
+    useBilingualDisplayStore.setState({ enabled: true })
+    clientChapterHeading = { title: '第1章', summary: '要約', summary_html: '要約' }
+    render(<ChapterPage />)
+    // 第1言語・第2言語で同じ応答を返すモックなので、同じ文字列が2つ出る
+    await waitFor(() => expect(screen.getAllByText('要約')).toHaveLength(2))
   })
 
   it('併記表示が有効なとき、クライアント側で取得した第2言語の節本文を表示する', async () => {

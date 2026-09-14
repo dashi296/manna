@@ -1,14 +1,15 @@
-import type { ScriptureRef } from '@/entities/scripture'
+import { getChapterLabel, type ScriptureRef } from '@/entities/scripture'
 
 export type ScriptureRefPartial = Partial<ScriptureRef>
 
-type SelectableBook = { chapters: number; name: string; isFrontMatter?: boolean }
+type SelectableBook = { chapters: number; name: string; isFrontMatter?: boolean; chapterUnit?: string }
 
 export function buildChapterItems(book: SelectableBook): { value: string; label: string }[] {
   if (book.isFrontMatter) return [{ value: '1', label: book.name }]
+  // 章の呼び方は書によって違う（詩篇は「篇」）。ここで組み立て直さない
   return Array.from({ length: book.chapters }, (_, i) => ({
     value: (i + 1).toString(),
-    label: `第${i + 1}章`,
+    label: getChapterLabel(book, i + 1),
   }))
 }
 

@@ -48,6 +48,10 @@ jobs:
           VITE_SUPABASE_URL: http://127.0.0.1:55321
           VITE_SUPABASE_KEY: ci-dummy-key
 
+      # 聖典の取り込みスクリプトのパーサ。pnpm test はアプリ側しか見ない
+      - name: Test scripts
+        run: pnpm test:scripts
+
       # 本番に載せる成果物ではないので固定のダミー値を使う。
       # secrets に依存させないことで fork からの PR でも動く
       - name: Build

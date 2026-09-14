@@ -17,7 +17,27 @@ vi.mock('@/entities/scripture/lib/verseTexts', () => ({
   },
 }))
 
-vi.mock('@/shared/lib/supabase', () => ({ supabase: {} }))
+// 章の見出しは節本文と別のテーブルから引く
+let heading: { title: string; summary: string | null; summary_html: string | null } | null = {
+  title: '第5章',
+  summary: '概要',
+  summary_html: '概要',
+}
+const headingFetches: string[] = []
+let headingFails = false
+vi.mock('@/shared/lib/supabase', async () => {
+  const { createSupabaseQueryChain } = await import('../../helpers/supabase')
+  return {
+    supabase: {
+      from: (table: string) => {
+        headingFetches.push(table)
+        return createSupabaseQueryChain(() =>
+          headingFails ? { data: null, error: { message: 'boom' } } : { data: heading ? [heading] : [] },
+        )
+      },
+    },
+  }
+})
 
 let loaderData: unknown
 vi.mock('@tanstack/react-router', async () => {
@@ -43,6 +63,9 @@ const params = { collection: 'bofm', book: '1-ne', chapter: '5' }
 
 beforeEach(() => {
   fetched.length = 0
+  headingFetches.length = 0
+  headingFails = false
+  heading = { title: '第5章', summary: '概要', summary_html: '概要' }
 })
 
 describe('章の節本文のキャッシュ', () => {
@@ -76,9 +99,16 @@ describe('章の節本文のキャッシュ', () => {
       </QueryClientProvider>,
     )
 
-    expect(await screen.findByText('ja の本文')).toBeInTheDocument()
-    // ページ本体がローダーと同じキーを見ていなければ、ここで2回目が走る
+    // ローダーの時点で本文と見出しが1回ずつ取れている
     expect(fetched).toEqual([{ chapter: 5, language: 'ja' }])
+    expect(headingFetches).toEqual(['scripture_chapter_headings'])
+    const afterLoader = { verses: fetched.length, headings: headingFetches.length }
+
+    expect(await screen.findByText('ja の本文')).toBeInTheDocument()
+
+    // 描画側がローダーと同じキーを見ていなければ、ここで取り直しが増える
+    expect(fetched.length).toBe(afterLoader.verses)
+    expect(headingFetches.length).toBe(afterLoader.headings)
   })
 
   it('先読みフックが入れた本文を、遷移先のローダーがそのまま使う', async () => {
@@ -108,6 +138,18 @@ describe('章の節本文のキャッシュ', () => {
 
     // 先読みと同じキーなので取り直さない
     expect(fetched.map((f) => f.chapter).sort()).toEqual([3, 5])
+  })
+
+  it('見出しの取得が失敗しても、章ページの読み込みは止めない', async () => {
+    // 見出しは飾り。取れないときに本文や投稿まで巻き添えにしない
+    heading = null
+    headingFails = true
+    const mod = await import('@/pages/scriptures/$collection/$book/$chapter')
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+
+    const data = await routeLoader(mod)({ params, deps: {}, context: { queryClient } })
+    expect(data).toHaveProperty('chapter', 5)
+    expect(fetched).toEqual([{ chapter: 5, language: 'ja' }])
   })
 
   it('SSR で温めたキャッシュは、直列化して渡した先でも使える', async () => {
