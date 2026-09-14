@@ -26,9 +26,9 @@ async function getVerseTextClient(): Promise<SupabaseClient<Database>> {
   return supabase
 }
 
-// 節の順序でキーが割れないようにそろえる
+// 同じ節の集合が並び順や重複でキーごと割れないようにそろえる
 function normalizeVerses(verses: number[] | undefined) {
-  return verses?.length ? [...verses].sort((a, b) => a - b) : []
+  return verses?.length ? [...new Set(verses)].sort((a, b) => a - b) : []
 }
 
 export const scriptureVerseTextKeys = {

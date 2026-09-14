@@ -59,6 +59,7 @@ export function useAdjacentChapterTexts({ loc, enabled, bilingual }: Params) {
       { ref: nextRef, language: SECONDARY_LANGUAGE, on: bilingual },
     ].map(({ ref, language, on }) => ({
       ...scriptureVerseTextsQuery(ref ?? loc, language),
+      // 取得を始めるかどうかだけを決める。始まっている取得は中断されない
       enabled: ready && on && ref !== null,
       // 先読みなので、落ちたらラベル表示に落ちるだけでよい。粘って通信を増やさない
       retry: false,

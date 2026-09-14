@@ -27,7 +27,7 @@ function seedVerseTexts() {
   const verses = loaderData.mode === 'verse' ? loaderData.verses : undefined
   queryClient.setQueryData(
     scriptureVerseTextKeys.chapter(ref, 'ja', verses),
-    loaderData.verseTexts,
+    loaderData.verseTextsInCache,
   )
 }
 
@@ -72,7 +72,8 @@ type TestLoaderData = {
   mode: 'chapter' | 'verse'
   verses: number[]
   posts: PostWithUser[]
-  verseTexts: { verse: number; text_html: string }[]
+  // 本番のローダーは節本文を返さない。キャッシュへ入れる中身をテスト側で持つための項目
+  verseTextsInCache: { verse: number; text_html: string }[]
   userId: string | null
   chapterCommenters: { userId: string; name: string; avatarUrl: string | null }[]
   circlePosts: PostWithUser[]
@@ -90,7 +91,7 @@ const baseChapterData: TestLoaderData = {
   mode: 'chapter' as const,
   verses: [],
   posts: [],
-  verseTexts: [
+  verseTextsInCache: [
     { verse: 1, text_html: '一節の本文' },
     { verse: 2, text_html: '二節の本文' },
   ],
@@ -1197,7 +1198,7 @@ describe('ChapterPage', () => {
     clientVerseTexts = [{ verse: 1, text_html: 'Verse one in English' }]
     loaderData = {
       ...baseChapterData,
-      verseTexts: [{ verse: 1, text_html: '一節の日本語' }],
+      verseTextsInCache: [{ verse: 1, text_html: '一節の日本語' }],
     }
     render(<ChapterPage />)
     expect(screen.getByText('一節の日本語')).toBeInTheDocument()
@@ -1208,7 +1209,7 @@ describe('ChapterPage', () => {
     clientVerseTexts = [{ verse: 1, text_html: 'Verse one in English' }]
     loaderData = {
       ...baseChapterData,
-      verseTexts: [{ verse: 1, text_html: '一節の日本語' }],
+      verseTextsInCache: [{ verse: 1, text_html: '一節の日本語' }],
     }
     const user = userEvent.setup()
     render(<ChapterPage />)
@@ -1236,7 +1237,7 @@ describe('ChapterPage', () => {
       ...baseChapterData,
       book: bookWithTwoChapters,
       chapter: 1,
-      verseTexts: [{ verse: 1, text_html: '第1章の日本語' }],
+      verseTextsInCache: [{ verse: 1, text_html: '第1章の日本語' }],
     }
     const { rerender } = render(<ChapterPage />)
     expect(await screen.findByText('Chapter 1 English')).toBeInTheDocument()
@@ -1247,7 +1248,7 @@ describe('ChapterPage', () => {
       ...baseChapterData,
       book: bookWithTwoChapters,
       chapter: 2,
-      verseTexts: [{ verse: 1, text_html: '第2章の日本語' }],
+      verseTextsInCache: [{ verse: 1, text_html: '第2章の日本語' }],
     }
     rerender(<ChapterPage />)
 
@@ -1260,7 +1261,7 @@ describe('ChapterPage', () => {
   it('併記表示が無効なとき、第2言語の節本文は表示しない', () => {
     loaderData = {
       ...baseChapterData,
-      verseTexts: [{ verse: 1, text_html: '一節の日本語' }],
+      verseTextsInCache: [{ verse: 1, text_html: '一節の日本語' }],
     }
     render(<ChapterPage />)
     expect(screen.getByText('一節の日本語')).toBeInTheDocument()
