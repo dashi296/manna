@@ -8,7 +8,7 @@ import { useAdjacentChapterTexts } from '@/features/swipe-chapter-navigation'
 const calls: { chapter: number; language: string }[] = []
 let failing = false
 
-let headingDelayMs = 0
+const headingDelayMs: Record<string, number> = {}
 vi.mock('@/entities/scripture/lib/verseTexts', () => ({
   queryScriptureVerseTexts: async (
     _client: unknown,
@@ -27,12 +27,20 @@ vi.mock('@/shared/lib/supabase', async () => {
   return {
     supabase: {
       from: () => {
-        const chain = createSupabaseQueryChain(() => ({
-          data: [{ title: '見出し', summary: null, summary_html: null }],
-        }))
-        const slow = chain.maybeSingle
-        chain.maybeSingle = () =>
-          new Promise((resolve) => setTimeout(() => resolve(slow()), headingDelayMs))
+        // どの言語の見出しを引いているかを eq('language', …) から拾い、
+        // 言語ごとに遅らせ方を変える
+        let language = ''
+        const chain = createSupabaseQueryChain(
+          () => ({ data: [{ title: '見出し', summary: null, summary_html: null }] }),
+          (column, value) => {
+            if (column === 'language') language = String(value)
+          },
+        )
+        const settle = chain.maybeSingle
+        chain.maybeSingle = () => {
+          const delay = headingDelayMs[language] ?? 0
+          return new Promise((resolve) => setTimeout(() => resolve(settle()), delay))
+        }
         return chain
       },
     },
@@ -52,7 +60,8 @@ const loc = { collection: 'bofm', book: '1-ne', chapter: 5 }
 beforeEach(() => {
   calls.length = 0
   failing = false
-  headingDelayMs = 0
+  headingDelayMs.ja = 0
+  headingDelayMs.en = 0
   client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
 })
 
@@ -72,7 +81,7 @@ describe('useAdjacentChapterTexts', () => {
   it('見出しの取得が終わるまでプレビューを成立させない', async () => {
     // 本文だけ先に返った時点で見出しなしのプレビューを出すと、
     // 遷移後に見出しが入って本文がその高さぶん飛ぶ
-    headingDelayMs = 200
+    headingDelayMs.ja = 200
     const { result } = renderHook(
       () => useAdjacentChapterTexts({ loc, enabled: true, bilingual: false }),
       { wrapper },
@@ -103,6 +112,19 @@ describe('useAdjacentChapterTexts', () => {
     await waitFor(() => expect(result.current.next?.primary.size).toBe(1))
     expect(result.current.prev).toBeNull()
     expect(calls).toHaveLength(1)
+  })
+
+  it('併記のときは第2言語の見出しもそろうまでプレビューを成立させない', async () => {
+    // 第1言語の見出しは即返り、第2言語だけ遅れる
+    headingDelayMs.en = 200
+    const { result } = renderHook(
+      () => useAdjacentChapterTexts({ loc, enabled: true, bilingual: true }),
+      { wrapper },
+    )
+    await waitFor(() => expect(calls.some((c) => c.language === 'en')).toBe(true))
+    expect(result.current.next).toBeNull()
+
+    await waitFor(() => expect(result.current.next?.secondaryHeading?.title).toBe('見出し'))
   })
 
   it('併記が有効なときだけ第2言語も取る', async () => {

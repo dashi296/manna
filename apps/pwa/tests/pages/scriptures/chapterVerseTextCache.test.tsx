@@ -24,13 +24,16 @@ let heading: { title: string; summary: string | null; summary_html: string | nul
   summary_html: '概要',
 }
 const headingFetches: string[] = []
+let headingFails = false
 vi.mock('@/shared/lib/supabase', async () => {
   const { createSupabaseQueryChain } = await import('../../helpers/supabase')
   return {
     supabase: {
       from: (table: string) => {
         headingFetches.push(table)
-        return createSupabaseQueryChain(() => ({ data: heading ? [heading] : [] }))
+        return createSupabaseQueryChain(() =>
+          headingFails ? { data: null, error: { message: 'boom' } } : { data: heading ? [heading] : [] },
+        )
       },
     },
   }
@@ -61,6 +64,8 @@ const params = { collection: 'bofm', book: '1-ne', chapter: '5' }
 beforeEach(() => {
   fetched.length = 0
   headingFetches.length = 0
+  headingFails = false
+  heading = { title: '第5章', summary: '概要', summary_html: '概要' }
 })
 
 describe('章の節本文のキャッシュ', () => {
@@ -133,6 +138,18 @@ describe('章の節本文のキャッシュ', () => {
 
     // 先読みと同じキーなので取り直さない
     expect(fetched.map((f) => f.chapter).sort()).toEqual([3, 5])
+  })
+
+  it('見出しの取得が失敗しても、章ページの読み込みは止めない', async () => {
+    // 見出しは飾り。取れないときに本文や投稿まで巻き添えにしない
+    heading = null
+    headingFails = true
+    const mod = await import('@/pages/scriptures/$collection/$book/$chapter')
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+
+    const data = await routeLoader(mod)({ params, deps: {}, context: { queryClient } })
+    expect(data).toHaveProperty('chapter', 5)
+    expect(fetched).toEqual([{ chapter: 5, language: 'ja' }])
   })
 
   it('SSR で温めたキャッシュは、直列化して渡した先でも使える', async () => {

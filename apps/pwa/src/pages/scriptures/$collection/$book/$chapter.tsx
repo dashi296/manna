@@ -237,10 +237,13 @@ export const Route = createFileRoute('/scriptures/$collection/$book/$chapter')({
     const [data] = await Promise.all([
       fetchChapterData({ data: base }),
       context.queryClient.ensureQueryData(scriptureVerseTextsQuery(base, PRIMARY_LANGUAGE)),
-      // 前付け文書に章のタイトルは無い
+      // 見出しは飾りなので、取れなくても本文や投稿まで巻き添えにしない。
+      // 前付け文書にはそもそも章のタイトルが無い
       book.isFrontMatter
         ? Promise.resolve(null)
-        : context.queryClient.ensureQueryData(chapterHeadingQuery(base, PRIMARY_LANGUAGE)),
+        : context.queryClient
+            .ensureQueryData(chapterHeadingQuery(base, PRIMARY_LANGUAGE))
+            .catch(() => null),
     ])
 
     return {

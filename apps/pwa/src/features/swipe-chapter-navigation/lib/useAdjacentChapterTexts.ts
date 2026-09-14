@@ -87,11 +87,16 @@ export function useAdjacentChapterTexts({ loc, enabled, bilingual }: Params) {
   const [prevPrimary, nextPrimary, prevSecondary, nextSecondary] = results
   const [prevHeading, nextHeading, prevSecondaryHeading, nextSecondaryHeading] = results.slice(4)
 
+  // 併記のときは第2言語ぶんも本文の前後に入る。そろう前に出すと、
+  // 第1言語だけのときと同じく遷移後に高さが変わる
+  const prevReady = prevHeading.isSuccess && (!bilingual || (prevSecondary.isSuccess && prevSecondaryHeading.isSuccess))
+  const nextReady = nextHeading.isSuccess && (!bilingual || (nextSecondary.isSuccess && nextSecondaryHeading.isSuccess))
+
   return useMemo(
     () => ({
       // 本文だけ先に返った時点でプレビューを出すと、遅れて届いた見出しのぶん
       // 遷移後に本文が下へ飛ぶ。見出しの取得が終わる（中身が無い章でも）まで待つ
-      prev: prevRef && prevPrimary.data && prevHeading.isSuccess
+      prev: prevRef && prevPrimary.data && prevReady
         ? {
             ref: prevRef,
             primary: toMap(prevPrimary.data as VerseTextRow[]),
@@ -100,7 +105,7 @@ export function useAdjacentChapterTexts({ loc, enabled, bilingual }: Params) {
             secondaryHeading: (prevSecondaryHeading.data as ChapterHeading | null) ?? null,
           }
         : null,
-      next: nextRef && nextPrimary.data && nextHeading.isSuccess
+      next: nextRef && nextPrimary.data && nextReady
         ? {
             ref: nextRef,
             primary: toMap(nextPrimary.data as VerseTextRow[]),
@@ -114,7 +119,7 @@ export function useAdjacentChapterTexts({ loc, enabled, bilingual }: Params) {
       prevRef, nextRef,
       prevPrimary.data, nextPrimary.data, prevSecondary.data, nextSecondary.data,
       prevHeading.data, nextHeading.data, prevSecondaryHeading.data, nextSecondaryHeading.data,
-      prevHeading.isSuccess, nextHeading.isSuccess,
+      prevReady, nextReady,
     ],
   )
 }

@@ -1205,6 +1205,11 @@ describe('ChapterPage', () => {
     // 同じ文字列がヘッダーの見出しにもあるので、本文側は見出しにしない
     expect(screen.getAllByText('第1章')).toHaveLength(2)
     expect(screen.getAllByRole('heading', { name: '第1章' })).toHaveLength(1)
+
+    // 節の前に出す。後ろに付くと本文を読み始めてから概要に出会う
+    const title = screen.getByTestId('chapter-heading')
+    const firstVerse = document.querySelector('li[data-verse="1"]')!
+    expect(title.compareDocumentPosition(firstVerse) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
   it('概要が無い章（旧約・新約）ではタイトルだけを出す', async () => {
