@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type TouchEvent,
+} from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { getAdjacentChapterRef, type ChapterRef } from '@/entities/scripture'
 import { useBilingualEnabled } from '@/entities/bilingual-display'
@@ -53,6 +61,10 @@ export function useChapterPager({ loc, disabled }: Params) {
   // （開始済みの取得はそのまま完了する）
   const adjacentTexts = useAdjacentChapterTexts({ loc, enabled: scrollable, bilingual })
 
+  // 判定待ちのタイマーは古いクロージャを掴んだままになるため、最新の値を ref で読む
+  const scrollableRef = useRef(scrollable)
+  scrollableRef.current = scrollable
+
   const containerRef = useRef<HTMLDivElement>(null)
   const [pointing, setPointing] = useState<'prev' | 'next' | null>(null)
   // 移動先のプレビューは指が触れている間だけ出す。章ぶんの節をずっと描いておく
@@ -67,7 +79,10 @@ export function useChapterPager({ loc, disabled }: Params) {
   const touched = useRef(false)
   // 触れている指の数。指を止めているだけでスクロールは静止するので、
   // 離すまでは着地とみなさない。ポインタイベントは横パンが始まると
-  // pointercancel で打ち切られるため、タッチイベントで数える
+  // pointercancel で打ち切られるため、タッチイベントで数える。
+  // イベントの数ではなく event.touches を見る。touchend / touchcancel は
+  // 複数の接触点を1イベントでまとめて終わらせるので、1件ずつ減らすと
+  // 指が残っている扱いのままになり、その章では二度と着地しなくなる
   const touchCount = useRef(0)
 
   const centerOffset = useCallback(
@@ -87,6 +102,8 @@ export function useChapterPager({ loc, disabled }: Params) {
   const settle = useCallback(() => {
     const el = containerRef.current
     if (!el || navigated.current) return
+    // 判定待ちの間にシートが開くこともある
+    if (!scrollableRef.current) return
     if (!touched.current || touchCount.current > 0) return
     const width = el.clientWidth
     if (width === 0) return
@@ -95,6 +112,9 @@ export function useChapterPager({ loc, disabled }: Params) {
     const centerIndex = prev ? 1 : 0
     const target = index < centerIndex ? prev : index > centerIndex ? next : null
     if (!target) {
+      // ここでジェスチャーは終わり。次に触れるまでは本文のパネルに留める側へ戻す
+      touched.current = false
+      setPointing(null)
       setGesture(null)
       return
     }
@@ -115,9 +135,9 @@ export function useChapterPager({ loc, disabled }: Params) {
     settleTimer.current = setTimeout(settle, SETTLE_MS)
   }, [settle])
 
-  const onTouchStart = useCallback(() => {
+  const onTouchStart = useCallback((event: TouchEvent<HTMLDivElement>) => {
     touched.current = true
-    touchCount.current += 1
+    touchCount.current = event.touches.length
 
     // パネルは章の高さぶん縦に伸びる。プレビューを先頭に置くと、下の方を
     // 読んでいるときに画面の外へ出るため、いま見えている位置に合わせる。
@@ -130,11 +150,14 @@ export function useChapterPager({ loc, disabled }: Params) {
     setGesture({ previewTop: window.scrollY })
   }, [])
 
-  const onTouchEnd = useCallback(() => {
-    touchCount.current = Math.max(0, touchCount.current - 1)
-    // 指を止めたまま離した場合、スクロールイベントはもう来ない
-    scheduleSettle()
-  }, [scheduleSettle])
+  const onTouchEnd = useCallback(
+    (event: TouchEvent<HTMLDivElement>) => {
+      touchCount.current = event.touches.length
+      // 指を止めたまま離した場合、スクロールイベントはもう来ない
+      scheduleSettle()
+    },
+    [scheduleSettle],
+  )
 
   const onScroll = useCallback(() => {
     const el = containerRef.current

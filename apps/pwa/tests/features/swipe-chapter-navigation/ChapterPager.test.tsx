@@ -77,9 +77,9 @@ function scrollTo(px: number) {
 // 指を置く → 引く → 離す。着地判定は指が離れるまで走らない
 function swipeTo(px: number) {
   const el = pager()
-  fireEvent.touchStart(el)
+  fireEvent.touchStart(el, { touches: [{}] })
   scrollTo(px)
-  fireEvent.touchEnd(el)
+  fireEvent.touchEnd(el, { touches: [] })
 }
 
 function settle() {
@@ -165,10 +165,10 @@ describe('ChapterPager', () => {
 
   it('本文のパネルで静止しても移動しない', () => {
     renderPager()
-    fireEvent.touchStart(pager())
+    fireEvent.touchStart(pager(), { touches: [{}] })
     scrollTo(PANEL_WIDTH * 1.4)
     scrollTo(PANEL_WIDTH)
-    fireEvent.touchEnd(pager())
+    fireEvent.touchEnd(pager(), { touches: [] })
     settle()
     expect(navigate).not.toHaveBeenCalled()
   })
@@ -196,14 +196,60 @@ describe('ChapterPager', () => {
     expect(navigate).not.toHaveBeenCalled()
   })
 
+  it('2本指で触れてから一度に離しても、その後スワイプできる', () => {
+    // touchend / touchcancel は複数の接触点をまとめて終わらせる。イベントの数だけ
+    // 減らすと指が残っている扱いになり、その章ではもう着地判定が通らなくなる
+    renderPager()
+    const el = pager()
+    fireEvent.touchStart(el, { touches: [{}] })
+    fireEvent.touchStart(el, { touches: [{}, {}] })
+    fireEvent.touchCancel(el, { touches: [] })
+
+    swipeTo(PANEL_WIDTH * 2)
+    settle()
+    expect(navigate).toHaveBeenCalledTimes(1)
+  })
+
+  it('ジェスチャーが終われば、次に触れるまでまた本文のパネルに留める', () => {
+    // 「一度でも触れた」ではなく「いま引いている」かで判定しないと、
+    // 以後のスクロール復元などを章移動と読んでしまう
+    renderPager()
+    swipeTo(PANEL_WIDTH * 1.2)
+    scrollTo(PANEL_WIDTH)
+    settle()
+    expect(navigate).not.toHaveBeenCalled()
+
+    scrollTo(PANEL_WIDTH * 2)
+    expect(pager().scrollLeft).toBe(PANEL_WIDTH)
+    settle()
+    expect(navigate).not.toHaveBeenCalled()
+  })
+
+  it('指を離した後に無効化されたら、着地しても移動しない', () => {
+    const { rerender } = renderPager()
+    const el = pager()
+    fireEvent.touchStart(el, { touches: [{}] })
+    scrollTo(PANEL_WIDTH * 2)
+    fireEvent.touchEnd(el, { touches: [] })
+
+    // 判定待ちの間にシートが開くなど
+    rerender(
+      <ChapterPager loc={{ collection: 'bofm', book: '1-ne', chapter: 5 }} disabled>
+        <p>章の本文</p>
+      </ChapterPager>,
+    )
+    settle()
+    expect(navigate).not.toHaveBeenCalled()
+  })
+
   it('指を止めていても、離すまでは移動しない', () => {
     renderPager()
-    fireEvent.touchStart(pager())
+    fireEvent.touchStart(pager(), { touches: [{}] })
     scrollTo(PANEL_WIDTH * 2)
     settle()
     expect(navigate).not.toHaveBeenCalled()
 
-    fireEvent.touchEnd(pager())
+    fireEvent.touchEnd(pager(), { touches: [] })
     settle()
     expect(navigate).toHaveBeenCalledTimes(1)
   })
@@ -250,7 +296,7 @@ describe('ChapterPager', () => {
     renderPager()
     expect(screen.queryByTestId('chapter-pager-label')).not.toBeInTheDocument()
 
-    fireEvent.touchStart(pager())
+    fireEvent.touchStart(pager(), { touches: [{}] })
     scrollTo(PANEL_WIDTH * 1.3)
     expect(screen.getByTestId('chapter-pager-label')).toHaveTextContent('第6章')
 
@@ -263,7 +309,7 @@ describe('ChapterPager', () => {
 
   it('書をまたぐ行先は書名つきで示す', () => {
     renderPager({ collection: 'bofm', book: '1-ne', chapter: 22 })
-    fireEvent.touchStart(pager())
+    fireEvent.touchStart(pager(), { touches: [{}] })
     scrollTo(PANEL_WIDTH * 1.3)
     expect(screen.getByTestId('chapter-pager-label')).toHaveTextContent('第2ニーファイ書 第1章')
   })
@@ -276,7 +322,7 @@ describe('ChapterPager の移動先プレビュー', () => {
 
     expect(screen.queryByText(/プレビュー/)).not.toBeInTheDocument()
 
-    fireEvent.touchStart(pager())
+    fireEvent.touchStart(pager(), { touches: [{}] })
     expect(screen.getByText('プレビュー: 4章 / 第4章の1節')).toBeInTheDocument()
     expect(screen.getByText('プレビュー: 6章 / 第6章の1節')).toBeInTheDocument()
   })
@@ -284,7 +330,7 @@ describe('ChapterPager の移動先プレビュー', () => {
   it('先読みが間に合っていない側は描かない', () => {
     adjacentTexts = { prev: null, next: chapterTexts(6) }
     renderPager({ collection: 'bofm', book: '1-ne', chapter: 5 }, false, preview)
-    fireEvent.touchStart(pager())
+    fireEvent.touchStart(pager(), { touches: [{}] })
     expect(screen.getByText(/6章/)).toBeInTheDocument()
     expect(screen.queryByText(/4章/)).not.toBeInTheDocument()
   })
@@ -292,7 +338,7 @@ describe('ChapterPager の移動先プレビュー', () => {
   it('プレビューを出せる方向では行先ラベルを出さない', () => {
     adjacentTexts = { prev: null, next: chapterTexts(6) }
     renderPager({ collection: 'bofm', book: '1-ne', chapter: 5 }, false, preview)
-    fireEvent.touchStart(pager())
+    fireEvent.touchStart(pager(), { touches: [{}] })
     scrollTo(PANEL_WIDTH * 1.3)
     expect(screen.queryByTestId('chapter-pager-label')).not.toBeInTheDocument()
 
@@ -307,7 +353,7 @@ describe('ChapterPager の移動先プレビュー', () => {
 
     // 900px 読み進めた状態
     Object.defineProperty(window, 'scrollY', { value: 900, configurable: true })
-    fireEvent.touchStart(pager())
+    fireEvent.touchStart(pager(), { touches: [{}] })
     // 章の先頭に置くと、下の方を読んでいるときに画面の外へ出る
     expect(screen.getByTestId('chapter-pager-preview-next')).toHaveStyle({ top: '900px' })
     Object.defineProperty(window, 'scrollY', { value: 0, configurable: true })
@@ -327,7 +373,7 @@ describe('ChapterPager の移動先プレビュー', () => {
       </div>,
     )
     Object.defineProperty(window, 'scrollY', { value: 1200, configurable: true })
-    fireEvent.touchStart(pager())
+    fireEvent.touchStart(pager(), { touches: [{}] })
     expect(screen.getByTestId('chapter-pager-preview-next')).toHaveStyle({ top: '1200px' })
     Object.defineProperty(window, 'scrollY', { value: 0, configurable: true })
   })
@@ -335,9 +381,9 @@ describe('ChapterPager の移動先プレビュー', () => {
   it('指を離して元の位置に戻ったらプレビューを畳む', () => {
     adjacentTexts = { prev: null, next: chapterTexts(6) }
     renderPager({ collection: 'bofm', book: '1-ne', chapter: 5 }, false, preview)
-    fireEvent.touchStart(pager())
+    fireEvent.touchStart(pager(), { touches: [{}] })
     scrollTo(PANEL_WIDTH * 1.3)
-    fireEvent.touchEnd(pager())
+    fireEvent.touchEnd(pager(), { touches: [] })
     scrollTo(PANEL_WIDTH)
     settle()
     expect(screen.queryByText(/プレビュー/)).not.toBeInTheDocument()

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, renderHook, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { routeComponent, routeLoader } from '../../helpers/tanstack'
 
@@ -81,20 +81,32 @@ describe('章の節本文のキャッシュ', () => {
     expect(fetched).toEqual([{ chapter: 5, language: 'ja' }])
   })
 
-  it('先読みが入れた本文を、遷移先のローダーがそのまま使う', async () => {
-    const { scriptureVerseTextsQuery } = await import('@/entities/scripture')
+  it('先読みフックが入れた本文を、遷移先のローダーがそのまま使う', async () => {
+    const { useAdjacentChapterTexts } = await import('@/features/swipe-chapter-navigation')
     const mod = await import('@/pages/scriptures/$collection/$book/$chapter')
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
 
-    // 隣章の先読みと同じ経路でキャッシュへ入れる
-    await queryClient.ensureQueryData(
-      scriptureVerseTextsQuery({ collection: 'bofm', book: '1-ne', chapter: 5 }, 'ja'),
+    // 4章を開いている状態から、実際の先読みフックを回す（3章と5章を取る）
+    const { result } = renderHook(
+      () =>
+        useAdjacentChapterTexts({
+          loc: { collection: 'bofm', book: '1-ne', chapter: 4 },
+          enabled: true,
+          bilingual: false,
+        }),
+      {
+        wrapper: ({ children }) => (
+          <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+        ),
+      },
     )
-    expect(fetched).toHaveLength(1)
+    await waitFor(() => expect(result.current.next?.primary.size).toBe(1))
+    expect(fetched.map((f) => f.chapter).sort()).toEqual([3, 5])
 
+    // 5章へ遷移したときのローダー
     await routeLoader(mod)({ params, deps: {}, context: { queryClient } })
 
-    // ローダーは取り直さない
-    expect(fetched).toHaveLength(1)
+    // 先読みと同じキーなので取り直さない
+    expect(fetched.map((f) => f.chapter).sort()).toEqual([3, 5])
   })
 })
