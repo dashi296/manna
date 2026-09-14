@@ -41,4 +41,21 @@ describe('PageHeader', () => {
     const header = heading.closest('header')
     expect(header?.className).toContain('pt-[var(--page-header-pt)]')
   })
+
+  it('タイトルが中央のカラムに置かれる', () => {
+    render(<PageHeader title="第5章" />)
+    const heading = screen.getByRole('heading', { name: '第5章' })
+    const header = heading.closest('header')
+    expect(header?.className).toContain('grid-cols-[1fr_auto_1fr]')
+    expect(heading.className).toContain('text-center')
+    expect(heading.className).toContain('truncate')
+  })
+
+  it('戻るリンクや操作が無くてもタイトルの左右にカラムを確保する', () => {
+    render(<PageHeader title="聖典" />)
+    const heading = screen.getByRole('heading', { name: '聖典' })
+    const header = heading.closest('header')
+    expect(header?.children.length).toBe(3)
+    expect(header?.children[1]).toBe(heading)
+  })
 })
