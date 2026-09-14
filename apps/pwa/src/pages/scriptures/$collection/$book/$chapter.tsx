@@ -9,10 +9,9 @@ import {
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { createServerFn } from '@tanstack/react-start'
 import { useQuery } from '@tanstack/react-query'
-import { getBook, getCollection, buildScriptureUrl, getChapterLabel, getScriptureLabel, getAdjacentChapterRef, type ChapterRef } from '@/entities/scripture'
+import { getBook, getCollection, buildScriptureUrl, getChapterLabel, getScriptureLabel, getAdjacentChapterRef, getChapterNavLabel, scriptureVerseTextsQuery, type ChapterRef } from '@/entities/scripture'
 import { PostCard, POST_SELECT, type PostWithUser } from '@/entities/post'
 import { createSupabaseServer } from '@/shared/lib/auth'
-import { supabase } from '@/shared/lib/supabase'
 import { ComposePostButton, EmptyState, PageHeader, ScriptureText } from '@/shared/ui'
 import { PostComposerSheet } from '@/widgets/post-composer-sheet'
 import { ComposeMenu } from '@/widgets/compose-menu'
@@ -31,6 +30,7 @@ import {
   useSelectedUserStore,
 } from '@/features/select-verse-view'
 import { VerseCommentSheet } from '@/widgets/verse-comment-sheet'
+import { ChapterPager, type ChapterTexts } from '@/features/swipe-chapter-navigation'
 import { getCircleUserIds } from '@/entities/user'
 import type { AvatarStackItem } from '@/shared/ui'
 import { useBookmarkStore } from '@/entities/bookmark'
@@ -39,13 +39,8 @@ import { useBilingualEnabled } from '@/entities/bilingual-display'
 import { BilingualToggleButton } from '@/features/toggle-bilingual'
 import { PRIMARY_LANGUAGE, SECONDARY_LANGUAGE } from '@/shared/config/scriptureLanguage'
 
-type VerseTextRow = { verse: number; text_html: string }
 type Book = NonNullable<ReturnType<typeof getBook>>
 type SupabaseServer = Awaited<ReturnType<typeof createSupabaseServer>>
-// queryScriptureVerseTexts は SSR の serverSupabase とブラウザの supabase の両方から
-// 呼ばれる。両者は構造的に同じ型（@supabase/ssr の SupabaseClient<Database>）なので
-// SupabaseServer をそのまま別名として使う。
-type SupabaseClientLike = SupabaseServer
 
 async function queryCurrentUserId(supabase: SupabaseServer) {
   const {
@@ -61,55 +56,17 @@ async function queryUserAndCircle(supabase: SupabaseServer) {
   return { userId, circle }
 }
 
-// SSR ローダー（PRIMARY_LANGUAGE、serverSupabase）とクライアント側の第2言語取得
-// （SECONDARY_LANGUAGE、ブラウザの supabase）の両方から呼ぶ共通クエリ。
-// エラーを空配列として握りつぶすと、
-// SSR では章表示が「0件」に見え、クライアントでは React Query が「取得成功」とみなして
-// staleTime: Infinity のキャッシュに乗ってしまう（通信復旧後も再取得されない）ため、
-// 必ず throw して呼び出し側にエラーとして伝える。
-export async function queryScriptureVerseTexts(
-  client: SupabaseClientLike,
-  { collection, book, chapter }: ChapterRef,
+// 本文は SSR のローダーが同じキーで温めてある。隣章の先読みとも同じキャッシュを共有する
+function useVerseTexts(
+  loc: ChapterRef,
   language: string,
   verses?: number[],
-  signal?: AbortSignal,
-): Promise<VerseTextRow[]> {
-  let query = client
-    .from('scripture_verses')
-    .select('verse, text_html')
-    .eq('collection_id', collection)
-    .eq('book_id', book)
-    .eq('chapter', chapter)
-    .eq('language', language)
-    .order('verse', { ascending: true })
-  if (verses?.length) {
-    query = query.in('verse', verses)
-  }
-  if (signal) {
-    query = query.abortSignal(signal)
-  }
-  const { data, error } = await query
-  if (error) throw error
-  return (data ?? []) as VerseTextRow[]
-}
-
-function useSecondaryVerseTexts(
-  loc: ChapterRef,
-  verses: number[] | undefined,
-  enabled: boolean,
+  enabled = true,
 ): Map<number, string> {
-  // useQuery の data は常に現在の queryKey に対応する値のみを返すため、章が
-  // 切り替わった瞬間に前章のデータへ自動的に戻ることはない（queryKey が変わると
-  // data は一旦 undefined に戻る）。staleTime: Infinity で ON/OFF の切り替えや
-  // 同じ章への再訪問での再取得も避ける。TanStack Query はクエリキーを構造的に
-  // 比較するため、verses 配列はそのまま渡せば良い（手動の文字列化は不要）。
   const { data } = useQuery({
-    queryKey: ['scripture-verse-secondary-text', loc.collection, loc.book, loc.chapter, verses ?? []],
-    queryFn: ({ signal }) => queryScriptureVerseTexts(supabase, loc, SECONDARY_LANGUAGE, verses, signal),
+    ...scriptureVerseTextsQuery(loc, language, verses),
     enabled,
-    staleTime: Infinity,
   })
-
   return useMemo(
     () => (enabled ? new Map((data ?? []).map((r) => [r.verse, r.text_html])) : new Map()),
     [enabled, data],
@@ -121,7 +78,7 @@ const fetchVerseData = createServerFn({ method: 'POST' })
   .handler(async (ctx) => {
     const { collection, book, chapter, verses } = ctx.data
     const serverSupabase = await createSupabaseServer()
-    const [{ data: posts }, verseTexts, userId] = await Promise.all([
+    const [{ data: posts }, userId] = await Promise.all([
       serverSupabase
         .from('posts')
         .select(POST_SELECT)
@@ -130,10 +87,9 @@ const fetchVerseData = createServerFn({ method: 'POST' })
         .eq('scripture_chapter', chapter)
         .overlaps('scripture_verses', verses)
         .order('created_at', { ascending: false }),
-      queryScriptureVerseTexts(serverSupabase, ctx.data, PRIMARY_LANGUAGE, verses),
       queryCurrentUserId(serverSupabase),
     ])
-    return { posts: (posts ?? []) as PostWithUser[], verseTexts, userId }
+    return { posts: (posts ?? []) as PostWithUser[], userId }
   })
 
 const fetchChapterData = createServerFn({ method: 'POST' })
@@ -145,7 +101,6 @@ const fetchChapterData = createServerFn({ method: 'POST' })
     const [
       { data: posts },
       { data: versePostsData },
-      verseTexts,
       { userId, circle },
     ] = await Promise.all([
       serverSupabase
@@ -164,7 +119,6 @@ const fetchChapterData = createServerFn({ method: 'POST' })
         .eq('scripture_chapter', chapter)
         .not('scripture_verses', 'is', null)
         .order('created_at', { ascending: false }),
-      queryScriptureVerseTexts(serverSupabase, ctx.data, PRIMARY_LANGUAGE),
       queryUserAndCircle(serverSupabase),
     ])
 
@@ -200,7 +154,6 @@ const fetchChapterData = createServerFn({ method: 'POST' })
 
     return {
       posts: (posts ?? []) as PostWithUser[],
-      verseTexts,
       userId,
       chapterCommenters,
       circlePosts,
@@ -247,7 +200,7 @@ export const Route = createFileRoute('/scriptures/$collection/$book/$chapter')({
   loaderDeps: ({ search }) => ({
     verses: search.verses,
   }),
-  loader: async ({ params, deps }) => {
+  loader: async ({ params, deps, context }) => {
     const book = getBook(params.collection, params.book)
     if (!book) throw notFound()
     if (!/^\d+$/.test(params.chapter)) throw notFound()
@@ -259,17 +212,27 @@ export const Route = createFileRoute('/scriptures/$collection/$book/$chapter')({
     if (deps.verses?.length) {
       const verseCount = book.verses[chapterNum - 1]
       if (deps.verses.some((v) => v < 1 || v > verseCount)) throw notFound()
-      const { posts, verseTexts, userId } = await fetchVerseData({ data: { ...base, verses: deps.verses } })
+      const [{ posts, userId }] = await Promise.all([
+        fetchVerseData({ data: { ...base, verses: deps.verses } }),
+        context.queryClient.ensureQueryData(
+          scriptureVerseTextsQuery(base, PRIMARY_LANGUAGE, deps.verses),
+        ),
+      ])
       return {
         book, chapter: chapterNum, collection: params.collection,
         mode: 'verse' as const, verses: deps.verses,
-        posts, verseTexts, userId,
+        posts, userId,
         chapterCommenters: [] as AvatarStackItem[],
         circlePosts: [] as PostWithUser[],
       }
     }
 
-    const data = await fetchChapterData({ data: base })
+    // 本文はキャッシュ側に置く。隣章の先読みと同じキーなので、スワイプで来たときは
+    // ここで取り直さない
+    const [data] = await Promise.all([
+      fetchChapterData({ data: base }),
+      context.queryClient.ensureQueryData(scriptureVerseTextsQuery(base, PRIMARY_LANGUAGE)),
+    ])
 
     return {
       book, chapter: chapterNum, collection: params.collection,
@@ -295,7 +258,6 @@ function ChapterPage() {
       collection={data.collection}
       verses={data.verses}
       posts={data.posts}
-      verseTexts={data.verseTexts}
       canCompose={Boolean(data.userId)}
     />
   }
@@ -304,7 +266,6 @@ function ChapterPage() {
     chapter={data.chapter}
     collection={data.collection}
     posts={data.posts}
-    verseTexts={data.verseTexts}
     canCompose={Boolean(data.userId)}
     chapterCommenters={data.chapterCommenters}
     circlePosts={data.circlePosts}
@@ -317,18 +278,18 @@ type VerseViewProps = {
   collection: string
   verses: number[]
   posts: PostWithUser[]
-  verseTexts: VerseTextRow[]
   canCompose: boolean
 }
 
-function VerseView({ book, chapter, collection, verses, posts, verseTexts, canCompose }: VerseViewProps) {
+function VerseView({ book, chapter, collection, verses, posts, canCompose }: VerseViewProps) {
   const router = useRouter()
   const [sheetOpen, setSheetOpen] = useState(false)
   const loc = { collection, book: book.id, chapter }
   const scriptureLabel = getScriptureLabel({ ...loc, verses }, book)
   const officialUrl = buildScriptureUrl({ ...loc, verses }, book)
   const bilingual = useBilingualEnabled()
-  const secondaryTexts = useSecondaryVerseTexts(loc, verses, bilingual)
+  const verseTexts = useVerseTexts(loc, PRIMARY_LANGUAGE, verses)
+  const secondaryTexts = useVerseTexts(loc, SECONDARY_LANGUAGE, verses, bilingual)
 
   const onSheetOpenChange = (open: boolean) => {
     setSheetOpen(open)
@@ -377,14 +338,14 @@ function VerseView({ book, chapter, collection, verses, posts, verseTexts, canCo
         </a>
         <span className="text-xs ml-3" style={{ color: 'var(--sea-ink-soft)' }}>新着順</span>
       </div>
-      {verseTexts.length > 0 && (
+      {verseTexts.size > 0 && (
         <div className="px-4 py-3 border-b" style={{ borderColor: 'var(--line)', background: 'var(--surface)' }}>
-          {verseTexts.map((vt) => (
+          {[...verseTexts].map(([verse, textHtml]) => (
             <ScriptureText
-              key={vt.verse}
-              verse={vt.verse}
-              textHtml={vt.text_html}
-              textHtmlSecondary={secondaryTexts.get(vt.verse)}
+              key={verse}
+              verse={verse}
+              textHtml={textHtml}
+              textHtmlSecondary={secondaryTexts.get(verse)}
               secondaryLang={SECONDARY_LANGUAGE}
               showNumber={!book.isFrontMatter}
             />
@@ -417,21 +378,12 @@ type ChapterViewProps = {
   chapter: number
   collection: string
   posts: PostWithUser[]
-  verseTexts: VerseTextRow[]
   canCompose: boolean
   chapterCommenters: AvatarStackItem[]
   circlePosts: PostWithUser[]
 }
 
 // 同じ書の中では書名が自明なうえ、狭い画面で「第1ニーファイ書 第21章」が折り返す
-function chapterNavLabel(ref: ChapterRef, currentBook: string) {
-  const target = getBook(ref.collection, ref.book)
-  if (!target) return ''
-  return ref.book === currentBook
-    ? getChapterLabel(target, ref.chapter)
-    : getScriptureLabel(ref, target)
-}
-
 // 読み終えた位置に置く。前付け文書は移動先から外れ、コレクションの端では片側だけになる
 function ChapterNav({ collection, book, chapter }: ChapterRef) {
   const prev = getAdjacentChapterRef({ collection, book, chapter }, 'prev')
@@ -453,25 +405,71 @@ function ChapterNav({ collection, book, chapter }: ChapterRef) {
           to="/scriptures/$collection/$book/$chapter"
           params={refToParams(prev)}
           // 矢印は読み上げから外れるため、名前に方向が残らないと行き先しか伝わらない
-          aria-label={`前の章: ${chapterNavLabel(prev, book)}`}
+          aria-label={`前の章: ${getChapterNavLabel(prev, book)}`}
           className={linkClass}
         >
           <ChevronLeft size={16} aria-hidden="true" />
-          {chapterNavLabel(prev, book)}
+          {getChapterNavLabel(prev, book)}
         </Link>
       )}
       {next && (
         <Link
           to="/scriptures/$collection/$book/$chapter"
           params={refToParams(next)}
-          aria-label={`次の章: ${chapterNavLabel(next, book)}`}
+          aria-label={`次の章: ${getChapterNavLabel(next, book)}`}
           className={`${linkClass} ml-auto`}
         >
-          {chapterNavLabel(next, book)}
+          {getChapterNavLabel(next, book)}
           <ChevronRight size={16} aria-hidden="true" />
         </Link>
       )}
     </nav>
+  )
+}
+
+// スワイプ中に見える移動先の冒頭。見えるのは画面1つぶんなので、それを超える節は描かない。
+// 指を置いた時点で前後ぶんまとめてマウントし、節ごとにサニタイズが走るため、
+// 画面に入る見込みより大きく取ると入力の応答が鈍る
+const PREVIEW_VERSE_LIMIT = 20
+
+// 余白・区切り線・節の組みは verseList と揃える。ここがずれると、指を離した瞬間に
+// 本文が横や縦に飛ぶ
+function ChapterPreview({ texts }: { texts: ChapterTexts }) {
+  const target = getBook(texts.ref.collection, texts.ref.book)
+  const all = [...texts.primary.keys()]
+  const verses = all.slice(0, PREVIEW_VERSE_LIMIT)
+
+  return (
+    <div className="p-4">
+      <ul>
+        {verses.map((verse, i) => {
+          const isLast = i === verses.length - 1 && verses.length === all.length
+          return (
+            <li
+              key={verse}
+              className={`flex items-stretch ${isLast ? '' : 'border-b'}`}
+              style={{ borderColor: 'var(--line)' }}
+            >
+              <div className="flex-1 min-w-0">
+                <VerseRow
+                  collection={texts.ref.collection}
+                  book={texts.ref.book}
+                  chapter={texts.ref.chapter}
+                  verse={verse}
+                  textHtml={texts.primary.get(verse)}
+                  textHtmlSecondary={texts.secondary.get(verse)}
+                  secondaryLang={SECONDARY_LANGUAGE}
+                  mode="read"
+                  selected={false}
+                  onSelect={() => {}}
+                  showNumber={!target?.isFrontMatter}
+                />
+              </div>
+            </li>
+          )
+        })}
+      </ul>
+    </div>
   )
 }
 
@@ -480,7 +478,7 @@ function refToParams(ref: ChapterRef) {
 }
 
 function ChapterView({
-  book, chapter, collection, posts, verseTexts, canCompose,
+  book, chapter, collection, posts, canCompose,
   chapterCommenters, circlePosts,
 }: ChapterViewProps) {
   const router = useRouter()
@@ -506,7 +504,8 @@ function ChapterView({
   const maxVerse = book.verses[chapter - 1]
   const loc = { collection, book: book.id, chapter }
   const bilingual = useBilingualEnabled()
-  const secondaryTexts = useSecondaryVerseTexts(loc, undefined, bilingual)
+  const verseTextMap = useVerseTexts(loc, PRIMARY_LANGUAGE)
+  const secondaryTexts = useVerseTexts(loc, SECONDARY_LANGUAGE, undefined, bilingual)
 
   const storedUserId = useSelectedUserId()
   const selectUser = useSelectedUserStore((s) => s.select)
@@ -536,10 +535,6 @@ function ChapterView({
   // 絞り込んでいると、送った側が見せたいコメントが無言で開かなくなるため
   const sheetIndex = allCommentIndex
 
-  const verseTextMap = useMemo(
-    () => new Map(verseTexts.map((vt) => [vt.verse, vt.text_html])),
-    [verseTexts],
-  )
   const verseNumbers = Array.from({ length: maxVerse }, (_, i) => i + 1)
   const selection = useMemo(
     () => parseSelection(search.select, maxVerse),
@@ -792,22 +787,31 @@ function ChapterView({
     <div>
       {mode === 'select' ? selectionHeader : chapterHeader}
       {composeFab}
-      {posts.length > 0 && (
-        <div className="border-b" style={{ borderColor: 'var(--line)' }}>
-          <p className="px-4 pt-3 pb-1 text-xs font-medium" style={{ color: 'var(--sea-ink-soft)' }}>
-            この章への投稿
-          </p>
-          {posts.map((post) => (
-            <PostCard key={post.id} post={post} />
-          ))}
+      {/* 章が変わったら中央のパネルから始め直すため、章参照で作り直す */}
+      <ChapterPager
+        key={`${collection}/${book.id}/${chapter}`}
+        loc={{ collection, book: book.id, chapter }}
+        // シートは背面を覆わないので、開いたままスワイプできてしまう
+        disabled={mode === 'select' || sheetOpen || commentVerseForScroll !== undefined}
+        renderPreview={(texts) => <ChapterPreview texts={texts} />}
+      >
+        {posts.length > 0 && (
+          <div className="border-b" style={{ borderColor: 'var(--line)' }}>
+            <p className="px-4 pt-3 pb-1 text-xs font-medium" style={{ color: 'var(--sea-ink-soft)' }}>
+              この章への投稿
+            </p>
+            {posts.map((post) => (
+              <PostCard key={post.id} post={post} />
+            ))}
+          </div>
+        )}
+        {/* 末尾が節一覧か章移動かで変わるため、FAB のぶんの余白はまとめて外側で確保する。
+            FAB が出ない場面（未ログイン・選択モード・lg 以上）では余らせない */}
+        <div className={composeFab ? 'pb-[var(--fab-clearance)] lg:pb-0' : undefined}>
+          {verseList}
+          {mode !== 'select' && chapterNav}
         </div>
-      )}
-      {/* 末尾が節一覧か章移動かで変わるため、FAB のぶんの余白はまとめて外側で確保する。
-          FAB が出ない場面（未ログイン・選択モード・lg 以上）では余らせない */}
-      <div className={composeFab ? 'pb-[var(--fab-clearance)] lg:pb-0' : undefined}>
-        {verseList}
-        {mode !== 'select' && chapterNav}
-      </div>
+      </ChapterPager>
       {canCompose && (
         <PostComposerSheet
           open={sheetOpen}
