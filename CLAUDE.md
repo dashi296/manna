@@ -116,6 +116,11 @@ const needsAuth =
   - `check` ジョブ（typecheck / test / build）が落ちると `deploy` はスキップされる。
     **main が赤いままだと本番に出ない**
   - 認証情報は GitHub Secrets（`CLOUDFLARE_API_TOKEN` ほか）にある
+- **聖典データは git に入っていない**（`supabase/seed-verses.sql` は `.gitignore`）。本番へ入れるときは
+  ローカルで取り込んだものを流し込む:
+  ```bash
+  pg_dump --data-only --table=<テーブル名> "postgresql://postgres:postgres@127.0.0.1:55322/postgres" | psql "<本番の接続文字列>"
+  ```
 - **手動デプロイ**: `pnpm --filter @manna/pwa cf:deploy`（`vite build && wrangler deploy`）。
   `wrangler deployments list` などの CLI 操作には `npx wrangler login` が必要（未ログインだと 400 で失敗する）
 

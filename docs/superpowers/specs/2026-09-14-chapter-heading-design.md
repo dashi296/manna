@@ -50,7 +50,15 @@ RLS は `scripture_verses` と同じく anon / authenticated に SELECT を開�
 
 取得済みの判定は現在「節数の一致」で見ている（`getCompletedChapters`）。見出しは別テーブルなので、**見出しが無い章だけを対象にする判定**を足す。既存の節データは取り直さない。
 
-本番へは `DATABASE_URL` を本番に向けて同じスクリプトを流す（節データと同じ経路）。レート制限が1秒間隔のため、両言語で50分前後かかる。
+本番へは**ローカルで取り込んだものを流し込む**。見出しは本番では新しい空のテーブルなので、消すものは無く、既存の節データにも触れない。
+
+```bash
+pg_dump --data-only --table=scripture_chapter_headings \
+  "postgresql://postgres:postgres@127.0.0.1:55322/postgres" \
+  | psql "<本番の接続文字列>"
+```
+
+約3,164行・2MB弱で、数秒で終わる。本番を指して取得スクリプトを流す手もあるが、同じ結果に50分かかるだけで利点が無い。
 
 ### ローカル seed
 
