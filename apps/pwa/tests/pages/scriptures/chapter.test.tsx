@@ -1201,15 +1201,26 @@ describe('ChapterPage', () => {
   it('章のタイトルと概要を本文の前に出す', async () => {
     clientChapterHeading = { title: '第1章', summary: '要約', summary_html: '<b>要約</b>' }
     render(<ChapterPage />)
-    expect(await screen.findByRole('heading', { name: '第1章', level: 2 })).toBeInTheDocument()
     expect(await screen.findByText('要約')).toBeInTheDocument()
+    // 同じ文字列がヘッダーの見出しにもあるので、本文側は見出しにしない
+    expect(screen.getAllByText('第1章')).toHaveLength(2)
+    expect(screen.getAllByRole('heading', { name: '第1章' })).toHaveLength(1)
   })
 
   it('概要が無い章（旧約・新約）ではタイトルだけを出す', async () => {
     clientChapterHeading = { title: '第1章', summary: null, summary_html: null }
     render(<ChapterPage />)
-    expect(await screen.findByRole('heading', { name: '第1章', level: 2 })).toBeInTheDocument()
+    await waitFor(() => expect(screen.getAllByText('第1章')).toHaveLength(2))
     expect(screen.queryByText('要約')).not.toBeInTheDocument()
+  })
+
+  it('併記が有効なら概要も両言語を出す', async () => {
+    const { useBilingualDisplayStore } = await import('@/entities/bilingual-display')
+    useBilingualDisplayStore.setState({ enabled: true })
+    clientChapterHeading = { title: '第1章', summary: '要約', summary_html: '要約' }
+    render(<ChapterPage />)
+    // 第1言語・第2言語で同じ応答を返すモックなので、同じ文字列が2つ出る
+    await waitFor(() => expect(screen.getAllByText('要約')).toHaveLength(2))
   })
 
   it('併記表示が有効なとき、クライアント側で取得した第2言語の節本文を表示する', async () => {

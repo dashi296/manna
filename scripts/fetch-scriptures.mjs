@@ -138,6 +138,7 @@ async function main() {
   console.log(`Total: ${allChapters.length} chapters, Skipping: ${allChapters.length - todo.length}, Remaining: ${todo.length}`)
 
   let inserted = 0
+  let failed = 0
   for (let i = 0; i < todo.length; i++) {
     const { collectionId, bookId, chapter, expectedVerses, isFrontMatter, versesMissing } = todo[i]
     const label = `${collectionId}/${bookId}/${chapter}`
@@ -168,6 +169,7 @@ async function main() {
 
       console.log(`[${i + 1}/${todo.length}] ${label} ... ${verses.length} verses`)
     } catch (err) {
+      failed += 1
       console.error(`[${i + 1}/${todo.length}] ${label} FAILED: ${err.message}`)
     }
 
@@ -175,6 +177,13 @@ async function main() {
   }
 
   console.log(`\nDone: ${inserted} verses inserted`)
+
+  // 章ごとの失敗は握って続けるが、そのまま成功で終わると不完全なまま
+  // seed の書き出しや本番への投入へ進んでしまう
+  if (failed > 0) {
+    console.error(`${failed} chapter(s) failed. Re-run to retry them.`)
+    process.exitCode = 1
+  }
 }
 
 main().catch(err => {

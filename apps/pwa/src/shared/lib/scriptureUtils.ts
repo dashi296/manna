@@ -46,9 +46,13 @@ export function buildScriptureUrl(ref: ScriptureRef, book: ScriptureBook = findB
   return url
 }
 
+// 章の呼び方が要るだけの呼び出し元（章の選択肢など）からも使えるよう、
+// 書の全体ではなく必要な項目だけを受ける
+type ChapterLabelBook = { name: string; isFrontMatter?: boolean; chapterUnit?: string } | undefined
+
 // 公式の章タイトルの呼び方に合わせる。87書を確認した範囲では、
 // 「章」でないのは詩篇（篇）だけ
-export function getChapterLabel(book: ScriptureBook, chapter: number): string {
+export function getChapterLabel(book: ChapterLabelBook, chapter: number): string {
   if (book?.isFrontMatter) return book.name
   return `第${chapter}${book?.chapterUnit ?? '章'}`
 }

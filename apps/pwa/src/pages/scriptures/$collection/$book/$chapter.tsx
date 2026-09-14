@@ -448,9 +448,15 @@ function ChapterHeadingBlock({
   if (!heading) return null
   return (
     <div className="px-4 pt-4">
-      <h2 className="text-base font-display" style={{ color: 'var(--sea-ink)' }}>
+      {/* 同じ文字列が貼り付くヘッダーの h1 にもある。ここも見出しにすると
+          読み上げの見出し一覧に「第n章」が続けて二度並び、区別できない */}
+      <p
+        data-testid="chapter-heading"
+        className="text-base font-display"
+        style={{ color: 'var(--sea-ink)' }}
+      >
         {heading.title}
-      </h2>
+      </p>
       {heading.summaryHtml && (
         <SanitizedVerseHtml
           html={heading.summaryHtml}

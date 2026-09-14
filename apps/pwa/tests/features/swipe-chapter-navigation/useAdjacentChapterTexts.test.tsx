@@ -8,6 +8,7 @@ import { useAdjacentChapterTexts } from '@/features/swipe-chapter-navigation'
 const calls: { chapter: number; language: string }[] = []
 let failing = false
 
+let headingDelayMs = 0
 vi.mock('@/entities/scripture/lib/verseTexts', () => ({
   queryScriptureVerseTexts: async (
     _client: unknown,
@@ -25,10 +26,15 @@ vi.mock('@/shared/lib/supabase', async () => {
   const { createSupabaseQueryChain } = await import('../../helpers/supabase')
   return {
     supabase: {
-      from: () =>
-        createSupabaseQueryChain(() => ({
+      from: () => {
+        const chain = createSupabaseQueryChain(() => ({
           data: [{ title: '見出し', summary: null, summary_html: null }],
-        })),
+        }))
+        const slow = chain.maybeSingle
+        chain.maybeSingle = () =>
+          new Promise((resolve) => setTimeout(() => resolve(slow()), headingDelayMs))
+        return chain
+      },
     },
   }
 })
@@ -46,6 +52,7 @@ const loc = { collection: 'bofm', book: '1-ne', chapter: 5 }
 beforeEach(() => {
   calls.length = 0
   failing = false
+  headingDelayMs = 0
   client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
 })
 
@@ -60,6 +67,21 @@ describe('useAdjacentChapterTexts', () => {
     // 本文の前に入るものなので、先読みの対象に含める
     await waitFor(() => expect(result.current.next?.heading?.title).toBe('見出し'))
     expect(result.current.next?.ref).toEqual({ collection: 'bofm', book: '1-ne', chapter: 6 })
+  })
+
+  it('見出しの取得が終わるまでプレビューを成立させない', async () => {
+    // 本文だけ先に返った時点で見出しなしのプレビューを出すと、
+    // 遷移後に見出しが入って本文がその高さぶん飛ぶ
+    headingDelayMs = 200
+    const { result } = renderHook(
+      () => useAdjacentChapterTexts({ loc, enabled: true, bilingual: false }),
+      { wrapper },
+    )
+    await waitFor(() => expect(calls.some((c) => c.chapter === 6)).toBe(true))
+    expect(result.current.next).toBeNull()
+
+    await waitFor(() => expect(result.current.next?.heading?.title).toBe('見出し'))
+    expect(result.current.next?.primary.get(1)).toBe('ja-6')
   })
 
   it('無効なときは1件も取りに行かない', async () => {

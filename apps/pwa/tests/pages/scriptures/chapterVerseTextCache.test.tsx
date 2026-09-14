@@ -23,11 +23,15 @@ let heading: { title: string; summary: string | null; summary_html: string | nul
   summary: '概要',
   summary_html: '概要',
 }
+const headingFetches: string[] = []
 vi.mock('@/shared/lib/supabase', async () => {
   const { createSupabaseQueryChain } = await import('../../helpers/supabase')
   return {
     supabase: {
-      from: () => createSupabaseQueryChain(() => ({ data: heading ? [heading] : [] })),
+      from: (table: string) => {
+        headingFetches.push(table)
+        return createSupabaseQueryChain(() => ({ data: heading ? [heading] : [] }))
+      },
     },
   }
 })
@@ -56,6 +60,7 @@ const params = { collection: 'bofm', book: '1-ne', chapter: '5' }
 
 beforeEach(() => {
   fetched.length = 0
+  headingFetches.length = 0
 })
 
 describe('章の節本文のキャッシュ', () => {
@@ -89,9 +94,16 @@ describe('章の節本文のキャッシュ', () => {
       </QueryClientProvider>,
     )
 
-    expect(await screen.findByText('ja の本文')).toBeInTheDocument()
-    // ページ本体がローダーと同じキーを見ていなければ、ここで2回目が走る
+    // ローダーの時点で本文と見出しが1回ずつ取れている
     expect(fetched).toEqual([{ chapter: 5, language: 'ja' }])
+    expect(headingFetches).toEqual(['scripture_chapter_headings'])
+    const afterLoader = { verses: fetched.length, headings: headingFetches.length }
+
+    expect(await screen.findByText('ja の本文')).toBeInTheDocument()
+
+    // 描画側がローダーと同じキーを見ていなければ、ここで取り直しが増える
+    expect(fetched.length).toBe(afterLoader.verses)
+    expect(headingFetches.length).toBe(afterLoader.headings)
   })
 
   it('先読みフックが入れた本文を、遷移先のローダーがそのまま使う', async () => {
