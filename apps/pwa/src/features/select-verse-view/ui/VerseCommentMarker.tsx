@@ -8,7 +8,7 @@ const MAX_AVATARS = 3
 // 件数はアイコンに重ねるので、幅はアイコンぶんだけで足りる。
 // バッジのはみ出し 4px はページ側の余白（節一覧の pr-1）に逃がし、幅には数えない。
 // lg は最大構成（24px アバター3枚の重ね = 56px）が収まる幅にする
-export const VERSE_MARKER_WIDTH = 'w-6 lg:w-14'
+const VERSE_MARKER_WIDTH = 'w-6 lg:w-14'
 
 export type VerseMarkerEntry = {
   anchoredCount: number
@@ -25,7 +25,7 @@ export function VerseCommentMarker({ entry }: { entry: VerseMarkerEntry | undefi
 
   return (
     <div className={`${VERSE_MARKER_WIDTH} shrink-0 self-stretch pt-3`} aria-hidden="true">
-      <div className="relative flex w-fit items-center">
+      <div className="relative flex w-fit items-center select-none">
         {avatars.map((c, i) => (
           <span
             key={c.userId}
