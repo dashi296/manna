@@ -25,7 +25,7 @@ import {
 import {
   buildVerseCommentIndex,
   ChapterCommentersRow,
-  VerseCommentGutter,
+  VerseCommentMarker,
   useSelectedUserId,
   useSelectedUserStore,
 } from '@/features/select-verse-view'
@@ -544,21 +544,7 @@ function ChapterView({
   const router = useRouter()
   const [sheetOpen, setSheetOpen] = useState(false)
   const [composerVerses, setComposerVerses] = useState<number[] | undefined>()
-  // 塗りの持ち主は印とシートで分ける。ひとつの状態を両者で書くと、シートの開閉に
-  // 伴うフォーカスの出入りで飛ぶ印の focus / blur に負けて、開いた直後に消えたり
-  // 閉じた後に残ったりする。
-  // 印側はさらに「どの印の塗りか」を積む。印1つ分の中だけで持つと、フォーカスが
-  // 残っている印があっても、別の印から離脱しただけでその塗りが消える
-  const [gutterClaims, setGutterClaims] = useState<
-    { verse: number; verses: number[] }[]
-  >([])
   const [sheetHighlight, setSheetHighlight] = useState<number[] | null>(null)
-
-  const claimGutterHighlight = (verse: number, verses: number[] | null) =>
-    setGutterClaims((prev) => {
-      const rest = prev.filter((c) => c.verse !== verse)
-      return verses ? [...rest, { verse, verses }] : rest
-    })
   const search = Route.useSearch()
   const navigate = Route.useNavigate()
   const maxVerse = book.verses[chapter - 1]
@@ -614,20 +600,15 @@ function ChapterView({
     requestedComment <= maxVerse
       ? requestedComment
       : undefined
-  // シートが開いている間はシート側だけが塗りを決める。カードに触れていないときは
-  // シートに出ている全コメントが指す節をまとめて塗る。ホバーの無いタッチでは、
-  // これがコメントの指す範囲を知る唯一の手段になる
+  // シートが開いている間だけ塗る。カードに触れていないときは、シートに出ている
+  // 全コメントが指す節をまとめて塗る
   const highlightedVerses = useMemo(() => {
-    if (commentVerseForScroll === undefined) {
-      // 最後に主張した印を見せる。手放されたら、まだ持っている印に戻る
-      const active = gutterClaims.at(-1)
-      return active ? new Set(active.verses) : null
-    }
+    if (commentVerseForScroll === undefined) return null
     if (sheetHighlight) return new Set(sheetHighlight)
     const covered = sheetIndex.get(commentVerseForScroll)?.covered ?? []
     const verses = covered.flatMap((p) => p.scripture_verses ?? [])
     return new Set(verses.length ? verses : [commentVerseForScroll])
-  }, [commentVerseForScroll, sheetHighlight, gutterClaims, sheetIndex])
+  }, [commentVerseForScroll, sheetHighlight, sheetIndex])
 
   const scrolledVerse = useRef<number | undefined>(undefined)
   const isMounted = useRef(false)
@@ -820,17 +801,13 @@ function ChapterView({
                 />
               </div>
               {showGutter && (
-                <VerseCommentGutter
-                  verse={verse}
+                <VerseCommentMarker
                   entry={
                     entry && {
                       anchoredCount: entry.anchored.length,
                       commenters: entry.commenters,
-                      highlightVerses: entry.highlightVerses,
                     }
                   }
-                  onOpen={openVerseSheet}
-                  onHighlight={claimGutterHighlight}
                 />
               )}
             </li>
