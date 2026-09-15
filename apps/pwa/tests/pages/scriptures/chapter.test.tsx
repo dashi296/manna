@@ -1106,6 +1106,37 @@ describe('ChapterPage', () => {
     expect(screen.queryByText(/この節に関わる投稿/)).toBeNull()
   })
 
+  it('下限の comment=1 でもシートが開く', async () => {
+    loaderData = { ...baseChapterData }
+    search = { comment: 1 }
+
+    render(<ChapterPage />)
+
+    expect(await screen.findByText('第1ニーファイ書 1:1')).toBeInTheDocument()
+    expect(screen.getByText('この節への投稿はまだありません')).toBeInTheDocument()
+  })
+
+  it('章の最終節（comment=maxVerse）でもシートが開く', async () => {
+    // baseChapterData の book.verses は [20]（1章は20節まで）
+    loaderData = { ...baseChapterData }
+    search = { comment: 20 }
+
+    render(<ChapterPage />)
+
+    expect(await screen.findByText('第1ニーファイ書 1:20')).toBeInTheDocument()
+    expect(screen.getByText('この節への投稿はまだありません')).toBeInTheDocument()
+  })
+
+  it('章の最終節の次（comment=maxVerse+1）ではシートを開かない', async () => {
+    loaderData = { ...baseChapterData }
+    search = { comment: 21 }
+
+    render(<ChapterPage />)
+
+    await screen.findByText('一節の本文')
+    expect(screen.queryByText(/この節に関わる投稿/)).toBeNull()
+  })
+
   it('mode=select 中は search.comment があってもシートを開かない', async () => {
     loaderData = {
       ...baseChapterData,

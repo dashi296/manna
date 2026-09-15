@@ -607,7 +607,7 @@ function ChapterView({
   const mode: SelectionMode = canCompose && search.mode === 'select' ? 'select' : 'read'
 
   // インデックスは章の範囲外の節を持たないが、コメントが無い節でも開ける。
-  // 節の行からこのシートを開くようになったため
+  // 節の行からもこのシートを開くため
   const requestedComment = search.comment
   const commentVerseForScroll =
     mode !== 'select' &&
