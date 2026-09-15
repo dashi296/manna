@@ -513,9 +513,6 @@ const ChapterPreview = memo(function ChapterPreview({ texts }: { texts: ChapterT
               >
                 <div className="flex-1 min-w-0">
                   <VerseRow
-                    collection={texts.ref.collection}
-                    book={texts.ref.book}
-                    chapter={texts.ref.chapter}
                     verse={verse}
                     textHtml={texts.primary.get(verse)}
                     textHtmlSecondary={texts.secondary.get(verse)}
@@ -523,6 +520,7 @@ const ChapterPreview = memo(function ChapterPreview({ texts }: { texts: ChapterT
                     mode="read"
                     selected={false}
                     onSelect={() => {}}
+                    onOpen={() => {}}
                     showNumber={!target?.isFrontMatter}
                   />
                 </div>
@@ -808,9 +806,6 @@ function ChapterView({
             >
               <div className="flex-1 min-w-0">
                 <VerseRow
-                  collection={collection}
-                  book={book.id}
-                  chapter={chapter}
                   verse={verse}
                   textHtml={textHtml}
                   textHtmlSecondary={secondaryTexts.get(verse)}
@@ -818,6 +813,8 @@ function ChapterView({
                   mode={mode}
                   selected={isSelected}
                   onSelect={(v) => setSelection(toggleVerse(selection, v))}
+                  onOpen={openVerseSheet}
+                  commentCount={entry?.anchored.length ?? 0}
                   highlighted={highlightedVerses?.has(verse) ?? false}
                   showNumber={!book.isFrontMatter}
                 />

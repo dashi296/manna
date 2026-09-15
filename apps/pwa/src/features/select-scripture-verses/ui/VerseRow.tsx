@@ -1,5 +1,4 @@
 import type { CSSProperties } from 'react'
-import { Link } from '@tanstack/react-router'
 import { Check } from 'lucide-react'
 import { SanitizedVerseHtml } from '@/shared/ui'
 
@@ -22,9 +21,6 @@ const ROW_HIGHLIGHTED_STYLE: CSSProperties = {
 }
 
 type Props = {
-  collection: string
-  book: string
-  chapter: number
   verse: number
   textHtml?: string
   textHtmlSecondary?: string
@@ -32,14 +28,13 @@ type Props = {
   mode: 'read' | 'select'
   selected: boolean
   onSelect: (verse: number) => void
+  onOpen: (verse: number) => void
+  commentCount?: number
   highlighted?: boolean
   showNumber?: boolean
 }
 
 export function VerseRow({
-  collection,
-  book,
-  chapter,
   verse,
   textHtml,
   textHtmlSecondary,
@@ -47,6 +42,8 @@ export function VerseRow({
   mode,
   selected,
   onSelect,
+  onOpen,
+  commentCount = 0,
   highlighted = false,
   showNumber = true,
 }: Props) {
@@ -138,17 +135,16 @@ export function VerseRow({
 
   return (
     <div style={containerStyle} data-highlighted={highlighted || undefined}>
-      <Link
-        to="/scriptures/$collection/$book/$chapter"
-        params={{ collection, book, chapter: String(chapter) }}
-        search={{ verses: [verse] }}
-        // 節は1画面に数十個並ぶため、スクロールでカーソル下を通過しただけで intent プリロードが発火する
-        preload={false}
-        className="verse-item block"
+      <button
+        type="button"
+        onClick={() => onOpen(verse)}
+        aria-haspopup="dialog"
+        className="verse-item block w-full text-left"
         data-bilingual={textHtmlSecondary ? '' : undefined}
       >
         {inner}
-      </Link>
+        {commentCount > 0 && <span className="sr-only">コメント{commentCount}件</span>}
+      </button>
     </div>
   )
 }
