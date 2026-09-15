@@ -123,7 +123,7 @@ export function VerseRow({
         aria-checked={selected}
         aria-label={`${verse}節を選択`}
         onClick={() => onSelect(verse)}
-        className="verse-item w-full text-left"
+        className="verse-item w-full text-left cursor-pointer"
         // 画面外の節の高さ見積もりを併記の有無で切り替えるため（styles.css の verse-item）
         data-bilingual={textHtmlSecondary ? '' : undefined}
         style={containerStyle}
