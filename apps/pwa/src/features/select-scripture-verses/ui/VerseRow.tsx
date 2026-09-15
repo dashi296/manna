@@ -139,7 +139,7 @@ export function VerseRow({
         type="button"
         onClick={() => onOpen(verse)}
         aria-haspopup="dialog"
-        className="verse-item block w-full text-left"
+        className="verse-item block w-full text-left cursor-pointer"
         data-bilingual={textHtmlSecondary ? '' : undefined}
       >
         {inner}

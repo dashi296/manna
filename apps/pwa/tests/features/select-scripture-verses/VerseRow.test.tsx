@@ -40,9 +40,6 @@ function renderInRouter(ui: React.ReactNode, options: RenderOptions = {}) {
 }
 
 const baseProps = {
-  collection: 'bofm',
-  book: 'mosiah',
-  chapter: 3,
   verse: 19,
   textHtml: '主のみもとに帰る道はただ一つ',
 }
@@ -70,7 +67,22 @@ describe('VerseRow', () => {
     expect(screen.queryByRole('link')).toBeNull()
   })
 
-  it("mode='read' でコメント件数を読み上げに残す", async () => {
+  it("mode='read' のボタンは aria-haspopup='dialog' を持つ", async () => {
+    renderInRouter(
+      <VerseRow
+        verse={7}
+        textHtml="本文"
+        mode="read"
+        selected={false}
+        onSelect={() => {}}
+        onOpen={() => {}}
+      />,
+    )
+
+    expect(await screen.findByRole('button')).toHaveAttribute('aria-haspopup', 'dialog')
+  })
+
+  it("mode='read' でコメント件数を視覚的に隠したテキストとして読み上げに残す", async () => {
     renderInRouter(
       <VerseRow
         verse={7}
@@ -83,7 +95,9 @@ describe('VerseRow', () => {
       />,
     )
 
-    expect(await screen.findByText('コメント3件')).toBeInTheDocument()
+    const countText = await screen.findByText('コメント3件')
+    expect(countText).toBeInTheDocument()
+    expect(countText).toHaveClass('sr-only')
   })
 
   it("mode='read' でコメントが無ければ件数を出さない", async () => {
