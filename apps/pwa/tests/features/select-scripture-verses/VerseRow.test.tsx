@@ -68,7 +68,7 @@ describe('VerseRow', () => {
   })
 
   it("mode='read' のボタンは aria-haspopup='dialog' を持つ", async () => {
-    renderInRouter(
+    render(
       <VerseRow
         verse={7}
         textHtml="本文"
@@ -83,7 +83,7 @@ describe('VerseRow', () => {
   })
 
   it("mode='read' でコメント件数を視覚的に隠したテキストとして読み上げに残す", async () => {
-    renderInRouter(
+    render(
       <VerseRow
         verse={7}
         textHtml="本文"
@@ -101,7 +101,7 @@ describe('VerseRow', () => {
   })
 
   it("mode='read' でコメントが無ければ件数を出さない", async () => {
-    renderInRouter(
+    render(
       <VerseRow
         verse={7}
         textHtml="本文"
@@ -119,7 +119,7 @@ describe('VerseRow', () => {
 
   it("mode='select' でクリックすると onSelect が呼ばれ、リンク遷移は起きない", async () => {
     const onSelect = vi.fn()
-    renderInRouter(
+    render(
       <VerseRow {...baseProps} mode="select" selected={false} onSelect={onSelect} onOpen={() => {}} />,
     )
     await waitFor(() => {
@@ -131,7 +131,7 @@ describe('VerseRow', () => {
   })
 
   it("mode='select' かつ selected=true でチェックマークとアクセントを表示", async () => {
-    renderInRouter(
+    render(
       <VerseRow {...baseProps} mode="select" selected={true} onSelect={vi.fn()} onOpen={() => {}} />,
     )
     await waitFor(() => {
@@ -141,7 +141,7 @@ describe('VerseRow', () => {
   })
 
   it('本文に明朝体クラスを適用する', async () => {
-    const { container } = renderInRouter(
+    const { container } = render(
       <VerseRow {...baseProps} mode="read" selected={false} onSelect={vi.fn()} onOpen={() => {}} />,
     )
     await waitFor(() => {
@@ -152,7 +152,7 @@ describe('VerseRow', () => {
 
 describe('VerseRow highlighted', () => {
   it('highlighted=true で本文行に背景を敷く', async () => {
-    const { container } = renderInRouter(
+    const { container } = render(
       <VerseRow
         {...baseProps}
         mode="read"
@@ -170,7 +170,7 @@ describe('VerseRow highlighted', () => {
   })
 
   it('highlighted 未指定なら背景を敷かない', async () => {
-    const { container } = renderInRouter(
+    const { container } = render(
       <VerseRow {...baseProps} mode="read" selected={false} onSelect={vi.fn()} onOpen={() => {}} />,
     )
     await waitFor(() => {
@@ -182,7 +182,7 @@ describe('VerseRow highlighted', () => {
 
 describe('VerseRow showNumber', () => {
   it("showNumber=false のとき mode='read' で節番号を表示しない", async () => {
-    renderInRouter(
+    render(
       <VerseRow {...baseProps} mode="read" selected={false} onSelect={vi.fn()} onOpen={() => {}} showNumber={false} />,
     )
     await waitFor(() => {
@@ -191,7 +191,7 @@ describe('VerseRow showNumber', () => {
   })
 
   it("showNumber=false のとき mode='select' でも節番号を表示しない", async () => {
-    renderInRouter(
+    render(
       <VerseRow {...baseProps} mode="select" selected={false} onSelect={vi.fn()} onOpen={() => {}} showNumber={false} />,
     )
     await waitFor(() => {
@@ -203,7 +203,7 @@ describe('VerseRow showNumber', () => {
 
 describe('VerseRow bilingual', () => {
   it('textHtmlSecondary 指定時は lang 属性付きで第2言語テキストを表示する', async () => {
-    const { container } = renderInRouter(
+    const { container } = render(
       <VerseRow
         {...baseProps}
         mode="read"
@@ -221,7 +221,7 @@ describe('VerseRow bilingual', () => {
   })
 
   it('textHtmlSecondary があっても節番号と日本語本文は同じ行に並ぶ', async () => {
-    renderInRouter(
+    render(
       <VerseRow
         {...baseProps}
         mode="read"
@@ -242,7 +242,7 @@ describe('VerseRow bilingual', () => {
   it('併記中は verse-item に data-bilingual を付ける', async () => {
     // 画面外の節の高さ見積もり（contain-intrinsic-size）を併記の有無で切り替えるため。
     // 見積もりがずれるとページ全体の高さと節へのスクロール位置が狂う
-    const { container } = renderInRouter(
+    const { container } = render(
       <VerseRow
         {...baseProps}
         mode="read"
@@ -260,7 +260,7 @@ describe('VerseRow bilingual', () => {
   })
 
   it('併記していなければ data-bilingual を付けない', async () => {
-    const { container } = renderInRouter(
+    const { container } = render(
       <VerseRow {...baseProps} mode="read" selected={false} onSelect={vi.fn()} onOpen={() => {}} />,
     )
 
@@ -270,7 +270,7 @@ describe('VerseRow bilingual', () => {
   })
 
   it('textHtmlSecondary が無ければ第2言語ブロックを描画しない', async () => {
-    const { container } = renderInRouter(
+    const { container } = render(
       <VerseRow {...baseProps} mode="read" selected={false} onSelect={vi.fn()} onOpen={() => {}} />,
     )
     await waitFor(() => {
@@ -280,7 +280,7 @@ describe('VerseRow bilingual', () => {
   })
 
   it('textHtmlSecondary が無ければ本文をdivで包まず、節番号と同じ行に並ぶ', async () => {
-    renderInRouter(
+    render(
       <VerseRow {...baseProps} mode="read" selected={false} onSelect={vi.fn()} onOpen={() => {}} />,
     )
     await waitFor(() => {
