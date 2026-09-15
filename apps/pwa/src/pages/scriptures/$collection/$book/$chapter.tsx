@@ -568,7 +568,7 @@ function ChapterView({
         : circlePosts,
     [circlePosts, selectedUser],
   )
-  // 身内全員分。シートの中身と、ガターの幅を取るかの判定に使う
+  // 身内全員分。シートの中身と、印の列の幅を取るかの判定に使う
   const allCommentIndex = useMemo(
     () => buildVerseCommentIndex(maxVerse, circlePosts),
     [maxVerse, circlePosts],
@@ -622,7 +622,7 @@ function ChapterView({
     const target = document.querySelector(`li[data-verse="${commentVerseForScroll}"]`)
     if (!target) return
 
-    // 印を押して別の節に移ったときだけスムーズに動かす（視差効果を減らす設定なら
+    // 節の行を押して別の節に移ったときだけスムーズに動かす（視差効果を減らす設定なら
     // それも行わない）。直リンクで開いた初回の位置決めと、
     // 英文が届いた後の再調整は即時にする。どちらも動く様子に意味がないうえ、'smooth' は
     // 開始時点の座標を目標に据えるため、移動中に高さが変わるとずれた位置で止まる
@@ -663,7 +663,7 @@ function ChapterView({
   const setSelection = (next: number[]) =>
     patchSearch({ select: next.length ? next : undefined })
   // mode=select と同じく push する。戻る操作でシートを閉じられるようにするため。
-  // ただしシートは非モーダルなので、開いたまま別の印を押せる。そのたびに push すると
+  // ただしシートは非モーダルなので、開いたまま別の節の行を押せる。そのたびに push すると
   // 閉じる操作が前の節のシートに戻ってしまうため、開いている間は差し替える。
   // マーカーも足さない（直リンクで開いたエントリに付けると、閉じたときに章から離脱する）
   const openVerseSheet = (verse: number) => {
@@ -717,7 +717,7 @@ function ChapterView({
     () => [...allCommentIndex.values()].some((entry) => entry.anchored.length > 0),
     [allCommentIndex],
   )
-  const showGutter = mode !== 'select' && hasAnchorInChapter
+  const showMarker = mode !== 'select' && hasAnchorInChapter
 
   const composeMenuProps = {
     onSelectChapter: openComposerForChapter,
@@ -769,7 +769,7 @@ function ChapterView({
   )
 
   const verseList = (
-    // 右の 4px は印のバッジ（marker の -right-1）の逃げ場。無いとページャに切られる
+    // 右の 4px は印のバッジ（-right-1）の逃げ場。無いとページャに切られる
     <div className="pb-4 pr-1">
       <ul>
         {verseNumbers.map((verse, i) => {
@@ -800,7 +800,7 @@ function ChapterView({
                   showNumber={!book.isFrontMatter}
                 />
               </div>
-              {showGutter && (
+              {showMarker && (
                 <VerseCommentMarker
                   entry={
                     entry && {
