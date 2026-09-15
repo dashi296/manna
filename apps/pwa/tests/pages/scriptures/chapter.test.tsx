@@ -996,7 +996,7 @@ describe('ChapterPage', () => {
     render(<ChapterPage />)
 
     await screen.findByText('一節の本文')
-    expect(screen.queryByText(/この節に関わる投稿/)).toBeNull()
+    expect(screen.queryByRole('dialog')).toBeNull()
   })
 
   it('下限の comment=1 でもシートが開く', async () => {
@@ -1027,7 +1027,7 @@ describe('ChapterPage', () => {
     render(<ChapterPage />)
 
     await screen.findByText('一節の本文')
-    expect(screen.queryByText(/この節に関わる投稿/)).toBeNull()
+    expect(screen.queryByRole('dialog')).toBeNull()
   })
 
   it('mode=select 中は search.comment があってもシートを開かない', async () => {

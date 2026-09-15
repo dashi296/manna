@@ -116,9 +116,11 @@ export function VerseCommentSheet({
               </a>
             </div>
           </div>
-          <p className="text-xs font-medium" style={{ color: 'var(--sea-ink-soft)' }}>
-            この節に関わる投稿 {posts.length}件
-          </p>
+          {posts.length > 0 && (
+            <p className="text-xs font-medium" style={{ color: 'var(--sea-ink-soft)' }}>
+              この節に関わる投稿 {posts.length}件
+            </p>
+          )}
           {posts.map((p) => (
             <div
               key={p.id}
