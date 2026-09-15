@@ -706,6 +706,12 @@ function ChapterView({
   const enterSelectMode = () => patchSearch({ mode: 'select' }, false)
   const exitSelectMode = () => patchSearch({ mode: undefined, select: undefined })
 
+  const composeForVerse = (verse: number) => {
+    closeVerseSheet()
+    setComposerVerses([verse])
+    setSheetOpen(true)
+  }
+
   const openComposerForChapter = () => {
     setComposerVerses(undefined)
     setSheetOpen(true)
@@ -850,6 +856,8 @@ function ChapterView({
           if (!open) closeVerseSheet()
         }}
         onHighlight={setSheetHighlight}
+        canCompose={canCompose}
+        onCompose={composeForVerse}
       />
     ) : null
 

@@ -26,10 +26,13 @@ type Props = {
   posts: PostWithUser[]
   onOpenChange: (open: boolean) => void
   onHighlight?: (verses: number[] | null) => void
+  canCompose?: boolean
+  onCompose?: (verse: number) => void
 }
 
 export function VerseCommentSheet({
   open,
+  verse,
   label,
   officialUrl,
   textHtml,
@@ -38,6 +41,8 @@ export function VerseCommentSheet({
   posts,
   onOpenChange,
   onHighlight,
+  canCompose = false,
+  onCompose,
 }: Props) {
   const isMobile = useIsMobile()
   // useIsMobile は画面幅を effect でしか反映しないため、初回描画は必ず false になる。
@@ -127,6 +132,21 @@ export function VerseCommentSheet({
               <CompactPostCard post={p} />
             </div>
           ))}
+          {posts.length === 0 && (
+            <p className="text-sm" style={{ color: 'var(--sea-ink-soft)' }}>
+              この節への投稿はまだありません
+            </p>
+          )}
+          {canCompose && onCompose && (
+            <Button
+              type="button"
+              variant="accent"
+              className="w-full"
+              onClick={() => onCompose(verse)}
+            >
+              この節に投稿する
+            </Button>
+          )}
         </DrawerBody>
       </DrawerContent>
     </Drawer>
