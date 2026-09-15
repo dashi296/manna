@@ -13,7 +13,7 @@ const ROW_UNSELECTED_STYLE: CSSProperties = {
   borderLeft: '3px solid transparent',
   transition: ROW_TRANSITION,
 }
-// ガターの印にホバーしたとき、その投稿が対象にしている節を示す
+// 節シートに出ているコメントが対象にしている節を示す
 const ROW_HIGHLIGHTED_STYLE: CSSProperties = {
   background: 'var(--verse-highlight)',
   borderLeft: '3px solid transparent',

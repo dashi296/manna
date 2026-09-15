@@ -5,6 +5,8 @@ const MAX_AVATARS = 3
 
 // 節本文の右に確保する固定幅。件数が増えても行の高さが変わらないよう、
 // 幅は常に一定で、中身だけが「印あり／なし」に切り替わる。
+// 件数はアイコンに重ねるので、幅はアイコンぶんだけで足りる。
+// バッジのはみ出し 4px はページ側の余白（節一覧の pr-1）に逃がし、幅には数えない。
 // lg は最大構成（24px アバター3枚の重ね = 56px）が収まる幅にする
 export const VERSE_MARKER_WIDTH = 'w-6 lg:w-14'
 
@@ -34,6 +36,7 @@ export function VerseCommentMarker({ entry }: { entry: VerseMarkerEntry | undefi
           </span>
         ))}
         {entry.anchoredCount >= 2 && (
+          // 通知バッジと同じ置き方。横に並べるとその分だけ列が広がる。
           // 10px の小さい文字なのでコントラストは 4.5:1 が要る。白文字＋lagoon-deep
           // では 3.81 で足りず、lagoon 地に sea-ink の文字で 5.15 にしている。
           // アバターは flex アイテムに z-index を持つ（static でも効く）ので、
