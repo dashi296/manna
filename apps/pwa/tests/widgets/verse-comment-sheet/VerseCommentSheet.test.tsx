@@ -11,6 +11,15 @@ import {
 import { VerseCommentSheet } from '@/widgets/verse-comment-sheet'
 import type { PostWithUser } from '@/entities/post'
 
+const { mockToast, mockToastError } = vi.hoisted(() => ({
+  mockToast: vi.fn(),
+  mockToastError: vi.fn(),
+}))
+
+vi.mock('@/shared/ui/sonner', () => ({
+  toast: Object.assign((msg: string) => mockToast(msg), { error: (msg: string) => mockToastError(msg) }),
+}))
+
 const posts: PostWithUser[] = [
   {
     id: 'p1',
@@ -301,8 +310,8 @@ describe('VerseCommentSheet の節の面', () => {
   const base = {
     open: true as const,
     verse: 7,
-    label: '第1ニーファイ書 3:7',
-    officialUrl: 'https://www.churchofjesuschrist.org/study/scriptures/bofm/1-ne/3?lang=jpn&id=p7#p7',
+    label: LABEL,
+    officialUrl: OFFICIAL_URL,
     posts,
     onOpenChange: () => {},
   }
@@ -329,6 +338,16 @@ describe('VerseCommentSheet の節の面', () => {
       expect(writeText).toHaveBeenCalledWith('第1ニーファイ書 3:7\n両親から'),
     )
     Reflect.deleteProperty(navigator, 'clipboard')
+  })
+
+  it('コピーに失敗したらエラーを通知する', async () => {
+    // secure context 外では navigator.clipboard 自体が無く、copyText が false を返す
+    Reflect.deleteProperty(navigator, 'clipboard')
+
+    renderInRouter(<VerseCommentSheet {...base} textHtml="本文" />)
+    fireEvent.click(await screen.findByRole('button', { name: 'コピー' }))
+
+    await waitFor(() => expect(mockToastError).toHaveBeenCalledWith('コピーできませんでした'))
   })
 
   it('公式サイトへのリンクを出す', async () => {

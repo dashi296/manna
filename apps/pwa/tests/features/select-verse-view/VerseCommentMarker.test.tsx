@@ -76,4 +76,14 @@ describe('VerseCommentMarker', () => {
     expect(container.querySelector('[aria-hidden="true"]')).toBeInTheDocument()
     expect(screen.queryByText('ア')).toBeNull()
   })
+
+  it('範囲の途中の節（entry はあるが anchoredCount=0）でも幅だけ確保する', () => {
+    // 複数節の投稿では、アンカー以外の節にも covered/commenters 目的で entry が渡る
+    const { container } = render(
+      <VerseCommentMarker entry={{ anchoredCount: 0, commenters: [] }} />,
+    )
+
+    expect(container.querySelector('[aria-hidden="true"]')).toBeInTheDocument()
+    expect(screen.queryByText('ア')).toBeNull()
+  })
 })
