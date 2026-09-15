@@ -1,5 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
+import { Copy, ExternalLink } from 'lucide-react'
 import { CompactPostCard, type PostWithUser } from '@/entities/post'
+import { verseHtmlToPlainText } from '@/entities/scripture'
+import { copyText } from '@/shared/lib/clipboard'
+import { SanitizedVerseHtml } from '@/shared/ui'
+import { Button } from '@/shared/ui/button'
+import { toast } from '@/shared/ui/sonner'
 import {
   Drawer,
   DrawerBody,
@@ -12,6 +18,11 @@ import { useIsMobile } from '@/shared/hooks/use-mobile'
 type Props = {
   open: boolean
   verse: number
+  label: string
+  officialUrl: string
+  textHtml?: string
+  textHtmlSecondary?: string
+  secondaryLang?: string
   posts: PostWithUser[]
   onOpenChange: (open: boolean) => void
   onHighlight?: (verses: number[] | null) => void
@@ -19,7 +30,11 @@ type Props = {
 
 export function VerseCommentSheet({
   open,
-  verse,
+  label,
+  officialUrl,
+  textHtml,
+  textHtmlSecondary,
+  secondaryLang,
   posts,
   onOpenChange,
   onHighlight,
@@ -39,6 +54,13 @@ export function VerseCommentSheet({
 
   if (!widthResolved) return null
 
+  const onCopy = async () => {
+    if (!textHtml) return
+    const ok = await copyText(`${label}\n${verseHtmlToPlainText(textHtml)}`)
+    if (ok) toast('コピーしました')
+    else toast.error('コピーできませんでした')
+  }
+
   return (
     // 章を読みながらコメントを見るための非モーダル。バックドロップを出さず
     // ページのスクロールも止めない。外側プレスでの自動クローズは、章のスクロール
@@ -53,11 +75,43 @@ export function VerseCommentSheet({
     >
       <DrawerContent showOverlay={false}>
         <DrawerHeader>
-          <DrawerTitle>
-            📖 {verse}節のコメント {posts.length}件
-          </DrawerTitle>
+          <DrawerTitle>{label}</DrawerTitle>
         </DrawerHeader>
-        <DrawerBody className="flex flex-col gap-2 px-4 pb-4 max-h-[70vh]">
+        <DrawerBody className="flex flex-col gap-3 px-4 pb-4 max-h-[70vh]">
+          {textHtml && (
+            <div className="flex flex-col gap-2">
+              <div className="text-sm">
+                <SanitizedVerseHtml html={textHtml} style={{ color: 'var(--sea-ink)' }} />
+                {textHtmlSecondary && (
+                  <SanitizedVerseHtml
+                    html={textHtmlSecondary}
+                    className="block mt-1"
+                    style={{ color: 'var(--sea-ink-soft)' }}
+                    lang={secondaryLang}
+                  />
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <Button type="button" variant="outline" size="sm" className="gap-1" onClick={onCopy}>
+                  <Copy size={14} aria-hidden="true" />
+                  コピー
+                </Button>
+                <a
+                  href={officialUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-sm underline"
+                  style={{ color: 'var(--lagoon-deep)' }}
+                >
+                  公式サイトで読む
+                  <ExternalLink size={12} aria-hidden="true" />
+                </a>
+              </div>
+            </div>
+          )}
+          <p className="text-xs font-medium" style={{ color: 'var(--sea-ink-soft)' }}>
+            この節に関わる投稿 {posts.length}件
+          </p>
           {posts.map((p) => (
             <div
               key={p.id}

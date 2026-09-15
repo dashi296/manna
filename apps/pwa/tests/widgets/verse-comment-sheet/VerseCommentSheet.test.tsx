@@ -40,6 +40,10 @@ const posts: PostWithUser[] = [
   },
 ]
 
+const LABEL = '第1ニーファイ書 3:7'
+const OFFICIAL_URL =
+  'https://www.churchofjesuschrist.org/study/scriptures/bofm/1-ne/3?lang=jpn&id=p7#p7'
+
 function renderInRouter(ui: React.ReactNode) {
   const root = createRootRoute({ component: () => <Outlet />, notFoundComponent: () => null })
   const index = createRoute({ getParentRoute: () => root, path: '/', component: () => <>{ui}</> })
@@ -56,18 +60,33 @@ function renderInRouter(ui: React.ReactNode) {
 }
 
 describe('VerseCommentSheet', () => {
-  it('open=true でヘッダーに節と件数を出す', async () => {
+  it('open=true でヘッダーに節ラベルを出し、投稿数を見出しに出す', async () => {
     renderInRouter(
-      <VerseCommentSheet open={true} verse={7} posts={posts} onOpenChange={vi.fn()} />,
+      <VerseCommentSheet
+        open={true}
+        verse={7}
+        label={LABEL}
+        officialUrl={OFFICIAL_URL}
+        posts={posts}
+        onOpenChange={vi.fn()}
+      />,
     )
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: /7節.*2件/ })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: LABEL })).toBeInTheDocument()
+      expect(screen.getByText('この節に関わる投稿 2件')).toBeInTheDocument()
     })
   })
 
   it('その節に関わる投稿を投稿者を問わず並べる', async () => {
     renderInRouter(
-      <VerseCommentSheet open={true} verse={7} posts={posts} onOpenChange={vi.fn()} />,
+      <VerseCommentSheet
+        open={true}
+        verse={7}
+        label={LABEL}
+        officialUrl={OFFICIAL_URL}
+        posts={posts}
+        onOpenChange={vi.fn()}
+      />,
     )
     await waitFor(() => {
       expect(screen.getByText('節7 への A の投稿')).toBeInTheDocument()
@@ -77,7 +96,14 @@ describe('VerseCommentSheet', () => {
 
   it('複数節の投稿には範囲ラベルを出す', async () => {
     renderInRouter(
-      <VerseCommentSheet open={true} verse={7} posts={posts} onOpenChange={vi.fn()} />,
+      <VerseCommentSheet
+        open={true}
+        verse={7}
+        label={LABEL}
+        officialUrl={OFFICIAL_URL}
+        posts={posts}
+        onOpenChange={vi.fn()}
+      />,
     )
     await waitFor(() => {
       expect(screen.getByText(/3:5–7/)).toBeInTheDocument()
@@ -90,6 +116,8 @@ describe('VerseCommentSheet', () => {
       <VerseCommentSheet
         open={true}
         verse={7}
+        label={LABEL}
+        officialUrl={OFFICIAL_URL}
         posts={posts}
         onOpenChange={vi.fn()}
         onHighlight={onHighlight}
@@ -115,6 +143,8 @@ describe('VerseCommentSheet', () => {
       <VerseCommentSheet
         open={true}
         verse={7}
+        label={LABEL}
+        officialUrl={OFFICIAL_URL}
         posts={posts}
         onOpenChange={vi.fn()}
         onHighlight={onHighlight}
@@ -138,6 +168,8 @@ describe('VerseCommentSheet', () => {
       <VerseCommentSheet
         open={true}
         verse={7}
+        label={LABEL}
+        officialUrl={OFFICIAL_URL}
         posts={posts}
         onOpenChange={vi.fn()}
         onHighlight={onHighlight}
@@ -157,7 +189,14 @@ describe('VerseCommentSheet', () => {
     // 止めている（この後段の値だけでは初回描画の有無まで固定できない）
     Object.defineProperty(window, 'innerWidth', { writable: true, value: 390 })
     renderInRouter(
-      <VerseCommentSheet open={true} verse={7} posts={posts} onOpenChange={vi.fn()} />,
+      <VerseCommentSheet
+        open={true}
+        verse={7}
+        label={LABEL}
+        officialUrl={OFFICIAL_URL}
+        posts={posts}
+        onOpenChange={vi.fn()}
+      />,
     )
 
     await waitFor(() => {
@@ -171,7 +210,14 @@ describe('VerseCommentSheet', () => {
   it('デスクトップ幅では右パネルで開く', async () => {
     Object.defineProperty(window, 'innerWidth', { writable: true, value: 1440 })
     renderInRouter(
-      <VerseCommentSheet open={true} verse={7} posts={posts} onOpenChange={vi.fn()} />,
+      <VerseCommentSheet
+        open={true}
+        verse={7}
+        label={LABEL}
+        officialUrl={OFFICIAL_URL}
+        posts={posts}
+        onOpenChange={vi.fn()}
+      />,
     )
 
     await waitFor(() => {
@@ -184,7 +230,14 @@ describe('VerseCommentSheet', () => {
 
   it('開いている間もページのスクロールをロックしない', async () => {
     renderInRouter(
-      <VerseCommentSheet open={true} verse={7} posts={posts} onOpenChange={vi.fn()} />,
+      <VerseCommentSheet
+        open={true}
+        verse={7}
+        label={LABEL}
+        officialUrl={OFFICIAL_URL}
+        posts={posts}
+        onOpenChange={vi.fn()}
+      />,
     )
     await screen.findByText('節7 への A の投稿')
 
@@ -194,7 +247,14 @@ describe('VerseCommentSheet', () => {
 
   it('章を覆うバックドロップを描画しない', async () => {
     renderInRouter(
-      <VerseCommentSheet open={true} verse={7} posts={posts} onOpenChange={vi.fn()} />,
+      <VerseCommentSheet
+        open={true}
+        verse={7}
+        label={LABEL}
+        officialUrl={OFFICIAL_URL}
+        posts={posts}
+        onOpenChange={vi.fn()}
+      />,
     )
     await screen.findByText('節7 への A の投稿')
 
@@ -204,14 +264,28 @@ describe('VerseCommentSheet', () => {
 
   it('open=false では中身を出さない', () => {
     renderInRouter(
-      <VerseCommentSheet open={false} verse={7} posts={posts} onOpenChange={vi.fn()} />,
+      <VerseCommentSheet
+        open={false}
+        verse={7}
+        label={LABEL}
+        officialUrl={OFFICIAL_URL}
+        posts={posts}
+        onOpenChange={vi.fn()}
+      />,
     )
     expect(screen.queryByText('節7 への A の投稿')).toBeNull()
   })
 
   it('内側の投稿リスト container に max-h と overflow-y-auto を持つ', async () => {
     const { container } = renderInRouter(
-      <VerseCommentSheet open={true} verse={7} posts={posts} onOpenChange={vi.fn()} />,
+      <VerseCommentSheet
+        open={true}
+        verse={7}
+        label={LABEL}
+        officialUrl={OFFICIAL_URL}
+        posts={posts}
+        onOpenChange={vi.fn()}
+      />,
     )
     await waitFor(() => {
       const scroller = container.ownerDocument.body.querySelector(
@@ -220,5 +294,55 @@ describe('VerseCommentSheet', () => {
       expect(scroller).not.toBeNull()
       expect(scroller?.className).toContain('overflow-y-auto')
     })
+  })
+})
+
+describe('VerseCommentSheet の節の面', () => {
+  const base = {
+    open: true as const,
+    verse: 7,
+    label: '第1ニーファイ書 3:7',
+    officialUrl: 'https://www.churchofjesuschrist.org/study/scriptures/bofm/1-ne/3?lang=jpn&id=p7#p7',
+    posts,
+    onOpenChange: () => {},
+  }
+
+  it('節本文を出す', async () => {
+    renderInRouter(<VerseCommentSheet {...base} textHtml="わたしニーファイは" />)
+
+    expect(await screen.findByText('わたしニーファイは')).toBeInTheDocument()
+  })
+
+  it('参照＋本文をクリップボードに入れる', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+
+    renderInRouter(
+      <VerseCommentSheet
+        {...base}
+        textHtml="<ruby>両<rt>りょう</rt></ruby>親から"
+      />,
+    )
+    fireEvent.click(await screen.findByRole('button', { name: 'コピー' }))
+
+    await waitFor(() =>
+      expect(writeText).toHaveBeenCalledWith('第1ニーファイ書 3:7\n両親から'),
+    )
+    Reflect.deleteProperty(navigator, 'clipboard')
+  })
+
+  it('公式サイトへのリンクを出す', async () => {
+    renderInRouter(<VerseCommentSheet {...base} textHtml="本文" />)
+
+    const link = await screen.findByRole('link', { name: /公式サイトで読む/ })
+    expect(link).toHaveAttribute('href', base.officialUrl)
+    expect(link).toHaveAttribute('target', '_blank')
+  })
+
+  it('本文が未着ならコピーボタンを出さない', async () => {
+    renderInRouter(<VerseCommentSheet {...base} />)
+
+    await screen.findByText(/この節に関わる投稿/)
+    expect(screen.queryByRole('button', { name: 'コピー' })).toBeNull()
   })
 })

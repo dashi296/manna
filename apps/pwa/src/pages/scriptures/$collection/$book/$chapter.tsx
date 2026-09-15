@@ -840,6 +840,11 @@ function ChapterView({
       <VerseCommentSheet
         open
         verse={commentVerseForScroll}
+        label={getScriptureLabel({ ...loc, verses: [commentVerseForScroll] }, book)}
+        officialUrl={buildScriptureUrl({ ...loc, verses: [commentVerseForScroll] }, book)}
+        textHtml={verseTextMap.get(commentVerseForScroll)}
+        textHtmlSecondary={secondaryTexts.get(commentVerseForScroll)}
+        secondaryLang={SECONDARY_LANGUAGE}
         posts={sheetIndex.get(commentVerseForScroll)?.covered ?? []}
         onOpenChange={(open) => {
           if (!open) closeVerseSheet()
