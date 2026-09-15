@@ -751,6 +751,33 @@ describe('ChapterPage', () => {
     expect(await screen.findByText('節3のコメント')).toBeInTheDocument()
   })
 
+  it('投稿シートを開いている間は節シートを描かない', async () => {
+    // このテストはルーターをモックしているため、投稿シートを開く操作をしても
+    // search.comment は実際には変わらない。だからこそ、投稿シートが開いた後に
+    // 節シートが消えることが「search.comment を消したから」ではなく
+    // 「投稿シートが開いているから」であることを正確に検証できる
+    const { useSelectedUserStore } = await import('@/features/select-verse-view')
+    useSelectedUserStore.setState({ selectedUserId: null })
+    loaderData = {
+      ...baseChapterData,
+      chapterCommenters: [{ userId: 'u1', name: '中村さん', avatarUrl: null }],
+      circlePosts: [circlePost('p1', 'u1', '中村さん', [3, 4, 5], '節3のコメント')],
+    }
+    search = { comment: 3 }
+    const user = userEvent.setup()
+    render(<ChapterPage />)
+
+    await screen.findByText('節3のコメント')
+    expect(document.body.querySelector('[data-slot="drawer-content"]')).not.toBeNull()
+
+    await user.click(screen.getByRole('button', { name: 'この節に投稿する' }))
+
+    await waitFor(() => {
+      expect(document.body.querySelector('[data-slot="sheet-content"]')).not.toBeNull()
+    })
+    expect(document.body.querySelector('[data-slot="drawer-content"]')).toBeNull()
+  })
+
   it('シート内のコメントにホバーするとその投稿の対象節だけがハイライトされる', async () => {
     const { useSelectedUserStore } = await import('@/features/select-verse-view')
     useSelectedUserStore.setState({ selectedUserId: null })

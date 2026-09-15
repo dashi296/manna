@@ -841,8 +841,13 @@ function ChapterView({
     </div>
   )
 
+  // 投稿シートはモーダルなので、開いている間は非モーダルの節シートを描かない。
+  // composeForVerse は closeVerseSheet() の後に setSheetOpen(true) を呼ぶが、
+  // closeVerseSheet 側のナビゲーション（search.comment のクリア）は非同期なため、
+  // この条件が無いと一瞬だけ両方が描画される。FAB から投稿シートを開いたときに
+  // 裏へ節シートが残るのも同じ理由で防げる
   const activeVerseSheet =
-    commentVerseForScroll !== undefined ? (
+    commentVerseForScroll !== undefined && !sheetOpen ? (
       <VerseCommentSheet
         open
         verse={commentVerseForScroll}
