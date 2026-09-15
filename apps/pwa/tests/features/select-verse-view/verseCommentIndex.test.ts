@@ -33,7 +33,6 @@ describe('buildVerseCommentIndex', () => {
 
     expect(index.get(1)?.anchored).toHaveLength(1)
     expect(index.get(2)?.anchored).toEqual([])
-    expect(index.get(1)?.highlightVerses).toEqual([1, 2])
   })
 
   it('複数節の投稿は最小節にだけアンカーされる', () => {
@@ -101,35 +100,6 @@ describe('buildVerseCommentIndex', () => {
     ])
 
     expect(index.get(3)?.commenters.map((c) => c.userId)).toEqual(['u1', 'u2'])
-  })
-
-  it('アンカー節はその投稿の全対象節を highlightVerses に持つ', () => {
-    const index = buildVerseCommentIndex(MAX_VERSE, [post('p1', 'u1', [3, 4, 5])])
-
-    expect(index.get(3)?.highlightVerses).toEqual([3, 4, 5])
-  })
-
-  it('飛び番はどの塊のアンカーからも投稿全体をハイライトする', () => {
-    const index = buildVerseCommentIndex(MAX_VERSE, [post('p1', 'u1', [15, 18, 20])])
-
-    expect(index.get(18)?.highlightVerses).toEqual([15, 18, 20])
-  })
-
-  it('同じ節に複数投稿がアンカーされたら highlightVerses を空にする', () => {
-    // [3,4] と [3,9] を統合した [3,4,9] はどちらの投稿の範囲でもない。
-    // 誤った範囲を塗るくらいなら塗らず、シート内のカードで個別に見せる
-    const index = buildVerseCommentIndex(MAX_VERSE, [
-      post('p1', 'u1', [3, 4]),
-      post('p2', 'u2', [3, 9]),
-    ])
-
-    expect(index.get(3)?.highlightVerses).toEqual([])
-  })
-
-  it('継続節は highlightVerses を持たない', () => {
-    const index = buildVerseCommentIndex(MAX_VERSE, [post('p1', 'u1', [3, 4, 5])])
-
-    expect(index.get(4)?.highlightVerses).toEqual([])
   })
 
   it('scripture_verses が空・null の投稿は無視する', () => {
