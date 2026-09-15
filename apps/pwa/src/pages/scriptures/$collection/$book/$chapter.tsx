@@ -769,7 +769,7 @@ function ChapterView({
   )
 
   const verseList = (
-    // 右の 4px は印のバッジ（gutter の -right-1）の逃げ場。無いとページャに切られる
+    // 右の 4px は印のバッジ（marker の -right-1）の逃げ場。無いとページャに切られる
     <div className="pb-4 pr-1">
       <ul>
         {verseNumbers.map((verse, i) => {
