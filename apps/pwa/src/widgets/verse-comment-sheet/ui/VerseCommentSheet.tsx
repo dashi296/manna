@@ -78,8 +78,8 @@ export function VerseCommentSheet({
           <DrawerTitle>{label}</DrawerTitle>
         </DrawerHeader>
         <DrawerBody className="flex flex-col gap-3 px-4 pb-4 max-h-[70vh]">
-          {textHtml && (
-            <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-2">
+            {textHtml && (
               <div className="text-sm">
                 <SanitizedVerseHtml html={textHtml} style={{ color: 'var(--sea-ink)' }} />
                 {textHtmlSecondary && (
@@ -91,24 +91,26 @@ export function VerseCommentSheet({
                   />
                 )}
               </div>
-              <div className="flex items-center gap-2">
+            )}
+            <div className="flex items-center gap-2">
+              {textHtml && (
                 <Button type="button" variant="outline" size="sm" className="gap-1" onClick={onCopy}>
                   <Copy size={14} aria-hidden="true" />
                   コピー
                 </Button>
-                <a
-                  href={officialUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-sm underline"
-                  style={{ color: 'var(--lagoon-deep)' }}
-                >
-                  公式サイトで読む
-                  <ExternalLink size={12} aria-hidden="true" />
-                </a>
-              </div>
+              )}
+              <a
+                href={officialUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-sm underline"
+                style={{ color: 'var(--lagoon-deep)' }}
+              >
+                公式サイトで読む
+                <ExternalLink size={12} aria-hidden="true" />
+              </a>
             </div>
-          )}
+          </div>
           <p className="text-xs font-medium" style={{ color: 'var(--sea-ink-soft)' }}>
             この節に関わる投稿 {posts.length}件
           </p>

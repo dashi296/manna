@@ -345,4 +345,11 @@ describe('VerseCommentSheet の節の面', () => {
     await screen.findByText(/この節に関わる投稿/)
     expect(screen.queryByRole('button', { name: 'コピー' })).toBeNull()
   })
+
+  it('本文が未着でも公式サイトへのリンクは出る', async () => {
+    renderInRouter(<VerseCommentSheet {...base} />)
+
+    const link = await screen.findByRole('link', { name: /公式サイトで読む/ })
+    expect(link).toHaveAttribute('href', base.officialUrl)
+  })
 })
