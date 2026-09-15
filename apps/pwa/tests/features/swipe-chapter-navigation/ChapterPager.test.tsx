@@ -371,13 +371,18 @@ describe('ChapterPager', () => {
 })
 
 describe('ChapterPager の移動先プレビュー', () => {
-  it('指を置くと、先読み済みの隣の章を両脇に描く', () => {
+  it('横に動き始めると、先読み済みの隣の章を両脇に描く', () => {
     adjacentTexts = { prev: chapterTexts(4), next: chapterTexts(6) }
     renderPager({ collection: 'bofm', book: '1-ne', chapter: 5 }, false, preview)
 
     expect(screen.queryByText(/プレビュー/)).not.toBeInTheDocument()
 
+    // 触れただけでは組まない。タップや縦スクロールでも touchstart は来る
     touchStart()
+    expect(screen.queryByText(/プレビュー/)).not.toBeInTheDocument()
+
+    // ラベルを出すずれ幅より手前で組み終える
+    scrollTo(PANEL_WIDTH + 1)
     expect(screen.getByText('プレビュー: 4章 / 第4章の1節')).toBeInTheDocument()
     expect(screen.getByText('プレビュー: 6章 / 第6章の1節')).toBeInTheDocument()
   })
@@ -386,6 +391,7 @@ describe('ChapterPager の移動先プレビュー', () => {
     adjacentTexts = { prev: null, next: chapterTexts(6) }
     renderPager({ collection: 'bofm', book: '1-ne', chapter: 5 }, false, preview)
     touchStart()
+    scrollTo(PANEL_WIDTH + 1)
     expect(screen.getByText(/6章/)).toBeInTheDocument()
     expect(screen.queryByText(/4章/)).not.toBeInTheDocument()
   })
@@ -409,6 +415,7 @@ describe('ChapterPager の移動先プレビュー', () => {
     // 900px 読み進めた状態
     Object.defineProperty(window, 'scrollY', { value: 900, configurable: true })
     touchStart()
+    scrollTo(PANEL_WIDTH + 1)
     // 章の先頭に置くと、下の方を読んでいるときに画面の外へ出る
     expect(screen.getByTestId('chapter-pager-preview-next')).toHaveStyle({ top: '900px' })
     Object.defineProperty(window, 'scrollY', { value: 0, configurable: true })
@@ -429,8 +436,48 @@ describe('ChapterPager の移動先プレビュー', () => {
     )
     Object.defineProperty(window, 'scrollY', { value: 1200, configurable: true })
     touchStart()
+    scrollTo(PANEL_WIDTH + 1)
     expect(screen.getByTestId('chapter-pager-preview-next')).toHaveStyle({ top: '1200px' })
     Object.defineProperty(window, 'scrollY', { value: 0, configurable: true })
+  })
+
+  it('プレビューが残ったまま次の指が来たら、縦位置を測り直す', () => {
+    adjacentTexts = { prev: null, next: chapterTexts(6) }
+    renderPager({ collection: 'bofm', book: '1-ne', chapter: 5 }, false, preview)
+
+    Object.defineProperty(window, 'scrollY', { value: 900, configurable: true })
+    touchStart()
+    scrollTo(PANEL_WIDTH + 1)
+    touchEnd()
+    expect(screen.getByTestId('chapter-pager-preview-next')).toHaveStyle({ top: '900px' })
+
+    // 畳む前（着地判定の 120ms 以内）に読み進めて次の指が来る
+    Object.defineProperty(window, 'scrollY', { value: 1500, configurable: true })
+    touchStart(1)
+    scrollTo(PANEL_WIDTH + 2)
+    expect(screen.getByTestId('chapter-pager-preview-next')).toHaveStyle({ top: '1500px' })
+
+    touchEnd(1)
+    Object.defineProperty(window, 'scrollY', { value: 0, configurable: true })
+  })
+
+  it('シートを開くとプレビューを畳む', () => {
+    adjacentTexts = { prev: null, next: chapterTexts(6) }
+    const { rerender } = renderPager({ collection: 'bofm', book: '1-ne', chapter: 5 }, false, preview)
+    touchStart()
+    scrollTo(PANEL_WIDTH + 1)
+    expect(screen.getByText(/6章/)).toBeInTheDocument()
+
+    rerender(
+      <ChapterPager
+        loc={{ collection: 'bofm', book: '1-ne', chapter: 5 }}
+        disabled
+        renderPreview={preview}
+      >
+        <p>章の本文</p>
+      </ChapterPager>,
+    )
+    expect(screen.queryByText(/プレビュー/)).not.toBeInTheDocument()
   })
 
   it('指を離して元の位置に戻ったらプレビューを畳む', () => {
