@@ -719,22 +719,21 @@ describe('ChapterPage', () => {
     expect(row.querySelector('.w-6')).not.toBeNull()
   })
 
-  it('その節にコメントが無いなら comment があってもシートを開かない', async () => {
+  it('その節にコメントが無くても comment があればシートが開く。他の節の投稿は出ない', async () => {
     const { useSelectedUserStore } = await import('@/features/select-verse-view')
     useSelectedUserStore.setState({ selectedUserId: null })
     loaderData = {
       ...baseChapterData,
       chapterCommenters: [{ userId: 'u1', name: '中村さん', avatarUrl: null }],
-      circlePosts: [circlePost('p1', 'u1', '中村さん', [3])],
+      circlePosts: [circlePost('p1', 'u1', '中村さん', [3], '節3の投稿')],
     }
     // 2節にはコメントが無い
     search = { comment: 2 }
     render(<ChapterPage />)
 
-    await waitFor(() => {
-      expect(screen.getByText('一節の本文')).toBeInTheDocument()
-    })
-    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(await screen.findByText('第1ニーファイ書 1:2')).toBeInTheDocument()
+    expect(screen.getByText('この節への投稿はまだありません')).toBeInTheDocument()
+    expect(screen.queryByText('節3の投稿')).toBeNull()
   })
 
   it('search.comment があるとその節のシートを開く', async () => {
@@ -1085,6 +1084,26 @@ describe('ChapterPage', () => {
       expect(screen.getByText('一節の本文')).toBeInTheDocument()
     })
     expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('コメントが無い節でも ?comment= でシートが開く', async () => {
+    loaderData = { ...baseChapterData }
+    search = { comment: 2 }
+
+    render(<ChapterPage />)
+
+    expect(await screen.findByText('第1ニーファイ書 1:2')).toBeInTheDocument()
+    expect(screen.getByText('この節への投稿はまだありません')).toBeInTheDocument()
+  })
+
+  it('章の範囲外の ?comment= ではシートを開かない', async () => {
+    loaderData = { ...baseChapterData }
+    search = { comment: 9999 }
+
+    render(<ChapterPage />)
+
+    await screen.findByText('一節の本文')
+    expect(screen.queryByText(/この節に関わる投稿/)).toBeNull()
   })
 
   it('mode=select 中は search.comment があってもシートを開かない', async () => {

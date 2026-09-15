@@ -606,12 +606,14 @@ function ChapterView({
   )
   const mode: SelectionMode = canCompose && search.mode === 'select' ? 'select' : 'read'
 
-  // インデックスは章の範囲外の節を持たないので、コメントの有無だけを見れば足りる
+  // インデックスは章の範囲外の節を持たないが、コメントが無い節でも開ける。
+  // 節の行からこのシートを開くようになったため
   const requestedComment = search.comment
   const commentVerseForScroll =
     mode !== 'select' &&
     requestedComment !== undefined &&
-    (sheetIndex.get(requestedComment)?.covered.length ?? 0) > 0
+    requestedComment >= 1 &&
+    requestedComment <= maxVerse
       ? requestedComment
       : undefined
   // シートが開いている間はシート側だけが塗りを決める。カードに触れていないときは
