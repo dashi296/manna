@@ -779,10 +779,9 @@ describe('ChapterPage', () => {
   })
 
   it('投稿シートを開いている間は節シートを描かない', async () => {
-    // このテストはルーターをモックしているため、投稿シートを開く操作をしても
-    // search.comment は実際には変わらない。だからこそ、投稿シートが開いた後に
-    // 節シートが消えることが「search.comment を消したから」ではなく
-    // 「投稿シートが開いているから」であることを正確に検証できる
+    // composeForVerse は節シートが実際に閉じる（search.comment のクリアが反映される）
+    // まで投稿シートを開かずに待つ。ルーターをモックしているため、その反映をここで
+    // 手動で再現してから投稿シートが開くことを確かめる
     const { useSelectedUserStore } = await import('@/features/select-verse-view')
     useSelectedUserStore.setState({ selectedUserId: null })
     loaderData = {
@@ -792,12 +791,66 @@ describe('ChapterPage', () => {
     }
     search = { comment: 3 }
     const user = userEvent.setup()
-    render(<ChapterPage />)
+    const { rerender } = render(<ChapterPage />)
 
     await screen.findByText('節3のコメント')
     expect(document.body.querySelector('[data-slot="drawer-content"]')).not.toBeNull()
 
     await user.click(screen.getByRole('button', { name: 'この節に投稿する' }))
+
+    // ルーターが closeVerseSheet の navigate を実際に反映した状態を再現する
+    search = { ...search, comment: undefined }
+    rerender(<ChapterPage />)
+
+    await waitFor(() => {
+      expect(document.body.querySelector('[data-slot="sheet-content"]')).not.toBeNull()
+    })
+    expect(document.body.querySelector('[data-slot="drawer-content"]')).toBeNull()
+  })
+
+  it('節シートが開いたままの間は投稿シートを開かない', async () => {
+    // 節シートを閉じる navigate は非同期に反映される。反映される前に投稿シートを
+    // 開くと、閉じるための popstate を投稿シート側のリスナーが受けて即座に閉じてしまう
+    const { useSelectedUserStore } = await import('@/features/select-verse-view')
+    useSelectedUserStore.setState({ selectedUserId: null })
+    loaderData = {
+      ...baseChapterData,
+      chapterCommenters: [{ userId: 'u1', name: '中村さん', avatarUrl: null }],
+      circlePosts: [circlePost('p1', 'u1', '中村さん', [3], '節3のコメント')],
+    }
+    search = { comment: 3 }
+    const user = userEvent.setup()
+    render(<ChapterPage />)
+
+    await screen.findByText('節3のコメント')
+
+    await user.click(screen.getByRole('button', { name: 'この節に投稿する' }))
+
+    // search.comment がまだクリアされていないので、節シートを保ったまま
+    // 投稿シートは開かない
+    expect(document.body.querySelector('[data-slot="sheet-content"]')).toBeNull()
+    expect(document.body.querySelector('[data-slot="drawer-content"]')).not.toBeNull()
+  })
+
+  it('投稿シートが開けば search.comment が残っていても節シートを消す（!sheetOpen ガード）', async () => {
+    // 章全体への投稿は composeForVerse を経由せず search.comment に触れない。
+    // それでも投稿シートが開けば節シート側は !sheetOpen だけで隠れることを確かめる
+    const { useSelectedUserStore } = await import('@/features/select-verse-view')
+    useSelectedUserStore.setState({ selectedUserId: null })
+    loaderData = {
+      ...baseChapterData,
+      chapterCommenters: [{ userId: 'u1', name: '中村さん', avatarUrl: null }],
+      circlePosts: [circlePost('p1', 'u1', '中村さん', [3], '節3のコメント')],
+    }
+    search = { comment: 3 }
+    const user = userEvent.setup()
+    render(<ChapterPage />)
+
+    await screen.findByText('節3のコメント')
+    expect(document.body.querySelector('[data-slot="drawer-content"]')).not.toBeNull()
+
+    await user.click(headerComposeTrigger())
+    await user.click(await screen.findByRole('menuitem', { name: /章全体に投稿/ }))
 
     await waitFor(() => {
       expect(document.body.querySelector('[data-slot="sheet-content"]')).not.toBeNull()

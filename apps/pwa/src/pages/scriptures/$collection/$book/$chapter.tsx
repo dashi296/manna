@@ -543,6 +543,7 @@ function ChapterView({
   const [sheetOpen, setSheetOpen] = useState(false)
   const [composerVerses, setComposerVerses] = useState<number[] | undefined>()
   const [sheetHighlight, setSheetHighlight] = useState<number[] | null>(null)
+  const [pendingComposeVerse, setPendingComposeVerse] = useState<number | null>(null)
   const search = Route.useSearch()
   const navigate = Route.useNavigate()
   const maxVerse = book.verses[chapter - 1]
@@ -686,10 +687,20 @@ function ChapterView({
   const exitSelectMode = () => patchSearch({ mode: undefined, select: undefined })
 
   const composeForVerse = (verse: number) => {
+    setPendingComposeVerse(verse)
     closeVerseSheet()
-    setComposerVerses([verse])
-    setSheetOpen(true)
   }
+
+  // 節シートが閉じる（closeVerseSheet の history.back / URL 更新が反映される）まで
+  // 投稿シートを開かずに待つ。先に開くと、閉じるための popstate を投稿シート側の
+  // リスナーが受けて、開いたばかりの投稿シートを即座に閉じてしまう
+  useEffect(() => {
+    if (pendingComposeVerse === null) return
+    if (commentVerseForScroll !== undefined) return
+    setComposerVerses([pendingComposeVerse])
+    setPendingComposeVerse(null)
+    setSheetOpen(true)
+  }, [pendingComposeVerse, commentVerseForScroll])
 
   const openComposerForChapter = () => {
     setComposerVerses(undefined)
@@ -816,10 +827,7 @@ function ChapterView({
   )
 
   // 投稿シートはモーダルなので、開いている間は非モーダルの節シートを描かない。
-  // composeForVerse は closeVerseSheet() の後に setSheetOpen(true) を呼ぶが、
-  // closeVerseSheet 側のナビゲーション（search.comment のクリア）は非同期なため、
-  // この条件が無いと一瞬だけ両方が描画される。FAB から投稿シートを開いたときに
-  // 裏へ節シートが残るのも同じ理由で防げる
+  // FAB から投稿シートを開いたときに裏へ節シートが残るのをこの条件で防ぐ
   const activeVerseSheet =
     commentVerseForScroll !== undefined && !sheetOpen ? (
       <VerseCommentSheet
