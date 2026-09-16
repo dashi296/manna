@@ -964,7 +964,7 @@ describe('ChapterPage', () => {
     )
   })
 
-  it('印を押して開いたときはスムーズにスクロールする', async () => {
+  it('節の行を押して開いたときはスムーズにスクロールする', async () => {
     const scrollIntoView = vi.fn()
     Element.prototype.scrollIntoView = scrollIntoView
     const { useSelectedUserStore } = await import('@/features/select-verse-view')
@@ -988,7 +988,7 @@ describe('ChapterPage', () => {
     })
   })
 
-  it('視差効果を減らす設定なら印を押してもスムーズにしない', async () => {
+  it('視差効果を減らす設定なら節の行を押してもスムーズにしない', async () => {
     const scrollIntoView = vi.fn()
     Element.prototype.scrollIntoView = scrollIntoView
     const originalMatchMedia = window.matchMedia
@@ -1140,7 +1140,7 @@ describe('ChapterPage', () => {
     expect(screen.queryByText('節3のコメント')).toBeNull()
   })
 
-  it('継続節の印を押すとその節に関わるコメントが全件シートに出る', async () => {
+  it('継続節を指定するとその節に関わるコメントが全件シートに出る', async () => {
     const { useSelectedUserStore } = await import('@/features/select-verse-view')
     useSelectedUserStore.setState({ selectedUserId: null })
     loaderData = {
