@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { Check } from 'lucide-react'
 import { SanitizedVerseHtml } from '@/shared/ui'
 
@@ -32,6 +32,8 @@ type Props = {
   commentCount?: number
   highlighted?: boolean
   showNumber?: boolean
+  /** 行の右端に添える印。行のボタンの内側に置き、タップ対象を行全体にする */
+  marker?: ReactNode
 }
 
 export function VerseRow({
@@ -46,6 +48,7 @@ export function VerseRow({
   commentCount = 0,
   highlighted = false,
   showNumber = true,
+  marker,
 }: Props) {
   const containerStyle = selected
     ? ROW_SELECTED_STYLE
@@ -123,7 +126,7 @@ export function VerseRow({
         aria-checked={selected}
         aria-label={`${verse}節を選択`}
         onClick={() => onSelect(verse)}
-        className="verse-item w-full text-left cursor-pointer"
+        className="verse-item block w-full text-left cursor-pointer"
         // 画面外の節の高さ見積もりを併記の有無で切り替えるため（styles.css の verse-item）
         data-bilingual={textHtmlSecondary ? '' : undefined}
         style={containerStyle}
@@ -139,10 +142,18 @@ export function VerseRow({
         type="button"
         onClick={() => onOpen(verse)}
         aria-haspopup="dialog"
-        className="verse-item block w-full text-left cursor-pointer"
-        data-bilingual={textHtmlSecondary ? '' : undefined}
+        className="flex w-full items-stretch text-left cursor-pointer"
       >
-        {inner}
+        {/* content-visibility は paint containment も伴うため、verse-item はここに
+            付ける。button に付けると、印のバッジ（-right-1）が ul の pr-1 まで
+            はみ出せずボタンの右端で切られる */}
+        <div
+          className="verse-item flex-1 min-w-0"
+          data-bilingual={textHtmlSecondary ? '' : undefined}
+        >
+          {inner}
+        </div>
+        {marker}
         {commentCount > 0 && <span className="sr-only">コメント{commentCount}件</span>}
       </button>
     </div>

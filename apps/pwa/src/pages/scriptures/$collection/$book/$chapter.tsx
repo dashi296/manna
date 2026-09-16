@@ -508,22 +508,20 @@ const ChapterPreview = memo(function ChapterPreview({ texts }: { texts: ChapterT
             return (
               <li
                 key={verse}
-                className={`flex items-stretch ${isLast ? '' : 'border-b'}`}
+                className={isLast ? '' : 'border-b'}
                 style={{ borderColor: 'var(--line)' }}
               >
-                <div className="flex-1 min-w-0">
-                  <VerseRow
-                    verse={verse}
-                    textHtml={texts.primary.get(verse)}
-                    textHtmlSecondary={texts.secondary.get(verse)}
-                    secondaryLang={SECONDARY_LANGUAGE}
-                    mode="read"
-                    selected={false}
-                    onSelect={() => {}}
-                    onOpen={() => {}}
-                    showNumber={!target?.isFrontMatter}
-                  />
-                </div>
+                <VerseRow
+                  verse={verse}
+                  textHtml={texts.primary.get(verse)}
+                  textHtmlSecondary={texts.secondary.get(verse)}
+                  secondaryLang={SECONDARY_LANGUAGE}
+                  mode="read"
+                  selected={false}
+                  onSelect={() => {}}
+                  onOpen={() => {}}
+                  showNumber={!target?.isFrontMatter}
+                />
               </li>
             )
           })}
@@ -782,34 +780,34 @@ function ChapterView({
               key={verse}
               data-verse={verse}
               // sticky ヘッダーの下に潜り込まないよう、スクロール先に余白を取る
-              className={`flex items-stretch scroll-mt-16 ${isLast ? '' : 'border-b'}`}
+              className={`scroll-mt-16 ${isLast ? '' : 'border-b'}`}
               style={{ borderColor: 'var(--line)' }}
             >
-              <div className="flex-1 min-w-0">
-                <VerseRow
-                  verse={verse}
-                  textHtml={textHtml}
-                  textHtmlSecondary={secondaryTexts.get(verse)}
-                  secondaryLang={SECONDARY_LANGUAGE}
-                  mode={mode}
-                  selected={isSelected}
-                  onSelect={(v) => setSelection(toggleVerse(selection, v))}
-                  onOpen={openVerseSheet}
-                  commentCount={entry?.anchored.length ?? 0}
-                  highlighted={highlightedVerses?.has(verse) ?? false}
-                  showNumber={!book.isFrontMatter}
-                />
-              </div>
-              {showMarker && (
-                <VerseCommentMarker
-                  entry={
-                    entry && {
-                      anchoredCount: entry.anchored.length,
-                      commenters: entry.commenters,
-                    }
-                  }
-                />
-              )}
+              <VerseRow
+                verse={verse}
+                textHtml={textHtml}
+                textHtmlSecondary={secondaryTexts.get(verse)}
+                secondaryLang={SECONDARY_LANGUAGE}
+                mode={mode}
+                selected={isSelected}
+                onSelect={(v) => setSelection(toggleVerse(selection, v))}
+                onOpen={openVerseSheet}
+                commentCount={entry?.covered.length ?? 0}
+                highlighted={highlightedVerses?.has(verse) ?? false}
+                showNumber={!book.isFrontMatter}
+                marker={
+                  showMarker ? (
+                    <VerseCommentMarker
+                      entry={
+                        entry && {
+                          anchoredCount: entry.anchored.length,
+                          commenters: entry.commenters,
+                        }
+                      }
+                    />
+                  ) : null
+                }
+              />
             </li>
           )
         })}

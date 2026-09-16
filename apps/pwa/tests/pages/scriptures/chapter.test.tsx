@@ -399,6 +399,51 @@ describe('ChapterPage', () => {
     expect(within(verseRow(container, 5)).queryByText('中')).toBeNull()
   })
 
+  it('印は行のボタンの内側にあり、印を押してもその節のシートが開く', async () => {
+    // 印の列（コメントのアバター）がボタンの外にあると、そこだけタップしても
+    // 何も起きないデッドゾーンになる
+    const { useSelectedUserStore } = await import('@/features/select-verse-view')
+    useSelectedUserStore.setState({ selectedUserId: null })
+    loaderData = {
+      ...baseChapterData,
+      chapterCommenters: [{ userId: 'u1', name: '中村さん', avatarUrl: null }],
+      circlePosts: [circlePost('p1', 'u1', '中村さん', [3])],
+    }
+    search = {}
+    navigateSpy.mockClear()
+    const user = userEvent.setup()
+    const { container } = render(<ChapterPage />)
+
+    const marker = await within(verseRow(container, 3)).findByText('中')
+    const rowButton = openVerseRowButton(container, 3)
+    expect(marker.closest('button')).toBe(rowButton)
+
+    await user.click(marker)
+
+    const call = navigateSpy.mock.calls.at(-1)![0]
+    expect(call.search({})).toMatchObject({ comment: 3 })
+  })
+
+  it('継続節はアンカーではなく印が出ないが、covered の件数を読み上げに乗せる', async () => {
+    // 視覚的なバッジ（anchored）は継続節に出ないが、その節のシートには投稿が出る。
+    // sr-only の件数を anchored のままにすると継続節では 0 件のまま何も伝わらない
+    const { useSelectedUserStore } = await import('@/features/select-verse-view')
+    useSelectedUserStore.setState({ selectedUserId: null })
+    loaderData = {
+      ...baseChapterData,
+      chapterCommenters: [{ userId: 'u1', name: '中村さん', avatarUrl: null }],
+      circlePosts: [circlePost('p1', 'u1', '中村さん', [3, 4, 5])],
+    }
+    search = {}
+    const { container } = render(<ChapterPage />)
+
+    await waitFor(() => {
+      expect(within(verseRow(container, 3)).getByText('中')).toBeInTheDocument()
+    })
+    expect(within(verseRow(container, 4)).queryByText('中')).toBeNull()
+    expect(within(verseRow(container, 4)).getByText('コメント1件')).toBeInTheDocument()
+  })
+
   it('ユーザー未選択でも身内全員の印が出る', async () => {
     const { useSelectedUserStore } = await import('@/features/select-verse-view')
     useSelectedUserStore.setState({ selectedUserId: null })
