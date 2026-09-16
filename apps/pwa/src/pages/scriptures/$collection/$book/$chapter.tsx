@@ -25,7 +25,7 @@ import {
 import {
   buildVerseCommentIndex,
   ChapterCommentersRow,
-  VerseCommentGutter,
+  VerseCommentMarker,
   useSelectedUserId,
   useSelectedUserStore,
 } from '@/features/select-verse-view'
@@ -508,24 +508,20 @@ const ChapterPreview = memo(function ChapterPreview({ texts }: { texts: ChapterT
             return (
               <li
                 key={verse}
-                className={`flex items-stretch ${isLast ? '' : 'border-b'}`}
+                className={isLast ? '' : 'border-b'}
                 style={{ borderColor: 'var(--line)' }}
               >
-                <div className="flex-1 min-w-0">
-                  <VerseRow
-                    collection={texts.ref.collection}
-                    book={texts.ref.book}
-                    chapter={texts.ref.chapter}
-                    verse={verse}
-                    textHtml={texts.primary.get(verse)}
-                    textHtmlSecondary={texts.secondary.get(verse)}
-                    secondaryLang={SECONDARY_LANGUAGE}
-                    mode="read"
-                    selected={false}
-                    onSelect={() => {}}
-                    showNumber={!target?.isFrontMatter}
-                  />
-                </div>
+                <VerseRow
+                  verse={verse}
+                  textHtml={texts.primary.get(verse)}
+                  textHtmlSecondary={texts.secondary.get(verse)}
+                  secondaryLang={SECONDARY_LANGUAGE}
+                  mode="read"
+                  selected={false}
+                  onSelect={() => {}}
+                  onOpen={() => {}}
+                  showNumber={!target?.isFrontMatter}
+                />
               </li>
             )
           })}
@@ -546,21 +542,12 @@ function ChapterView({
   const router = useRouter()
   const [sheetOpen, setSheetOpen] = useState(false)
   const [composerVerses, setComposerVerses] = useState<number[] | undefined>()
-  // 塗りの持ち主は印とシートで分ける。ひとつの状態を両者で書くと、シートの開閉に
-  // 伴うフォーカスの出入りで飛ぶ印の focus / blur に負けて、開いた直後に消えたり
-  // 閉じた後に残ったりする。
-  // 印側はさらに「どの印の塗りか」を積む。印1つ分の中だけで持つと、フォーカスが
-  // 残っている印があっても、別の印から離脱しただけでその塗りが消える
-  const [gutterClaims, setGutterClaims] = useState<
-    { verse: number; verses: number[] }[]
-  >([])
   const [sheetHighlight, setSheetHighlight] = useState<number[] | null>(null)
-
-  const claimGutterHighlight = (verse: number, verses: number[] | null) =>
-    setGutterClaims((prev) => {
-      const rest = prev.filter((c) => c.verse !== verse)
-      return verses ? [...rest, { verse, verses }] : rest
-    })
+  // 対象の章参照ごと保留する。章参照が無いと、保留中に章移動のリンクなどで
+  // 章が変わったときに前の章の節番号で投稿シートを開いてしまう
+  const [pendingCompose, setPendingCompose] = useState<
+    { verse: number; collection: string; book: string; chapter: number } | null
+  >(null)
   const search = Route.useSearch()
   const navigate = Route.useNavigate()
   const maxVerse = book.verses[chapter - 1]
@@ -584,7 +571,7 @@ function ChapterView({
         : circlePosts,
     [circlePosts, selectedUser],
   )
-  // 身内全員分。シートの中身と、ガターの幅を取るかの判定に使う
+  // 身内全員分。シートの中身と、印の列の幅を取るかの判定に使う
   const allCommentIndex = useMemo(
     () => buildVerseCommentIndex(maxVerse, circlePosts),
     [maxVerse, circlePosts],
@@ -606,28 +593,25 @@ function ChapterView({
   )
   const mode: SelectionMode = canCompose && search.mode === 'select' ? 'select' : 'read'
 
-  // インデックスは章の範囲外の節を持たないので、コメントの有無だけを見れば足りる
+  // インデックスは章の範囲外の節を持たないが、コメントが無い節でも開ける。
+  // 節の行からもこのシートを開くため
   const requestedComment = search.comment
   const commentVerseForScroll =
     mode !== 'select' &&
     requestedComment !== undefined &&
-    (sheetIndex.get(requestedComment)?.covered.length ?? 0) > 0
+    requestedComment >= 1 &&
+    requestedComment <= maxVerse
       ? requestedComment
       : undefined
-  // シートが開いている間はシート側だけが塗りを決める。カードに触れていないときは
-  // シートに出ている全コメントが指す節をまとめて塗る。ホバーの無いタッチでは、
-  // これがコメントの指す範囲を知る唯一の手段になる
+  // シートが開いている間だけ塗る。カードに触れていないときは、シートに出ている
+  // 全コメントが指す節をまとめて塗る
   const highlightedVerses = useMemo(() => {
-    if (commentVerseForScroll === undefined) {
-      // 最後に主張した印を見せる。手放されたら、まだ持っている印に戻る
-      const active = gutterClaims.at(-1)
-      return active ? new Set(active.verses) : null
-    }
+    if (commentVerseForScroll === undefined) return null
     if (sheetHighlight) return new Set(sheetHighlight)
     const covered = sheetIndex.get(commentVerseForScroll)?.covered ?? []
     const verses = covered.flatMap((p) => p.scripture_verses ?? [])
     return new Set(verses.length ? verses : [commentVerseForScroll])
-  }, [commentVerseForScroll, sheetHighlight, gutterClaims, sheetIndex])
+  }, [commentVerseForScroll, sheetHighlight, sheetIndex])
 
   const scrolledVerse = useRef<number | undefined>(undefined)
   const isMounted = useRef(false)
@@ -641,7 +625,7 @@ function ChapterView({
     const target = document.querySelector(`li[data-verse="${commentVerseForScroll}"]`)
     if (!target) return
 
-    // 印を押して別の節に移ったときだけスムーズに動かす（視差効果を減らす設定なら
+    // 節の行を押して別の節に移ったときだけスムーズに動かす（視差効果を減らす設定なら
     // それも行わない）。直リンクで開いた初回の位置決めと、
     // 英文が届いた後の再調整は即時にする。どちらも動く様子に意味がないうえ、'smooth' は
     // 開始時点の座標を目標に据えるため、移動中に高さが変わるとずれた位置で止まる
@@ -682,7 +666,7 @@ function ChapterView({
   const setSelection = (next: number[]) =>
     patchSearch({ select: next.length ? next : undefined })
   // mode=select と同じく push する。戻る操作でシートを閉じられるようにするため。
-  // ただしシートは非モーダルなので、開いたまま別の印を押せる。そのたびに push すると
+  // ただしシートは非モーダルなので、開いたまま別の節の行を押せる。そのたびに push すると
   // 閉じる操作が前の節のシートに戻ってしまうため、開いている間は差し替える。
   // マーカーも足さない（直リンクで開いたエントリに付けると、閉じたときに章から離脱する）
   const openVerseSheet = (verse: number) => {
@@ -705,6 +689,44 @@ function ChapterView({
   }
   const enterSelectMode = () => patchSearch({ mode: 'select' }, false)
   const exitSelectMode = () => patchSearch({ mode: undefined, select: undefined })
+
+  const composeForVerse = (verse: number) => {
+    // 節シートが閉じ切るまでは保留を1件しか受け付けない。ガード無しで連打すると、
+    // 閉じ切る前に closeVerseSheet が毎回 history.back() を呼び、章より前の
+    // 履歴まで戻ってしまう
+    if (pendingCompose !== null) return
+    setPendingCompose({ verse, collection, book: book.id, chapter })
+    closeVerseSheet()
+  }
+
+  // 節シートが閉じる（closeVerseSheet の history.back / URL 更新が反映される）まで
+  // 投稿シートを開かずに待つ。先に開くと、閉じるための popstate を投稿シート側の
+  // リスナーが受けて、開いたばかりの投稿シートを即座に閉じてしまう。
+  // 保留と章参照の突き合わせも同じ effect で行う。別の effect に分けると、
+  // 章とコメントの両方が同じコミットで変わったときに宣言順が結果を左右してしまう
+  // （先に定義した方が、後で章の不一致を捨てる effect より先に古い保留で開いてしまう）
+  useEffect(() => {
+    if (pendingCompose === null) return
+    // 保留中に FAB などから別の投稿シートが開いていれば、ユーザーの最後の操作を
+    // 優先して保留は捨てる。捨てないと、後から発火したこの effect が
+    // 開いている投稿シートの対象節・タイトルをすり替えてしまう
+    if (sheetOpen) {
+      setPendingCompose(null)
+      return
+    }
+    const sameChapter =
+      pendingCompose.collection === collection &&
+      pendingCompose.book === book.id &&
+      pendingCompose.chapter === chapter
+    if (!sameChapter) {
+      setPendingCompose(null)
+      return
+    }
+    if (commentVerseForScroll !== undefined) return
+    setComposerVerses([pendingCompose.verse])
+    setPendingCompose(null)
+    setSheetOpen(true)
+  }, [pendingCompose, sheetOpen, commentVerseForScroll, collection, book.id, chapter])
 
   const openComposerForChapter = () => {
     setComposerVerses(undefined)
@@ -730,7 +752,7 @@ function ChapterView({
     () => [...allCommentIndex.values()].some((entry) => entry.anchored.length > 0),
     [allCommentIndex],
   )
-  const showGutter = mode !== 'select' && hasAnchorInChapter
+  const showMarker = mode !== 'select' && hasAnchorInChapter
 
   const composeMenuProps = {
     onSelectChapter: openComposerForChapter,
@@ -782,7 +804,7 @@ function ChapterView({
   )
 
   const verseList = (
-    // 右の 4px は印のバッジ（gutter の -right-1）の逃げ場。無いとページャに切られる
+    // 右の 4px は印のバッジ（-right-1）の逃げ場。無いとページャに切られる
     <div className="pb-4 pr-1">
       <ul>
         {verseNumbers.map((verse, i) => {
@@ -795,39 +817,34 @@ function ChapterView({
               key={verse}
               data-verse={verse}
               // sticky ヘッダーの下に潜り込まないよう、スクロール先に余白を取る
-              className={`flex items-stretch scroll-mt-16 ${isLast ? '' : 'border-b'}`}
+              className={`scroll-mt-16 ${isLast ? '' : 'border-b'}`}
               style={{ borderColor: 'var(--line)' }}
             >
-              <div className="flex-1 min-w-0">
-                <VerseRow
-                  collection={collection}
-                  book={book.id}
-                  chapter={chapter}
-                  verse={verse}
-                  textHtml={textHtml}
-                  textHtmlSecondary={secondaryTexts.get(verse)}
-                  secondaryLang={SECONDARY_LANGUAGE}
-                  mode={mode}
-                  selected={isSelected}
-                  onSelect={(v) => setSelection(toggleVerse(selection, v))}
-                  highlighted={highlightedVerses?.has(verse) ?? false}
-                  showNumber={!book.isFrontMatter}
-                />
-              </div>
-              {showGutter && (
-                <VerseCommentGutter
-                  verse={verse}
-                  entry={
-                    entry && {
-                      anchoredCount: entry.anchored.length,
-                      commenters: entry.commenters,
-                      highlightVerses: entry.highlightVerses,
-                    }
-                  }
-                  onOpen={openVerseSheet}
-                  onHighlight={claimGutterHighlight}
-                />
-              )}
+              <VerseRow
+                verse={verse}
+                textHtml={textHtml}
+                textHtmlSecondary={secondaryTexts.get(verse)}
+                secondaryLang={SECONDARY_LANGUAGE}
+                mode={mode}
+                selected={isSelected}
+                onSelect={(v) => setSelection(toggleVerse(selection, v))}
+                onOpen={openVerseSheet}
+                commentCount={entry?.covered.length ?? 0}
+                highlighted={highlightedVerses?.has(verse) ?? false}
+                showNumber={!book.isFrontMatter}
+                marker={
+                  showMarker ? (
+                    <VerseCommentMarker
+                      entry={
+                        entry && {
+                          anchoredCount: entry.anchored.length,
+                          commenters: entry.commenters,
+                        }
+                      }
+                    />
+                  ) : null
+                }
+              />
             </li>
           )
         })}
@@ -835,16 +852,25 @@ function ChapterView({
     </div>
   )
 
+  // 投稿シートはモーダルなので、開いている間は非モーダルの節シートを描かない。
+  // FAB から投稿シートを開いたときに裏へ節シートが残るのをこの条件で防ぐ
   const activeVerseSheet =
-    commentVerseForScroll !== undefined ? (
+    commentVerseForScroll !== undefined && !sheetOpen ? (
       <VerseCommentSheet
         open
         verse={commentVerseForScroll}
+        label={getScriptureLabel({ ...loc, verses: [commentVerseForScroll] }, book)}
+        officialUrl={buildScriptureUrl({ ...loc, verses: [commentVerseForScroll] }, book)}
+        textHtml={verseTextMap.get(commentVerseForScroll)}
+        textHtmlSecondary={secondaryTexts.get(commentVerseForScroll)}
+        secondaryLang={SECONDARY_LANGUAGE}
         posts={sheetIndex.get(commentVerseForScroll)?.covered ?? []}
         onOpenChange={(open) => {
           if (!open) closeVerseSheet()
         }}
         onHighlight={setSheetHighlight}
+        canCompose={canCompose}
+        onCompose={composeForVerse}
       />
     ) : null
 

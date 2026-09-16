@@ -1,12 +1,11 @@
 import { describe, it, expect, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import {
   createRootRoute,
   createRoute,
   createRouter,
   createMemoryHistory,
-  Link,
   Outlet,
   RouterProvider,
 } from '@tanstack/react-router'
@@ -14,12 +13,10 @@ import { VerseRow } from '@/features/select-scripture-verses'
 
 type RenderOptions = {
   chapterLoader?: (ctx: { params: { chapter: string } }) => void
-  defaultPreload?: 'intent'
-  defaultPreloadDelay?: number
 }
 
 function renderInRouter(ui: React.ReactNode, options: RenderOptions = {}) {
-  const { chapterLoader, defaultPreload, defaultPreloadDelay } = options
+  const { chapterLoader } = options
   const rootRoute = createRootRoute({
     component: () => <Outlet />,
     notFoundComponent: () => <div>404</div>,
@@ -38,39 +35,92 @@ function renderInRouter(ui: React.ReactNode, options: RenderOptions = {}) {
   const router = createRouter({
     routeTree: rootRoute.addChildren([indexRoute, chapterRoute]),
     history: createMemoryHistory({ initialEntries: ['/'] }),
-    // 明示的な undefined でも Router 内部の既定値を潰すため、指定されたものだけを載せる
-    ...(defaultPreload !== undefined && { defaultPreload }),
-    ...(defaultPreloadDelay !== undefined && { defaultPreloadDelay }),
   })
   return render(<RouterProvider router={router} />)
 }
 
 const baseProps = {
-  collection: 'bofm',
-  book: 'mosiah',
-  chapter: 3,
   verse: 19,
   textHtml: '主のみもとに帰る道はただ一つ',
 }
 
 describe('VerseRow', () => {
-  it("mode='read' で節番号と本文を表示し、リンクとして機能する", async () => {
+  it("mode='read' でタップすると onOpen が呼ばれ、遷移しない", async () => {
+    const onOpen = vi.fn()
+    const chapterLoader = vi.fn()
     renderInRouter(
-      <VerseRow {...baseProps} mode="read" selected={false} onSelect={vi.fn()} />,
+      <VerseRow
+        verse={7}
+        textHtml="本文"
+        mode="read"
+        selected={false}
+        onSelect={() => {}}
+        onOpen={onOpen}
+      />,
+      { chapterLoader },
     )
-    await waitFor(() => {
-      expect(screen.getByText('19')).toBeInTheDocument()
-      expect(screen.getByRole('link')).toHaveAttribute(
-        'href',
-        expect.stringContaining('/scriptures/bofm/mosiah/3'),
-      )
-    })
+
+    await userEvent.click(await screen.findByRole('button'))
+
+    expect(onOpen).toHaveBeenCalledWith(7)
+    expect(chapterLoader).not.toHaveBeenCalled()
+    expect(screen.queryByRole('link')).toBeNull()
+  })
+
+  it("mode='read' のボタンは aria-haspopup='dialog' を持つ", async () => {
+    render(
+      <VerseRow
+        verse={7}
+        textHtml="本文"
+        mode="read"
+        selected={false}
+        onSelect={() => {}}
+        onOpen={() => {}}
+      />,
+    )
+
+    expect(await screen.findByRole('button')).toHaveAttribute('aria-haspopup', 'dialog')
+  })
+
+  it("mode='read' でコメント件数を視覚的に隠したテキストとして読み上げに残す", async () => {
+    render(
+      <VerseRow
+        verse={7}
+        textHtml="本文"
+        mode="read"
+        selected={false}
+        onSelect={() => {}}
+        onOpen={() => {}}
+        commentCount={3}
+      />,
+    )
+
+    const countText = await screen.findByText('コメント3件')
+    expect(countText).toBeInTheDocument()
+    expect(countText).toHaveClass('sr-only')
+  })
+
+  it("mode='read' でコメントが無ければ件数を出さない", async () => {
+    render(
+      <VerseRow
+        verse={7}
+        textHtml="本文"
+        mode="read"
+        selected={false}
+        onSelect={() => {}}
+        onOpen={() => {}}
+        commentCount={0}
+      />,
+    )
+
+    await screen.findByRole('button')
+    expect(screen.queryByText(/コメント/)).toBeNull()
   })
 
   it("mode='select' でクリックすると onSelect が呼ばれ、リンク遷移は起きない", async () => {
     const onSelect = vi.fn()
-    renderInRouter(
-      <VerseRow {...baseProps} mode="select" selected={false} onSelect={onSelect} />,
+    render(
+      <VerseRow {...baseProps} mode="select" selected={false} onSelect={onSelect} onOpen={() => {}} />,
     )
     await waitFor(() => {
       expect(screen.queryByRole('link')).toBeNull()
@@ -81,8 +131,8 @@ describe('VerseRow', () => {
   })
 
   it("mode='select' かつ selected=true でチェックマークとアクセントを表示", async () => {
-    renderInRouter(
-      <VerseRow {...baseProps} mode="select" selected={true} onSelect={vi.fn()} />,
+    render(
+      <VerseRow {...baseProps} mode="select" selected={true} onSelect={vi.fn()} onOpen={() => {}} />,
     )
     await waitFor(() => {
       const checkbox = screen.getByRole('checkbox')
@@ -91,8 +141,8 @@ describe('VerseRow', () => {
   })
 
   it('本文に明朝体クラスを適用する', async () => {
-    const { container } = renderInRouter(
-      <VerseRow {...baseProps} mode="read" selected={false} onSelect={vi.fn()} />,
+    const { container } = render(
+      <VerseRow {...baseProps} mode="read" selected={false} onSelect={vi.fn()} onOpen={() => {}} />,
     )
     await waitFor(() => {
       expect(container.querySelector('span.font-scripture')).not.toBeNull()
@@ -102,12 +152,13 @@ describe('VerseRow', () => {
 
 describe('VerseRow highlighted', () => {
   it('highlighted=true で本文行に背景を敷く', async () => {
-    const { container } = renderInRouter(
+    const { container } = render(
       <VerseRow
         {...baseProps}
         mode="read"
         selected={false}
         onSelect={vi.fn()}
+        onOpen={() => {}}
         highlighted
       />,
     )
@@ -119,8 +170,8 @@ describe('VerseRow highlighted', () => {
   })
 
   it('highlighted 未指定なら背景を敷かない', async () => {
-    const { container } = renderInRouter(
-      <VerseRow {...baseProps} mode="read" selected={false} onSelect={vi.fn()} />,
+    const { container } = render(
+      <VerseRow {...baseProps} mode="read" selected={false} onSelect={vi.fn()} onOpen={() => {}} />,
     )
     await waitFor(() => {
       expect(screen.getByText('19')).toBeInTheDocument()
@@ -131,8 +182,8 @@ describe('VerseRow highlighted', () => {
 
 describe('VerseRow showNumber', () => {
   it("showNumber=false のとき mode='read' で節番号を表示しない", async () => {
-    renderInRouter(
-      <VerseRow {...baseProps} mode="read" selected={false} onSelect={vi.fn()} showNumber={false} />,
+    render(
+      <VerseRow {...baseProps} mode="read" selected={false} onSelect={vi.fn()} onOpen={() => {}} showNumber={false} />,
     )
     await waitFor(() => {
       expect(screen.queryByText('19')).toBeNull()
@@ -140,8 +191,8 @@ describe('VerseRow showNumber', () => {
   })
 
   it("showNumber=false のとき mode='select' でも節番号を表示しない", async () => {
-    renderInRouter(
-      <VerseRow {...baseProps} mode="select" selected={false} onSelect={vi.fn()} showNumber={false} />,
+    render(
+      <VerseRow {...baseProps} mode="select" selected={false} onSelect={vi.fn()} onOpen={() => {}} showNumber={false} />,
     )
     await waitFor(() => {
       expect(screen.queryByText('19')).toBeNull()
@@ -152,12 +203,13 @@ describe('VerseRow showNumber', () => {
 
 describe('VerseRow bilingual', () => {
   it('textHtmlSecondary 指定時は lang 属性付きで第2言語テキストを表示する', async () => {
-    const { container } = renderInRouter(
+    const { container } = render(
       <VerseRow
         {...baseProps}
         mode="read"
         selected={false}
         onSelect={vi.fn()}
+        onOpen={() => {}}
         textHtmlSecondary="Home to the Lord is one way"
         secondaryLang="en"
       />,
@@ -169,12 +221,13 @@ describe('VerseRow bilingual', () => {
   })
 
   it('textHtmlSecondary があっても節番号と日本語本文は同じ行に並ぶ', async () => {
-    renderInRouter(
+    render(
       <VerseRow
         {...baseProps}
         mode="read"
         selected={false}
         onSelect={vi.fn()}
+        onOpen={() => {}}
         textHtmlSecondary="Home to the Lord is one way"
         secondaryLang="en"
       />,
@@ -189,12 +242,13 @@ describe('VerseRow bilingual', () => {
   it('併記中は verse-item に data-bilingual を付ける', async () => {
     // 画面外の節の高さ見積もり（contain-intrinsic-size）を併記の有無で切り替えるため。
     // 見積もりがずれるとページ全体の高さと節へのスクロール位置が狂う
-    const { container } = renderInRouter(
+    const { container } = render(
       <VerseRow
         {...baseProps}
         mode="read"
         selected={false}
         onSelect={vi.fn()}
+        onOpen={() => {}}
         textHtmlSecondary="Home to the Lord is one way"
         secondaryLang="en"
       />,
@@ -206,8 +260,8 @@ describe('VerseRow bilingual', () => {
   })
 
   it('併記していなければ data-bilingual を付けない', async () => {
-    const { container } = renderInRouter(
-      <VerseRow {...baseProps} mode="read" selected={false} onSelect={vi.fn()} />,
+    const { container } = render(
+      <VerseRow {...baseProps} mode="read" selected={false} onSelect={vi.fn()} onOpen={() => {}} />,
     )
 
     await waitFor(() => {
@@ -216,8 +270,8 @@ describe('VerseRow bilingual', () => {
   })
 
   it('textHtmlSecondary が無ければ第2言語ブロックを描画しない', async () => {
-    const { container } = renderInRouter(
-      <VerseRow {...baseProps} mode="read" selected={false} onSelect={vi.fn()} />,
+    const { container } = render(
+      <VerseRow {...baseProps} mode="read" selected={false} onSelect={vi.fn()} onOpen={() => {}} />,
     )
     await waitFor(() => {
       expect(screen.getByText('19')).toBeInTheDocument()
@@ -226,8 +280,8 @@ describe('VerseRow bilingual', () => {
   })
 
   it('textHtmlSecondary が無ければ本文をdivで包まず、節番号と同じ行に並ぶ', async () => {
-    renderInRouter(
-      <VerseRow {...baseProps} mode="read" selected={false} onSelect={vi.fn()} />,
+    render(
+      <VerseRow {...baseProps} mode="read" selected={false} onSelect={vi.fn()} onOpen={() => {}} />,
     )
     await waitFor(() => {
       expect(screen.getByText('19')).toBeInTheDocument()
@@ -235,45 +289,4 @@ describe('VerseRow bilingual', () => {
     const numberSpan = screen.getByText('19')
     expect(numberSpan.nextElementSibling?.tagName).toBe('SPAN')
   })
-})
-
-// TanStack Router の intent プリロードは hover だけでなく focus と touchstart でも発火する
-const preloadTriggers: Array<[string, (el: HTMLElement) => Promise<unknown> | void]> = [
-  ['ホバー', (el) => userEvent.hover(el)],
-  ['キーボードフォーカス', (el) => el.focus()],
-  ['タッチ', (el) => fireEvent.touchStart(el)],
-]
-
-describe('VerseRow preload', () => {
-  it.each(preloadTriggers)(
-    "mode='read' のリンクは%sしてもプリロードしない",
-    async (_label, trigger) => {
-      const loadedChapters: string[] = []
-      renderInRouter(
-        <>
-          <VerseRow {...baseProps} mode="read" selected={false} onSelect={vi.fn()} />
-          <Link
-            to="/scriptures/$collection/$book/$chapter"
-            params={{ collection: 'bofm', book: 'mosiah', chapter: '99' }}
-          >
-            対照リンク
-          </Link>
-        </>,
-        {
-          chapterLoader: ({ params }) => void loadedChapters.push(params.chapter),
-          defaultPreload: 'intent',
-          defaultPreloadDelay: 0,
-        },
-      )
-      const verseLink = await screen.findByRole('link', { name: /主のみもとに帰る道/ })
-      const controlLink = screen.getByRole('link', { name: '対照リンク' })
-
-      await trigger(verseLink)
-      // 後から操作した対照リンクの記録を待てば、節リンクが遅れてプリロードしていないと言える
-      await trigger(controlLink)
-      await waitFor(() => expect(loadedChapters).toContain('99'))
-
-      expect(loadedChapters).not.toContain(String(baseProps.chapter))
-    },
-  )
 })

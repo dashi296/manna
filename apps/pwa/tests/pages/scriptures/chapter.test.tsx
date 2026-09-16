@@ -59,6 +59,16 @@ const fabComposeTrigger = () => {
   return found
 }
 
+// 印は非対話の目印になったため、節シートを開く操作は節の行のタップに集約されている
+function verseRow(container: HTMLElement, verse: number) {
+  const row = container.querySelector<HTMLElement>(`li[data-verse="${verse}"]`)
+  if (!row) throw new Error(`${verse}節の行が見つからない`)
+  return row
+}
+function openVerseRowButton(container: HTMLElement, verse: number) {
+  return within(verseRow(container, verse)).getByRole('button')
+}
+
 type TestLoaderData = {
   book: {
     id: string
@@ -379,16 +389,59 @@ describe('ChapterPage', () => {
       circlePosts: [circlePost('p1', 'u1', '中村さん', [3, 4, 5])],
     }
     search = {}
-    render(<ChapterPage />)
+    const { container } = render(<ChapterPage />)
 
     await waitFor(() => {
-      expect(
-        screen.getByRole('button', { name: /3節のコメントを見る/ }),
-      ).toBeInTheDocument()
+      expect(within(verseRow(container, 3)).getByText('中')).toBeInTheDocument()
     })
-    // 範囲の途中の節には印もボタンも置かない
-    expect(screen.queryByRole('button', { name: /4節のコメントを見る/ })).toBeNull()
-    expect(screen.queryByRole('button', { name: /5節のコメントを見る/ })).toBeNull()
+    // 範囲の途中の節には印を置かない
+    expect(within(verseRow(container, 4)).queryByText('中')).toBeNull()
+    expect(within(verseRow(container, 5)).queryByText('中')).toBeNull()
+  })
+
+  it('印は行のボタンの内側にあり、印を押してもその節のシートが開く', async () => {
+    // 印の列（コメントのアバター）がボタンの外にあると、そこだけタップしても
+    // 何も起きないデッドゾーンになる
+    const { useSelectedUserStore } = await import('@/features/select-verse-view')
+    useSelectedUserStore.setState({ selectedUserId: null })
+    loaderData = {
+      ...baseChapterData,
+      chapterCommenters: [{ userId: 'u1', name: '中村さん', avatarUrl: null }],
+      circlePosts: [circlePost('p1', 'u1', '中村さん', [3])],
+    }
+    search = {}
+    navigateSpy.mockClear()
+    const user = userEvent.setup()
+    const { container } = render(<ChapterPage />)
+
+    const marker = await within(verseRow(container, 3)).findByText('中')
+    const rowButton = openVerseRowButton(container, 3)
+    expect(marker.closest('button')).toBe(rowButton)
+
+    await user.click(marker)
+
+    const call = navigateSpy.mock.calls.at(-1)![0]
+    expect(call.search({})).toMatchObject({ comment: 3 })
+  })
+
+  it('継続節はアンカーではなく印が出ないが、covered の件数を読み上げに乗せる', async () => {
+    // 視覚的なバッジ（anchored）は継続節に出ないが、その節のシートには投稿が出る。
+    // sr-only の件数を anchored のままにすると継続節では 0 件のまま何も伝わらない
+    const { useSelectedUserStore } = await import('@/features/select-verse-view')
+    useSelectedUserStore.setState({ selectedUserId: null })
+    loaderData = {
+      ...baseChapterData,
+      chapterCommenters: [{ userId: 'u1', name: '中村さん', avatarUrl: null }],
+      circlePosts: [circlePost('p1', 'u1', '中村さん', [3, 4, 5])],
+    }
+    search = {}
+    const { container } = render(<ChapterPage />)
+
+    await waitFor(() => {
+      expect(within(verseRow(container, 3)).getByText('中')).toBeInTheDocument()
+    })
+    expect(within(verseRow(container, 4)).queryByText('中')).toBeNull()
+    expect(within(verseRow(container, 4)).getByText('コメント1件')).toBeInTheDocument()
   })
 
   it('ユーザー未選択でも身内全員の印が出る', async () => {
@@ -406,12 +459,12 @@ describe('ChapterPage', () => {
       ],
     }
     search = {}
-    render(<ChapterPage />)
+    const { container } = render(<ChapterPage />)
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /1節のコメントを見る/ })).toBeInTheDocument()
+      expect(within(verseRow(container, 1)).getByText('中')).toBeInTheDocument()
     })
-    expect(screen.getByRole('button', { name: /2節のコメントを見る/ })).toBeInTheDocument()
+    expect(within(verseRow(container, 2)).getByText('田')).toBeInTheDocument()
   })
 
   it('ユーザーを選ぶとその人の印だけに絞られる', async () => {
@@ -429,12 +482,12 @@ describe('ChapterPage', () => {
       ],
     }
     search = {}
-    render(<ChapterPage />)
+    const { container } = render(<ChapterPage />)
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /1節のコメントを見る/ })).toBeInTheDocument()
+      expect(within(verseRow(container, 1)).getByText('中')).toBeInTheDocument()
     })
-    expect(screen.queryByRole('button', { name: /2節のコメントを見る/ })).toBeNull()
+    expect(within(verseRow(container, 2)).queryByText('田')).toBeNull()
   })
 
   it('mode=select 中は印を描画しない', async () => {
@@ -448,32 +501,7 @@ describe('ChapterPage', () => {
     search = { mode: 'select', select: [1] }
     render(<ChapterPage />)
 
-    expect(screen.queryByRole('button', { name: /節のコメントを見る/ })).toBeNull()
-  })
-
-  it('印にホバーするとその投稿の対象節だけがハイライトされる', async () => {
-    const { useSelectedUserStore } = await import('@/features/select-verse-view')
-    useSelectedUserStore.setState({ selectedUserId: null })
-    loaderData = {
-      ...baseChapterData,
-      chapterCommenters: [{ userId: 'u1', name: '中村さん', avatarUrl: null }],
-      circlePosts: [circlePost('p1', 'u1', '中村さん', [3, 4, 5])],
-    }
-    search = {}
-    const user = userEvent.setup()
-    const { container } = render(<ChapterPage />)
-
-    const marker = await screen.findByRole('button', { name: /3節のコメントを見る/ })
-    await user.hover(marker)
-
-    await waitFor(() => {
-      expect(container.querySelectorAll('[data-highlighted="true"]')).toHaveLength(3)
-    })
-
-    await user.unhover(marker)
-    await waitFor(() => {
-      expect(container.querySelectorAll('[data-highlighted="true"]')).toHaveLength(0)
-    })
+    expect(screen.queryByText('中')).toBeNull()
   })
 
   it('飛び番の投稿は連続する塊ごとに印が出る', async () => {
@@ -485,18 +513,18 @@ describe('ChapterPage', () => {
       circlePosts: [circlePost('p1', 'u1', '中村さん', [3, 6, 7])],
     }
     search = {}
-    render(<ChapterPage />)
+    const { container } = render(<ChapterPage />)
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /3節のコメントを見る/ })).toBeInTheDocument()
+      expect(within(verseRow(container, 3)).getByText('中')).toBeInTheDocument()
     })
-    expect(screen.getByRole('button', { name: /6節のコメントを見る/ })).toBeInTheDocument()
+    expect(within(verseRow(container, 6)).getByText('中')).toBeInTheDocument()
     // 7節は 6節から続く塊の途中なのでアンカーではない
-    expect(screen.queryByRole('button', { name: /7節のコメントを見る/ })).toBeNull()
-    expect(screen.queryByRole('button', { name: /4節/ })).toBeNull()
+    expect(within(verseRow(container, 7)).queryByText('中')).toBeNull()
+    expect(within(verseRow(container, 4)).queryByText('中')).toBeNull()
   })
 
-  it('印を押すと comment を push（replace: false）して戻るで閉じられるようにする', async () => {
+  it('節の行を押すと comment を push（replace: false）して戻るで閉じられるようにする', async () => {
     const { useSelectedUserStore } = await import('@/features/select-verse-view')
     useSelectedUserStore.setState({ selectedUserId: null })
     loaderData = {
@@ -507,9 +535,9 @@ describe('ChapterPage', () => {
     search = {}
     navigateSpy.mockClear()
     const user = userEvent.setup()
-    render(<ChapterPage />)
+    const { container } = render(<ChapterPage />)
 
-    await user.click(await screen.findByRole('button', { name: /3節のコメントを見る/ }))
+    await user.click(openVerseRowButton(container, 3))
 
     const call = navigateSpy.mock.calls.at(-1)![0]
     expect(call.replace).toBe(false)
@@ -528,8 +556,8 @@ describe('ChapterPage', () => {
     expect(navigateSpy.mock.calls.at(-1)![0]).toMatchObject({ resetScroll: false })
   })
 
-  it('シートが開いたまま別の印を押しても履歴を積まず、マーカーも足さない', async () => {
-    // シートは非モーダルなので背後の印を押せる。押すたびに push すると閉じる操作が
+  it('シートが開いたまま別の節の行を押しても履歴を積まず、マーカーも足さない', async () => {
+    // シートは非モーダルなので背後の節の行を押せる。押すたびに push すると閉じる操作が
     // 前の節のシートに戻ってしまう。また直リンクで開いたエントリにマーカーを足すと、
     // 閉じたときに章から離脱する
     const { useSelectedUserStore } = await import('@/features/select-verse-view')
@@ -545,10 +573,10 @@ describe('ChapterPage', () => {
     search = { comment: 3 }
     navigateSpy.mockClear()
     const user = userEvent.setup()
-    render(<ChapterPage />)
+    const { container } = render(<ChapterPage />)
     await screen.findByText('節3のコメント')
 
-    await user.click(screen.getByRole('button', { name: /5節のコメントを見る/ }))
+    await user.click(openVerseRowButton(container, 5))
 
     const call = navigateSpy.mock.calls.at(-1)![0]
     expect(call.search({})).toMatchObject({ comment: 5 })
@@ -558,7 +586,7 @@ describe('ChapterPage', () => {
     expect(call.state({ mannaVerseSheet: true })).toMatchObject({ mannaVerseSheet: true })
   })
 
-  it('印を押すとシート由来のマーカーを履歴 state に載せる', async () => {
+  it('節の行を押すとシート由来のマーカーを履歴 state に載せる', async () => {
     const { useSelectedUserStore } = await import('@/features/select-verse-view')
     useSelectedUserStore.setState({ selectedUserId: null })
     loaderData = {
@@ -569,9 +597,9 @@ describe('ChapterPage', () => {
     search = {}
     navigateSpy.mockClear()
     const user = userEvent.setup()
-    render(<ChapterPage />)
+    const { container } = render(<ChapterPage />)
 
-    await user.click(await screen.findByRole('button', { name: /3節のコメントを見る/ }))
+    await user.click(openVerseRowButton(container, 3))
 
     const call = navigateSpy.mock.calls.at(-1)![0]
     expect(call.replace).toBe(false)
@@ -668,12 +696,12 @@ describe('ChapterPage', () => {
       ],
     }
     search = {}
-    render(<ChapterPage />)
+    const { container } = render(<ChapterPage />)
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /5節のコメントを見る/ })).toBeInTheDocument()
+      expect(within(verseRow(container, 5)).getByText('田')).toBeInTheDocument()
     })
-    expect(screen.queryByRole('button', { name: /3節のコメントを見る/ })).toBeNull()
+    expect(within(verseRow(container, 3)).queryByText('中')).toBeNull()
   })
 
   it('章の範囲内に印が1つも無いならガターの幅を確保しない', async () => {
@@ -714,27 +742,26 @@ describe('ChapterPage', () => {
     await waitFor(() => {
       expect(screen.getByText('一節の本文')).toBeInTheDocument()
     })
-    expect(screen.queryByRole('button', { name: /節のコメントを見る/ })).toBeNull()
+    expect(within(verseRow(container, 3)).queryByText('中')).toBeNull()
     const row = container.querySelector('li[data-verse="1"]')!
     expect(row.querySelector('.w-6')).not.toBeNull()
   })
 
-  it('その節にコメントが無いなら comment があってもシートを開かない', async () => {
+  it('その節にコメントが無くても comment があればシートが開く。他の節の投稿は出ない', async () => {
     const { useSelectedUserStore } = await import('@/features/select-verse-view')
     useSelectedUserStore.setState({ selectedUserId: null })
     loaderData = {
       ...baseChapterData,
       chapterCommenters: [{ userId: 'u1', name: '中村さん', avatarUrl: null }],
-      circlePosts: [circlePost('p1', 'u1', '中村さん', [3])],
+      circlePosts: [circlePost('p1', 'u1', '中村さん', [3], '節3の投稿')],
     }
     // 2節にはコメントが無い
     search = { comment: 2 }
     render(<ChapterPage />)
 
-    await waitFor(() => {
-      expect(screen.getByText('一節の本文')).toBeInTheDocument()
-    })
-    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(await screen.findByText('第1ニーファイ書 1:2')).toBeInTheDocument()
+    expect(screen.getByText('この節への投稿はまだありません')).toBeInTheDocument()
+    expect(screen.queryByText('節3の投稿')).toBeNull()
   })
 
   it('search.comment があるとその節のシートを開く', async () => {
@@ -749,6 +776,191 @@ describe('ChapterPage', () => {
     render(<ChapterPage />)
 
     expect(await screen.findByText('節3のコメント')).toBeInTheDocument()
+  })
+
+  it('投稿シートを開いている間は節シートを描かない', async () => {
+    // composeForVerse は節シートが実際に閉じる（search.comment のクリアが反映される）
+    // まで投稿シートを開かずに待つ。ルーターをモックしているため、その反映をここで
+    // 手動で再現してから投稿シートが開くことを確かめる
+    const { useSelectedUserStore } = await import('@/features/select-verse-view')
+    useSelectedUserStore.setState({ selectedUserId: null })
+    loaderData = {
+      ...baseChapterData,
+      chapterCommenters: [{ userId: 'u1', name: '中村さん', avatarUrl: null }],
+      circlePosts: [circlePost('p1', 'u1', '中村さん', [3, 4, 5], '節3のコメント')],
+    }
+    search = { comment: 3 }
+    const user = userEvent.setup()
+    const { rerender } = render(<ChapterPage />)
+
+    await screen.findByText('節3のコメント')
+    expect(document.body.querySelector('[data-slot="drawer-content"]')).not.toBeNull()
+
+    await user.click(screen.getByRole('button', { name: 'この節に投稿する' }))
+
+    // ルーターが closeVerseSheet の navigate を実際に反映した状態を再現する
+    search = { ...search, comment: undefined }
+    rerender(<ChapterPage />)
+
+    await waitFor(() => {
+      expect(document.body.querySelector('[data-slot="sheet-content"]')).not.toBeNull()
+    })
+    expect(document.body.querySelector('[data-slot="drawer-content"]')).toBeNull()
+  })
+
+  it('節シートが開いたままの間は投稿シートを開かない', async () => {
+    // 節シートを閉じる navigate は非同期に反映される。反映される前に投稿シートを
+    // 開くと、閉じるための popstate を投稿シート側のリスナーが受けて即座に閉じてしまう
+    const { useSelectedUserStore } = await import('@/features/select-verse-view')
+    useSelectedUserStore.setState({ selectedUserId: null })
+    loaderData = {
+      ...baseChapterData,
+      chapterCommenters: [{ userId: 'u1', name: '中村さん', avatarUrl: null }],
+      circlePosts: [circlePost('p1', 'u1', '中村さん', [3], '節3のコメント')],
+    }
+    search = { comment: 3 }
+    const user = userEvent.setup()
+    render(<ChapterPage />)
+
+    await screen.findByText('節3のコメント')
+
+    await user.click(screen.getByRole('button', { name: 'この節に投稿する' }))
+
+    // search.comment がまだクリアされていないので、節シートを保ったまま
+    // 投稿シートは開かない
+    expect(document.body.querySelector('[data-slot="sheet-content"]')).toBeNull()
+    expect(document.body.querySelector('[data-slot="drawer-content"]')).not.toBeNull()
+  })
+
+  it('投稿シートが開けば search.comment が残っていても節シートを消す（!sheetOpen ガード）', async () => {
+    // 章全体への投稿は composeForVerse を経由せず search.comment に触れない。
+    // それでも投稿シートが開けば節シート側は !sheetOpen だけで隠れることを確かめる
+    const { useSelectedUserStore } = await import('@/features/select-verse-view')
+    useSelectedUserStore.setState({ selectedUserId: null })
+    loaderData = {
+      ...baseChapterData,
+      chapterCommenters: [{ userId: 'u1', name: '中村さん', avatarUrl: null }],
+      circlePosts: [circlePost('p1', 'u1', '中村さん', [3], '節3のコメント')],
+    }
+    search = { comment: 3 }
+    const user = userEvent.setup()
+    render(<ChapterPage />)
+
+    await screen.findByText('節3のコメント')
+    expect(document.body.querySelector('[data-slot="drawer-content"]')).not.toBeNull()
+
+    await user.click(headerComposeTrigger())
+    await user.click(await screen.findByRole('menuitem', { name: /章全体に投稿/ }))
+
+    await waitFor(() => {
+      expect(document.body.querySelector('[data-slot="sheet-content"]')).not.toBeNull()
+    })
+    expect(document.body.querySelector('[data-slot="drawer-content"]')).toBeNull()
+  })
+
+  it('「この節に投稿する」を連打しても history.back は1回しか走らない', async () => {
+    // ガードが無いと、節シートが閉じ切る前の連打のたびに closeVerseSheet が
+    // history.back() を呼び、章より前の履歴まで戻ってしまう
+    canGoBack = true
+    historyBackSpy.mockClear()
+    window.history.pushState({ mannaVerseSheet: true }, '')
+    const { useSelectedUserStore } = await import('@/features/select-verse-view')
+    useSelectedUserStore.setState({ selectedUserId: null })
+    loaderData = {
+      ...baseChapterData,
+      chapterCommenters: [{ userId: 'u1', name: '中村さん', avatarUrl: null }],
+      circlePosts: [circlePost('p1', 'u1', '中村さん', [3], '節3のコメント')],
+    }
+    search = { comment: 3 }
+    const user = userEvent.setup()
+    render(<ChapterPage />)
+    await screen.findByText('節3のコメント')
+
+    const button = screen.getByRole('button', { name: 'この節に投稿する' })
+    await user.click(button)
+    await user.click(button)
+
+    expect(historyBackSpy).toHaveBeenCalledTimes(1)
+    window.history.replaceState({}, '')
+  })
+
+  it('保留中に章が変わったら、前の章の節番号で投稿シートを開かない', async () => {
+    // 章移動のリンクなどで章が変わったのに保留を持ち越すと、次の章で
+    // commentVerseForScroll が undefined になった瞬間に
+    // 前の章の節番号で投稿シートが開いてしまう
+    const { useSelectedUserStore } = await import('@/features/select-verse-view')
+    useSelectedUserStore.setState({ selectedUserId: null })
+    const bookWithTwoChapters = { ...baseChapterData.book, verses: [20, 20] }
+    loaderData = {
+      ...baseChapterData,
+      book: bookWithTwoChapters,
+      chapter: 1,
+      chapterCommenters: [{ userId: 'u1', name: '中村さん', avatarUrl: null }],
+      circlePosts: [circlePost('p1', 'u1', '中村さん', [3], '節3のコメント')],
+    }
+    search = { comment: 3 }
+    const user = userEvent.setup()
+    const { rerender } = render(<ChapterPage />)
+    await screen.findByText('節3のコメント')
+
+    await user.click(screen.getByRole('button', { name: 'この節に投稿する' }))
+
+    // 章移動のリンクなどで次の章へ移動。前章の comment=3 はこの章には無関係
+    loaderData = {
+      ...baseChapterData,
+      book: bookWithTwoChapters,
+      chapter: 2,
+      circlePosts: [],
+    }
+    search = {}
+    rerender(<ChapterPage />)
+
+    await waitFor(() => {
+      expect(screen.getByText('一節の本文')).toBeInTheDocument()
+    })
+    expect(document.body.querySelector('[data-slot="sheet-content"]')).toBeNull()
+  })
+
+  it('保留中に章全体への投稿を始めたら、後から保留が発火しても対象節をすり替えない', async () => {
+    // 節3への投稿を保留した直後に、ユーザーが FAB/ヘッダーから章全体への投稿へ
+    // 気を変える場合がある。ユーザーの最後の操作が勝つべきで、保留は捨てるのが正しい
+    const { useSelectedUserStore } = await import('@/features/select-verse-view')
+    useSelectedUserStore.setState({ selectedUserId: null })
+    loaderData = {
+      ...baseChapterData,
+      chapterCommenters: [{ userId: 'u1', name: '中村さん', avatarUrl: null }],
+      circlePosts: [circlePost('p1', 'u1', '中村さん', [3], '節3のコメント')],
+    }
+    search = { comment: 3 }
+    const user = userEvent.setup()
+    const { rerender } = render(<ChapterPage />)
+    await screen.findByText('節3のコメント')
+
+    // 節3への投稿を保留する（節シートを閉じている途中）
+    await user.click(screen.getByRole('button', { name: 'この節に投稿する' }))
+
+    // 保留がまだ発火していない間に、章全体への投稿を始める
+    await user.click(headerComposeTrigger())
+    await user.click(await screen.findByRole('menuitem', { name: /章全体に投稿/ }))
+
+    // シートの見出しは initialScripture を毎レンダー直接参照するため、
+    // PostEditor 内部の state 同期を経由せずすり替わりを検出できる
+    expect(
+      screen.getByRole('heading', { name: '📖 第1ニーファイ書 第1章' }),
+    ).toBeInTheDocument()
+
+    // ルーターが closeVerseSheet の navigate を実際に反映した状態を再現する。
+    // 保留が生きたままだと、ここで見出しが節3向けにすり替わってしまう
+    search = { ...search, comment: undefined }
+    rerender(<ChapterPage />)
+
+    await waitFor(() => {
+      expect(document.body.querySelector('[data-slot="sheet-content"]')).not.toBeNull()
+    })
+    expect(
+      screen.getByRole('heading', { name: '📖 第1ニーファイ書 第1章' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: /1:3/ })).toBeNull()
   })
 
   it('シート内のコメントにホバーするとその投稿の対象節だけがハイライトされる', async () => {
@@ -773,92 +985,8 @@ describe('ChapterPage', () => {
     })
   })
 
-  // jsdom の :focus-visible はテスト順で揺れるため、実ブラウザの
-  // 「輪郭の出るフォーカス」を明示的に作る
-  function makeFocusVisible(el: HTMLElement) {
-    const matches = el.matches.bind(el)
-    el.matches = ((sel: string) =>
-      sel === ':focus-visible' ? true : matches(sel)) as typeof el.matches
-  }
-
-  // 印をまたぐ塗りの所有権。印1つ分の中だけで持つと、別の印から離脱しただけで
-  // フォーカスが残っている印の塗りまで消える
-  const twoMarks = () => ({
-    ...baseChapterData,
-    chapterCommenters: [{ userId: 'u1', name: '中村さん', avatarUrl: null }],
-    circlePosts: [
-      circlePost('p1', 'u1', '中村さん', [3, 4, 5], 'A の投稿'),
-      circlePost('p2', 'u1', '中村さん', [10, 11], 'B の投稿'),
-    ],
-  })
-
-  it('A をキーボードで塗ったまま B にホバーして離れても、A の塗りが残る', async () => {
-    const { useSelectedUserStore } = await import('@/features/select-verse-view')
-    useSelectedUserStore.setState({ selectedUserId: null })
-    loaderData = twoMarks()
-    search = {}
-    const { container } = render(<ChapterPage />)
-
-    const a = await screen.findByRole('button', { name: /3節のコメントを見る/ })
-    const b = screen.getByRole('button', { name: /10節のコメントを見る/ })
-    makeFocusVisible(a)
-    fireEvent.focus(a)
-    await waitFor(() => {
-      expect(container.querySelectorAll('[data-highlighted="true"]')).toHaveLength(3)
-    })
-
-    fireEvent.pointerEnter(b)
-    await waitFor(() => {
-      expect(container.querySelectorAll('[data-highlighted="true"]')).toHaveLength(2)
-    })
-
-    fireEvent.pointerLeave(b)
-    await waitFor(() => {
-      expect(container.querySelectorAll('[data-highlighted="true"]')).toHaveLength(3)
-    })
-  })
-
-  it('A のフォーカスが外れたら、ホバー中の B の塗りに戻る', async () => {
-    const { useSelectedUserStore } = await import('@/features/select-verse-view')
-    useSelectedUserStore.setState({ selectedUserId: null })
-    loaderData = twoMarks()
-    search = {}
-    const { container } = render(<ChapterPage />)
-
-    const a = await screen.findByRole('button', { name: /3節のコメントを見る/ })
-    const b = screen.getByRole('button', { name: /10節のコメントを見る/ })
-    makeFocusVisible(a)
-    fireEvent.focus(a)
-    fireEvent.pointerEnter(b)
-    fireEvent.blur(a)
-
-    await waitFor(() => {
-      expect(container.querySelectorAll('[data-highlighted="true"]')).toHaveLength(2)
-    })
-  })
-
-  it('A をフォーカスしたまま B で pointercancel が起きても、A の塗りが残る', async () => {
-    const { useSelectedUserStore } = await import('@/features/select-verse-view')
-    useSelectedUserStore.setState({ selectedUserId: null })
-    loaderData = twoMarks()
-    search = {}
-    const { container } = render(<ChapterPage />)
-
-    const a = await screen.findByRole('button', { name: /3節のコメントを見る/ })
-    const b = screen.getByRole('button', { name: /10節のコメントを見る/ })
-    makeFocusVisible(a)
-    fireEvent.focus(a)
-    fireEvent.pointerCancel(b)
-
-    await waitFor(() => {
-      expect(container.querySelectorAll('[data-highlighted="true"]')).toHaveLength(3)
-    })
-  })
-
   it('シートが開いている間は、コメントが指す節すべてが塗られたままになる', async () => {
-    // 印を押して開くとフォーカスが印からシートへ移り、印には blur が飛ぶ。
-    // 塗りの持ち主を分けていないと、開いた直後に塗りが消える。
-    // またホバーの無いタッチでは、開いた時点の塗りが範囲を知る唯一の手段になる
+    // 印は非対話の目印なので焦点もポインタも持たない。塗りの持ち主はシートだけ
     const { useSelectedUserStore } = await import('@/features/select-verse-view')
     useSelectedUserStore.setState({ selectedUserId: null })
     loaderData = {
@@ -869,9 +997,6 @@ describe('ChapterPage', () => {
     search = { comment: 3 }
     const { container } = render(<ChapterPage />)
     await screen.findByText('またぐ投稿')
-
-    // 印からポインタが離れても、シートが開いている限り塗りは残る
-    fireEvent.pointerOut(screen.getByRole('button', { name: /3節のコメントを見る/ }))
 
     await waitFor(() => {
       expect(container.querySelectorAll('[data-highlighted="true"]')).toHaveLength(3)
@@ -900,7 +1025,6 @@ describe('ChapterPage', () => {
   })
 
   it('シートを閉じた後は塗りが残らない', async () => {
-    // 閉じるときフォーカスが印へ戻り、その focus で塗り直されていた
     const { useSelectedUserStore } = await import('@/features/select-verse-view')
     useSelectedUserStore.setState({ selectedUserId: null })
     loaderData = {
@@ -914,8 +1038,6 @@ describe('ChapterPage', () => {
 
     search = {}
     rerender(<ChapterPage />)
-    // 閉じた後にブラウザがフォーカスを印へ戻す
-    fireEvent.focus(screen.getByRole('button', { name: /3節のコメントを見る/ }))
 
     await waitFor(() => {
       expect(container.querySelectorAll('[data-highlighted="true"]')).toHaveLength(0)
@@ -947,7 +1069,7 @@ describe('ChapterPage', () => {
     )
   })
 
-  it('印を押して開いたときはスムーズにスクロールする', async () => {
+  it('節の行を押して開いたときはスムーズにスクロールする', async () => {
     const scrollIntoView = vi.fn()
     Element.prototype.scrollIntoView = scrollIntoView
     const { useSelectedUserStore } = await import('@/features/select-verse-view')
@@ -971,7 +1093,7 @@ describe('ChapterPage', () => {
     })
   })
 
-  it('視差効果を減らす設定なら印を押してもスムーズにしない', async () => {
+  it('視差効果を減らす設定なら節の行を押してもスムーズにしない', async () => {
     const scrollIntoView = vi.fn()
     Element.prototype.scrollIntoView = scrollIntoView
     const originalMatchMedia = window.matchMedia
@@ -1060,6 +1182,57 @@ describe('ChapterPage', () => {
     expect(screen.queryByRole('dialog')).toBeNull()
   })
 
+  it('コメントが無い節でも ?comment= でシートが開く', async () => {
+    loaderData = { ...baseChapterData }
+    search = { comment: 2 }
+
+    render(<ChapterPage />)
+
+    expect(await screen.findByText('第1ニーファイ書 1:2')).toBeInTheDocument()
+    expect(screen.getByText('この節への投稿はまだありません')).toBeInTheDocument()
+  })
+
+  it('章の範囲外の ?comment= ではシートを開かない', async () => {
+    loaderData = { ...baseChapterData }
+    search = { comment: 9999 }
+
+    render(<ChapterPage />)
+
+    await screen.findByText('一節の本文')
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('下限の comment=1 でもシートが開く', async () => {
+    loaderData = { ...baseChapterData }
+    search = { comment: 1 }
+
+    render(<ChapterPage />)
+
+    expect(await screen.findByText('第1ニーファイ書 1:1')).toBeInTheDocument()
+    expect(screen.getByText('この節への投稿はまだありません')).toBeInTheDocument()
+  })
+
+  it('章の最終節（comment=maxVerse）でもシートが開く', async () => {
+    // baseChapterData の book.verses は [20]（1章は20節まで）
+    loaderData = { ...baseChapterData }
+    search = { comment: 20 }
+
+    render(<ChapterPage />)
+
+    expect(await screen.findByText('第1ニーファイ書 1:20')).toBeInTheDocument()
+    expect(screen.getByText('この節への投稿はまだありません')).toBeInTheDocument()
+  })
+
+  it('章の最終節の次（comment=maxVerse+1）ではシートを開かない', async () => {
+    loaderData = { ...baseChapterData }
+    search = { comment: 21 }
+
+    render(<ChapterPage />)
+
+    await screen.findByText('一節の本文')
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
   it('mode=select 中は search.comment があってもシートを開かない', async () => {
     loaderData = {
       ...baseChapterData,
@@ -1072,7 +1245,7 @@ describe('ChapterPage', () => {
     expect(screen.queryByText('節3のコメント')).toBeNull()
   })
 
-  it('継続節の印を押すとその節に関わるコメントが全件シートに出る', async () => {
+  it('継続節を指定するとその節に関わるコメントが全件シートに出る', async () => {
     const { useSelectedUserStore } = await import('@/features/select-verse-view')
     useSelectedUserStore.setState({ selectedUserId: null })
     loaderData = {

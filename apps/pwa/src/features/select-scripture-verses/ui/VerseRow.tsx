@@ -1,5 +1,4 @@
-import type { CSSProperties } from 'react'
-import { Link } from '@tanstack/react-router'
+import type { CSSProperties, ReactNode } from 'react'
 import { Check } from 'lucide-react'
 import { SanitizedVerseHtml } from '@/shared/ui'
 
@@ -14,7 +13,7 @@ const ROW_UNSELECTED_STYLE: CSSProperties = {
   borderLeft: '3px solid transparent',
   transition: ROW_TRANSITION,
 }
-// ガターの印にホバーしたとき、その投稿が対象にしている節を示す
+// 節シートに出ているコメントが対象にしている節を示す
 const ROW_HIGHLIGHTED_STYLE: CSSProperties = {
   background: 'var(--verse-highlight)',
   borderLeft: '3px solid transparent',
@@ -22,9 +21,6 @@ const ROW_HIGHLIGHTED_STYLE: CSSProperties = {
 }
 
 type Props = {
-  collection: string
-  book: string
-  chapter: number
   verse: number
   textHtml?: string
   textHtmlSecondary?: string
@@ -32,14 +28,15 @@ type Props = {
   mode: 'read' | 'select'
   selected: boolean
   onSelect: (verse: number) => void
+  onOpen: (verse: number) => void
+  commentCount?: number
   highlighted?: boolean
   showNumber?: boolean
+  /** 行の右端に添える印。行のボタンの内側に置き、タップ対象を行全体にする */
+  marker?: ReactNode
 }
 
 export function VerseRow({
-  collection,
-  book,
-  chapter,
   verse,
   textHtml,
   textHtmlSecondary,
@@ -47,8 +44,11 @@ export function VerseRow({
   mode,
   selected,
   onSelect,
+  onOpen,
+  commentCount = 0,
   highlighted = false,
   showNumber = true,
+  marker,
 }: Props) {
   const containerStyle = selected
     ? ROW_SELECTED_STYLE
@@ -126,7 +126,7 @@ export function VerseRow({
         aria-checked={selected}
         aria-label={`${verse}節を選択`}
         onClick={() => onSelect(verse)}
-        className="verse-item w-full text-left"
+        className="verse-item block w-full text-left cursor-pointer"
         // 画面外の節の高さ見積もりを併記の有無で切り替えるため（styles.css の verse-item）
         data-bilingual={textHtmlSecondary ? '' : undefined}
         style={containerStyle}
@@ -138,17 +138,24 @@ export function VerseRow({
 
   return (
     <div style={containerStyle} data-highlighted={highlighted || undefined}>
-      <Link
-        to="/scriptures/$collection/$book/$chapter"
-        params={{ collection, book, chapter: String(chapter) }}
-        search={{ verses: [verse] }}
-        // 節は1画面に数十個並ぶため、スクロールでカーソル下を通過しただけで intent プリロードが発火する
-        preload={false}
-        className="verse-item block"
-        data-bilingual={textHtmlSecondary ? '' : undefined}
+      <button
+        type="button"
+        onClick={() => onOpen(verse)}
+        aria-haspopup="dialog"
+        className="flex w-full items-stretch text-left cursor-pointer"
       >
-        {inner}
-      </Link>
+        {/* content-visibility は paint containment も伴うため、verse-item はここに
+            付ける。button に付けると、印のバッジ（-right-1）が ul の pr-1 まで
+            はみ出せずボタンの右端で切られる */}
+        <div
+          className="verse-item flex-1 min-w-0"
+          data-bilingual={textHtmlSecondary ? '' : undefined}
+        >
+          {inner}
+        </div>
+        {marker}
+        {commentCount > 0 && <span className="sr-only">コメント{commentCount}件</span>}
+      </button>
     </div>
   )
 }

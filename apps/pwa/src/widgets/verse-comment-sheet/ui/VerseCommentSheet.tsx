@@ -1,5 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
+import { Copy, ExternalLink } from 'lucide-react'
 import { CompactPostCard, type PostWithUser } from '@/entities/post'
+import { verseHtmlToPlainText } from '@/entities/scripture'
+import { copyText } from '@/shared/lib/clipboard'
+import { SanitizedVerseHtml } from '@/shared/ui'
+import { Button } from '@/shared/ui/button'
+import { toast } from '@/shared/ui/sonner'
 import {
   Drawer,
   DrawerBody,
@@ -12,17 +18,31 @@ import { useIsMobile } from '@/shared/hooks/use-mobile'
 type Props = {
   open: boolean
   verse: number
+  label: string
+  officialUrl: string
+  textHtml?: string
+  textHtmlSecondary?: string
+  secondaryLang?: string
   posts: PostWithUser[]
   onOpenChange: (open: boolean) => void
   onHighlight?: (verses: number[] | null) => void
+  canCompose?: boolean
+  onCompose?: (verse: number) => void
 }
 
 export function VerseCommentSheet({
   open,
   verse,
+  label,
+  officialUrl,
+  textHtml,
+  textHtmlSecondary,
+  secondaryLang,
   posts,
   onOpenChange,
   onHighlight,
+  canCompose = false,
+  onCompose,
 }: Props) {
   const isMobile = useIsMobile()
   // useIsMobile は画面幅を effect でしか反映しないため、初回描画は必ず false になる。
@@ -39,6 +59,13 @@ export function VerseCommentSheet({
 
   if (!widthResolved) return null
 
+  const onCopy = async () => {
+    if (!textHtml) return
+    const ok = await copyText(`${label}\n${verseHtmlToPlainText(textHtml)}`)
+    if (ok) toast('コピーしました')
+    else toast.error('コピーできませんでした')
+  }
+
   return (
     // 章を読みながらコメントを見るための非モーダル。バックドロップを出さず
     // ページのスクロールも止めない。外側プレスでの自動クローズは、章のスクロール
@@ -53,11 +80,47 @@ export function VerseCommentSheet({
     >
       <DrawerContent showOverlay={false}>
         <DrawerHeader>
-          <DrawerTitle>
-            📖 {verse}節のコメント {posts.length}件
-          </DrawerTitle>
+          <DrawerTitle>{label}</DrawerTitle>
         </DrawerHeader>
-        <DrawerBody className="flex flex-col gap-2 px-4 pb-4 max-h-[70vh]">
+        <DrawerBody className="flex flex-col gap-3 px-4 pb-4 max-h-[70vh]">
+          <div className="flex flex-col gap-2">
+            {textHtml && (
+              <div className="text-sm">
+                <SanitizedVerseHtml html={textHtml} style={{ color: 'var(--sea-ink)' }} />
+                {textHtmlSecondary && (
+                  <SanitizedVerseHtml
+                    html={textHtmlSecondary}
+                    className="block mt-1"
+                    style={{ color: 'var(--sea-ink-soft)' }}
+                    lang={secondaryLang}
+                  />
+                )}
+              </div>
+            )}
+            <div className="flex items-center gap-2">
+              {textHtml && (
+                <Button type="button" variant="outline" size="sm" className="gap-1" onClick={onCopy}>
+                  <Copy size={14} aria-hidden="true" />
+                  コピー
+                </Button>
+              )}
+              <a
+                href={officialUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-sm underline"
+                style={{ color: 'var(--lagoon-deep)' }}
+              >
+                公式サイトで読む
+                <ExternalLink size={12} aria-hidden="true" />
+              </a>
+            </div>
+          </div>
+          {posts.length > 0 && (
+            <p className="text-xs font-medium" style={{ color: 'var(--sea-ink-soft)' }}>
+              この節に関わる投稿 {posts.length}件
+            </p>
+          )}
           {posts.map((p) => (
             <div
               key={p.id}
@@ -71,6 +134,21 @@ export function VerseCommentSheet({
               <CompactPostCard post={p} />
             </div>
           ))}
+          {posts.length === 0 && (
+            <p className="text-sm" style={{ color: 'var(--sea-ink-soft)' }}>
+              この節への投稿はまだありません
+            </p>
+          )}
+          {canCompose && onCompose && (
+            <Button
+              type="button"
+              variant="accent"
+              className="w-full"
+              onClick={() => onCompose(verse)}
+            >
+              この節に投稿する
+            </Button>
+          )}
         </DrawerBody>
       </DrawerContent>
     </Drawer>
