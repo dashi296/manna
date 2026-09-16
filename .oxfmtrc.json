@@ -3,13 +3,6 @@
   "singleQuote": true,
   "printWidth": 100,
   "ignorePatterns": [
-    "**/*.md",
-    "**/*.json",
-    "**/*.jsonc",
-    "**/*.css",
-    "**/*.toml",
-    "**/*.yaml",
-    "**/*.yml",
     "apps/pwa/src/routeTree.gen.ts",
     "packages/database/index.ts"
   ]

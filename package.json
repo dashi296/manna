@@ -7,8 +7,8 @@
     "test": "pnpm --filter @manna/pwa test",
     "typecheck": "pnpm --filter @manna/pwa typecheck",
     "lint": "oxlint",
-    "fmt": "oxfmt --write",
-    "fmt:check": "oxfmt --check",
+    "fmt": "oxfmt --write \"**/*.{js,jsx,mjs,cjs,ts,tsx,mts,cts}\"",
+    "fmt:check": "oxfmt --check \"**/*.{js,jsx,mjs,cjs,ts,tsx,mts,cts}\"",
     "supabase:types": "supabase gen types typescript --local 2>/dev/null > packages/database/index.ts",
     "test:scripts": "node --test \"scripts/lib/*.test.mjs\""
   },
