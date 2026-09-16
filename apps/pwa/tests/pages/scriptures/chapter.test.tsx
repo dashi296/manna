@@ -921,6 +921,48 @@ describe('ChapterPage', () => {
     expect(document.body.querySelector('[data-slot="sheet-content"]')).toBeNull()
   })
 
+  it('保留中に章全体への投稿を始めたら、後から保留が発火しても対象節をすり替えない', async () => {
+    // 節3への投稿を保留した直後に、ユーザーが FAB/ヘッダーから章全体への投稿へ
+    // 気を変える場合がある。ユーザーの最後の操作が勝つべきで、保留は捨てるのが正しい
+    const { useSelectedUserStore } = await import('@/features/select-verse-view')
+    useSelectedUserStore.setState({ selectedUserId: null })
+    loaderData = {
+      ...baseChapterData,
+      chapterCommenters: [{ userId: 'u1', name: '中村さん', avatarUrl: null }],
+      circlePosts: [circlePost('p1', 'u1', '中村さん', [3], '節3のコメント')],
+    }
+    search = { comment: 3 }
+    const user = userEvent.setup()
+    const { rerender } = render(<ChapterPage />)
+    await screen.findByText('節3のコメント')
+
+    // 節3への投稿を保留する（節シートを閉じている途中）
+    await user.click(screen.getByRole('button', { name: 'この節に投稿する' }))
+
+    // 保留がまだ発火していない間に、章全体への投稿を始める
+    await user.click(headerComposeTrigger())
+    await user.click(await screen.findByRole('menuitem', { name: /章全体に投稿/ }))
+
+    // シートの見出しは initialScripture を毎レンダー直接参照するため、
+    // PostEditor 内部の state 同期を経由せずすり替わりを検出できる
+    expect(
+      screen.getByRole('heading', { name: '📖 第1ニーファイ書 第1章' }),
+    ).toBeInTheDocument()
+
+    // ルーターが closeVerseSheet の navigate を実際に反映した状態を再現する。
+    // 保留が生きたままだと、ここで見出しが節3向けにすり替わってしまう
+    search = { ...search, comment: undefined }
+    rerender(<ChapterPage />)
+
+    await waitFor(() => {
+      expect(document.body.querySelector('[data-slot="sheet-content"]')).not.toBeNull()
+    })
+    expect(
+      screen.getByRole('heading', { name: '📖 第1ニーファイ書 第1章' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: /1:3/ })).toBeNull()
+  })
+
   it('シート内のコメントにホバーするとその投稿の対象節だけがハイライトされる', async () => {
     const { useSelectedUserStore } = await import('@/features/select-verse-view')
     useSelectedUserStore.setState({ selectedUserId: null })

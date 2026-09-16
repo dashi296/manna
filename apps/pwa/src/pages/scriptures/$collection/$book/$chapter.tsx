@@ -707,6 +707,13 @@ function ChapterView({
   // （先に定義した方が、後で章の不一致を捨てる effect より先に古い保留で開いてしまう）
   useEffect(() => {
     if (pendingCompose === null) return
+    // 保留中に FAB などから別の投稿シートが開いていれば、ユーザーの最後の操作を
+    // 優先して保留は捨てる。捨てないと、後から発火したこの effect が
+    // 開いている投稿シートの対象節・タイトルをすり替えてしまう
+    if (sheetOpen) {
+      setPendingCompose(null)
+      return
+    }
     const sameChapter =
       pendingCompose.collection === collection &&
       pendingCompose.book === book.id &&
@@ -719,7 +726,7 @@ function ChapterView({
     setComposerVerses([pendingCompose.verse])
     setPendingCompose(null)
     setSheetOpen(true)
-  }, [pendingCompose, commentVerseForScroll, collection, book.id, chapter])
+  }, [pendingCompose, sheetOpen, commentVerseForScroll, collection, book.id, chapter])
 
   const openComposerForChapter = () => {
     setComposerVerses(undefined)
