@@ -543,7 +543,11 @@ function ChapterView({
   const [sheetOpen, setSheetOpen] = useState(false)
   const [composerVerses, setComposerVerses] = useState<number[] | undefined>()
   const [sheetHighlight, setSheetHighlight] = useState<number[] | null>(null)
-  const [pendingComposeVerse, setPendingComposeVerse] = useState<number | null>(null)
+  // 対象の章参照ごと保留する。章参照が無いと、保留中に章移動のリンクなどで
+  // 章が変わったときに前の章の節番号で投稿シートを開いてしまう
+  const [pendingCompose, setPendingCompose] = useState<
+    { verse: number; collection: string; book: string; chapter: number } | null
+  >(null)
   const search = Route.useSearch()
   const navigate = Route.useNavigate()
   const maxVerse = book.verses[chapter - 1]
@@ -687,20 +691,35 @@ function ChapterView({
   const exitSelectMode = () => patchSearch({ mode: undefined, select: undefined })
 
   const composeForVerse = (verse: number) => {
-    setPendingComposeVerse(verse)
+    // 節シートが閉じ切るまでは保留を1件しか受け付けない。ガード無しで連打すると、
+    // 閉じ切る前に closeVerseSheet が毎回 history.back() を呼び、章より前の
+    // 履歴まで戻ってしまう
+    if (pendingCompose !== null) return
+    setPendingCompose({ verse, collection, book: book.id, chapter })
     closeVerseSheet()
   }
 
   // 節シートが閉じる（closeVerseSheet の history.back / URL 更新が反映される）まで
   // 投稿シートを開かずに待つ。先に開くと、閉じるための popstate を投稿シート側の
-  // リスナーが受けて、開いたばかりの投稿シートを即座に閉じてしまう
+  // リスナーが受けて、開いたばかりの投稿シートを即座に閉じてしまう。
+  // 保留と章参照の突き合わせも同じ effect で行う。別の effect に分けると、
+  // 章とコメントの両方が同じコミットで変わったときに宣言順が結果を左右してしまう
+  // （先に定義した方が、後で章の不一致を捨てる effect より先に古い保留で開いてしまう）
   useEffect(() => {
-    if (pendingComposeVerse === null) return
+    if (pendingCompose === null) return
+    const sameChapter =
+      pendingCompose.collection === collection &&
+      pendingCompose.book === book.id &&
+      pendingCompose.chapter === chapter
+    if (!sameChapter) {
+      setPendingCompose(null)
+      return
+    }
     if (commentVerseForScroll !== undefined) return
-    setComposerVerses([pendingComposeVerse])
-    setPendingComposeVerse(null)
+    setComposerVerses([pendingCompose.verse])
+    setPendingCompose(null)
     setSheetOpen(true)
-  }, [pendingComposeVerse, commentVerseForScroll])
+  }, [pendingCompose, commentVerseForScroll, collection, book.id, chapter])
 
   const openComposerForChapter = () => {
     setComposerVerses(undefined)

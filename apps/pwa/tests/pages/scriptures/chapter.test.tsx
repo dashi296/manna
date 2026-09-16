@@ -858,6 +858,69 @@ describe('ChapterPage', () => {
     expect(document.body.querySelector('[data-slot="drawer-content"]')).toBeNull()
   })
 
+  it('「この節に投稿する」を連打しても history.back は1回しか走らない', async () => {
+    // ガードが無いと、節シートが閉じ切る前の連打のたびに closeVerseSheet が
+    // history.back() を呼び、章より前の履歴まで戻ってしまう
+    canGoBack = true
+    historyBackSpy.mockClear()
+    window.history.pushState({ mannaVerseSheet: true }, '')
+    const { useSelectedUserStore } = await import('@/features/select-verse-view')
+    useSelectedUserStore.setState({ selectedUserId: null })
+    loaderData = {
+      ...baseChapterData,
+      chapterCommenters: [{ userId: 'u1', name: '中村さん', avatarUrl: null }],
+      circlePosts: [circlePost('p1', 'u1', '中村さん', [3], '節3のコメント')],
+    }
+    search = { comment: 3 }
+    const user = userEvent.setup()
+    render(<ChapterPage />)
+    await screen.findByText('節3のコメント')
+
+    const button = screen.getByRole('button', { name: 'この節に投稿する' })
+    await user.click(button)
+    await user.click(button)
+
+    expect(historyBackSpy).toHaveBeenCalledTimes(1)
+    window.history.replaceState({}, '')
+  })
+
+  it('保留中に章が変わったら、前の章の節番号で投稿シートを開かない', async () => {
+    // 章移動のリンクなどで章が変わったのに保留を持ち越すと、次の章で
+    // commentVerseForScroll が undefined になった瞬間に
+    // 前の章の節番号で投稿シートが開いてしまう
+    const { useSelectedUserStore } = await import('@/features/select-verse-view')
+    useSelectedUserStore.setState({ selectedUserId: null })
+    const bookWithTwoChapters = { ...baseChapterData.book, verses: [20, 20] }
+    loaderData = {
+      ...baseChapterData,
+      book: bookWithTwoChapters,
+      chapter: 1,
+      chapterCommenters: [{ userId: 'u1', name: '中村さん', avatarUrl: null }],
+      circlePosts: [circlePost('p1', 'u1', '中村さん', [3], '節3のコメント')],
+    }
+    search = { comment: 3 }
+    const user = userEvent.setup()
+    const { rerender } = render(<ChapterPage />)
+    await screen.findByText('節3のコメント')
+
+    await user.click(screen.getByRole('button', { name: 'この節に投稿する' }))
+
+    // 章移動のリンクなどで次の章へ移動。前章の comment=3 はこの章には無関係
+    loaderData = {
+      ...baseChapterData,
+      book: bookWithTwoChapters,
+      chapter: 2,
+      circlePosts: [],
+    }
+    search = {}
+    rerender(<ChapterPage />)
+
+    await waitFor(() => {
+      expect(screen.getByText('一節の本文')).toBeInTheDocument()
+    })
+    expect(document.body.querySelector('[data-slot="sheet-content"]')).toBeNull()
+  })
+
   it('シート内のコメントにホバーするとその投稿の対象節だけがハイライトされる', async () => {
     const { useSelectedUserStore } = await import('@/features/select-verse-view')
     useSelectedUserStore.setState({ selectedUserId: null })
