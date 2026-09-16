@@ -22,7 +22,7 @@
   `VITE_SUPABASE_URL=http://127.0.0.1:55321 VITE_SUPABASE_KEY=ci-dummy-key pnpm --filter @manna/pwa test`
 - 型チェックは `pnpm --filter @manna/pwa typecheck`
 - `DOMParser` と `navigator.clipboard` はブラウザ専用。SSR（Cloudflare Workers）には DOM が無いため、描画中ではなくイベントハンドラの中でのみ呼ぶ
-- ブランチは 2 本に分ける。Task 1〜4 を `feat/verse-sheet-as-verse-surface`、Task 5〜7 を `feat/verse-row-opens-sheet`。それぞれ PR を立て、マージ前に Codex レビューと CI を通す
+- ブランチは 2 本に分ける想定だった（Task 1〜4 と Task 5〜7）が、**実施時は 1 本にまとめた**。最終レビューの修正が両方のファイルにまたがったため。マージ前に Codex レビューと CI を通すのは計画どおり
 
 ---
 
@@ -547,13 +547,13 @@ git add apps/pwa/src apps/pwa/tests
 git commit -m "feat: 節コメントシートからその節への投稿を始められるようにする"
 ```
 
-ここまでで 1 本目の PR を出す。タイトル: `feat: 節コメントシートを「その節の面」に育てる`
+（当初はここで 1 本目の PR を出す想定だった。実施時は分割せず、全タスク完了後にまとめて 1 本で出した）
 
 ---
 
 ## Task 5: シートを章の範囲内の任意の節で開けるようにする
 
-ここから 2 本目のブランチ `feat/verse-row-opens-sheet`。
+ここから後半。ブランチは `feat/verse-row-opens-sheet`。
 
 **Files:**
 - Modify: `apps/pwa/src/pages/scriptures/$collection/$book/$chapter.tsx:609-616`（`commentVerseForScroll` の導出）
@@ -976,11 +976,11 @@ git add -A apps/pwa
 git commit -m "refactor: 節コメントの印を非対話の目印に降格する"
 ```
 
-2 本目の PR を出す。タイトル: `feat: 節の行タップで節シートを開き、印を目印に降格する`
+全タスク完了。1 本の PR にまとめて出す。
 
 ---
 
-## 実機で見る項目（2 本目のマージ前）
+## 実機で見る項目（マージ前）
 
 - 読んでいる最中の誤タップでシートが開く頻度が許せる範囲か
 - 行がボタンになってもスワイプでの章移動が効くか
@@ -1005,7 +1005,7 @@ git commit -m "refactor: 節コメントの印を非対話の目印に降格す�
 | シートを開く条件の緩和 | Task 5 |
 | `gutterClaims` の削除と塗りの単純化 | Task 7 |
 | アクセシビリティ（`aria-haspopup`、件数の読み上げ） | Task 6 |
-| 出す順序を 2 本に分ける | Task 1〜4 / Task 5〜7 |
+| 出す順序（シートを育ててから行タップを切り替える） | Task 1〜4 / Task 5〜7 |
 
 **残した判断**: `buildVerseCommentIndex` の `highlightVerses` は Task 7 の時点で未使用になるが、削除は任意とした。消すなら `verseCommentIndex.test.ts` も合わせて直す。
 
