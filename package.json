@@ -6,10 +6,15 @@
     "build": "pnpm --filter @manna/pwa build",
     "test": "pnpm --filter @manna/pwa test",
     "typecheck": "pnpm --filter @manna/pwa typecheck",
+    "lint": "oxlint",
+    "fmt": "oxfmt --write",
+    "fmt:check": "oxfmt --check",
     "supabase:types": "supabase gen types typescript --local 2>/dev/null > packages/database/index.ts",
     "test:scripts": "node --test \"scripts/lib/*.test.mjs\""
   },
   "devDependencies": {
+    "oxfmt": "0.68.0",
+    "oxlint": "1.83.0",
     "supabase": "^2.100.1"
   },
   "pnpm": {
