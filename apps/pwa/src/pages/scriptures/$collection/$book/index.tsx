@@ -36,8 +36,9 @@ function BookPage() {
               key={ch}
               to="/scriptures/$collection/$book/$chapter"
               params={{ collection: collection.id, book: book.id, chapter: String(ch) }}
-              className="flex items-center justify-center h-12 rounded-xl text-sm font-semibold transition-colors text-foreground"
+              className="flex items-center justify-center h-12 rounded-xl text-sm font-semibold transition-colors"
               style={{
+                color: 'var(--sea-ink)',
                 border: '1px solid var(--line)',
                 background: 'var(--surface)',
               }}

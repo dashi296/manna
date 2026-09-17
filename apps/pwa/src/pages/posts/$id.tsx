@@ -98,7 +98,8 @@ function PostDetailPage() {
                 chapter: String(scriptureRef.chapter),
               }}
               search={scriptureRef.verses ? { verses: scriptureRef.verses } : {}}
-              className="font-medium text-sm text-secondary"
+              className="font-medium text-sm"
+              style={{ color: 'var(--palm)' }}
             >
               📖 {scriptureLabel}
             </Link>

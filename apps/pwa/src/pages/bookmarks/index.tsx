@@ -35,8 +35,8 @@ function BookmarksPage() {
           <Link
             to="/scriptures/$collection/$book/$chapter"
             params={toChapterParams(readingPosition)}
-            className="flex items-center justify-between px-4 py-3.5 rounded-xl text-foreground"
-            style={{ border: '1px solid var(--line)' }}
+            className="flex items-center justify-between px-4 py-3.5 rounded-xl"
+            style={{ border: '1px solid var(--line)', color: 'var(--sea-ink)' }}
           >
             <span className="font-medium">{getScriptureLabel(readingPosition)}</span>
             <span className="text-muted-foreground">›</span>
