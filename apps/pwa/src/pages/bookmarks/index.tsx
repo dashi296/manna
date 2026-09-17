@@ -44,7 +44,7 @@ function BookmarksPage() {
         ) : (
           <EmptyState>
             聖典を読むとここに続きが表示されます。
-            <Link to="/scriptures" className="block mt-2 underline text-primary">
+            <Link to="/scriptures" className="block mt-2 underline" style={{ color: 'var(--lagoon-deep)' }}>
               聖典を読む
             </Link>
           </EmptyState>

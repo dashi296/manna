@@ -38,8 +38,8 @@ function BookPage() {
               params={{ collection: collection.id, book: book.id, chapter: String(ch) }}
               className="flex items-center justify-center h-12 rounded-xl text-sm font-semibold transition-colors"
               style={{
-                color: 'var(--sea-ink)',
                 border: '1px solid var(--line)',
+                color: 'var(--sea-ink)',
                 background: 'var(--surface)',
               }}
             >
