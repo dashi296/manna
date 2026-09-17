@@ -35,8 +35,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # 指摘はすべて warning のため exit 0。#164 の PR 3 で --deny-warnings に
-      # 切り替えるまでは、CI を赤くせず指摘をログに残すだけの位置づけ
+      # 既存の違反が残っているルールは warning（ログに残すだけ）、違反 0 件の
+      # ルールは error（退行したら CI を赤くする）。#164 の PR 3 で全体を
+      # --deny-warnings に切り替えるまでは、この使い分けで運用する
       - name: Lint
         run: pnpm lint
 

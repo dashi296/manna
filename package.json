@@ -13,6 +13,7 @@
     "test:scripts": "node --test \"scripts/lib/*.test.mjs\""
   },
   "devDependencies": {
+    "@shadcn/lint": "0.1.0",
     "oxfmt": "0.68.0",
     "oxlint": "1.83.0",
     "supabase": "^2.100.1"
