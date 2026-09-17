@@ -10,13 +10,27 @@
     "import",
     "promise"
   ],
+  "jsPlugins": [
+    "@shadcn/lint"
+  ],
   "categories": {
     "correctness": "warn",
     "suspicious": "warn"
   },
   "rules": {
     "react/react-in-jsx-scope": "off",
-    "vitest/require-mock-type-parameters": "off"
+    "vitest/require-mock-type-parameters": "off",
+    "shadcn/no-inline-styles": "warn",
+    "shadcn/no-raw-colors": "warn",
+    "shadcn/require-static-classes": "warn",
+    "shadcn/no-unknown-classes": [
+      "warn",
+      {
+        "allow": [
+          "toaster"
+        ]
+      }
+    ]
   },
   "env": {
     "builtin": true
@@ -24,5 +38,23 @@
   "ignorePatterns": [
     "apps/pwa/src/routeTree.gen.ts",
     "packages/database/index.ts"
+  ],
+  "settings": {
+    "shadcn": {
+      "ui": "@/shared/ui"
+    }
+  },
+  "overrides": [
+    {
+      "files": [
+        "apps/pwa/tests/**"
+      ],
+      "rules": {
+        "shadcn/no-inline-styles": "off",
+        "shadcn/no-raw-colors": "off",
+        "shadcn/require-static-classes": "off",
+        "shadcn/no-unknown-classes": "off"
+      }
+    }
   ]
 }
