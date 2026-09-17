@@ -1,0 +1,10 @@
+{
+  "semi": false,
+  "singleQuote": true,
+  "printWidth": 100,
+  "ignorePatterns": [
+    "**/*.{md,markdown,mdx,json,jsonc,json5,css,scss,less,pcss,postcss,toml,yaml,yml,html,htm,xhtml,vue,svelte,graphql,gql,graphqls,hbs,handlebars,mjml}",
+    "apps/pwa/src/routeTree.gen.ts",
+    "packages/database/index.ts"
+  ]
+}

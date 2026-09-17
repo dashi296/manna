@@ -35,6 +35,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # 指摘はすべて warning のため exit 0。#164 の PR 3 で --deny-warnings に
+      # 切り替えるまでは、CI を赤くせず指摘をログに残すだけの位置づけ
+      - name: Lint
+        run: pnpm lint
+
       # Vitest は型を見ず vite build も型チェックをしないため、これが唯一の検出手段
       - name: Typecheck
         run: pnpm typecheck
