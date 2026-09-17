@@ -42,10 +42,9 @@ export function VerseCommentMarker({ entry }: { entry: VerseMarkerEntry | undefi
           // アバターは flex アイテムに z-index を持つ（static でも効く）ので、
           // それより前に出さないとバッジが下に潜る
           <span
-            className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] leading-none font-medium"
+            className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] leading-none font-medium text-foreground"
             style={{
               background: 'var(--lagoon)',
-              color: 'var(--sea-ink)',
               zIndex: avatars.length + 1,
             }}
           >

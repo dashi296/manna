@@ -22,8 +22,6 @@ const TABS = [
 ]
 
 const containerStyle = { borderColor: 'var(--line)', background: 'var(--surface)' }
-const textareaStyle = { ...containerStyle, color: 'var(--sea-ink)' }
-const softTextStyle = { color: 'var(--sea-ink-soft)' }
 
 type Draft = {
   content: string
@@ -217,7 +215,7 @@ export function PostEditor({
           onChange={(e) => setContent(e.target.value)}
           placeholder="聖典を読んで感じたことを書いてみましょう..."
           className="w-full min-h-[200px] rounded-md border p-3 text-sm resize-y focus:outline-none focus:ring-2"
-          style={textareaStyle}
+          style={containerStyle}
         />
       ) : (
         <div
@@ -227,7 +225,7 @@ export function PostEditor({
           {content ? (
             <MarkdownRenderer content={content} />
           ) : (
-            <p className="text-sm" style={softTextStyle}>
+            <p className="text-sm text-muted-foreground">
               プレビューする内容がありません
             </p>
           )}
@@ -240,7 +238,7 @@ export function PostEditor({
             scriptureLabel && <ScriptureChip label={scriptureLabel} />
           ) : (
             <>
-              <p className="text-xs font-medium mb-2" style={softTextStyle}>
+              <p className="text-xs font-medium mb-2 text-muted-foreground">
                 {lockedLabel ? '聖典参照' : '聖典参照（任意）'}
               </p>
               {lockedLabel && (
@@ -258,7 +256,7 @@ export function PostEditor({
         </div>
 
         <div>
-          <p className="text-xs font-medium mb-2" style={softTextStyle}>
+          <p className="text-xs font-medium mb-2 text-muted-foreground">
             公開範囲
           </p>
           <VisibilitySelector value={visibility} onChange={setVisibility} />
@@ -281,8 +279,8 @@ export function PostEditor({
 function ScriptureChip({ label }: { label: string }) {
   return (
     <span
-      className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium"
-      style={{ background: 'var(--chip-bg)', border: '1px solid var(--chip-line)', color: 'var(--palm)' }}
+      className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium text-secondary"
+      style={{ background: 'var(--chip-bg)', border: '1px solid var(--chip-line)' }}
     >
       <span aria-hidden="true">📖</span> {label}
     </span>

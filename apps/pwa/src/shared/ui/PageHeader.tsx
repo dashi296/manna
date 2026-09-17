@@ -49,7 +49,7 @@ export function PageHeader({ title, backTo, backLabel, action, className }: Prop
           </Link>
         )}
       </div>
-      <h1 className="min-w-0 truncate text-center text-base font-bold" style={{ color: 'var(--sea-ink)' }}>
+      <h1 className="min-w-0 truncate text-center text-base font-bold text-foreground">
         {title}
       </h1>
       {/* min-w-0 を付けない。操作ボタンは縮むと重なるので、狭いときは

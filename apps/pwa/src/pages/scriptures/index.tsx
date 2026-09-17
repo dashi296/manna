@@ -23,7 +23,7 @@ function ScripturesPage() {
                 activeProps={{ style: { color: 'var(--lagoon-deep)' } }}
               >
                 <span className="font-medium">{col.name}</span>
-                <span style={{ color: 'var(--sea-ink-soft)' }}>›</span>
+                <span className="text-muted-foreground">›</span>
               </Link>
             </li>
           ))}

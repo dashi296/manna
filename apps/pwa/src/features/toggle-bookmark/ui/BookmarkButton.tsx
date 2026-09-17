@@ -20,7 +20,7 @@ export function BookmarkButton({ loc }: Props) {
       aria-pressed={bookmarked}
     >
       {bookmarked ? (
-        <BookmarkCheck aria-hidden="true" style={{ color: 'var(--lagoon-deep)' }} />
+        <BookmarkCheck className="text-primary" aria-hidden="true" />
       ) : (
         <Bookmark aria-hidden="true" />
       )}

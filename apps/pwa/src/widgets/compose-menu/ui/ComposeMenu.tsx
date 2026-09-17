@@ -106,14 +106,14 @@ type EntryProps = {
 function EntryBody({ icon, label, description }: Omit<EntryProps, 'onClick'>) {
   return (
     <>
-      <span className="shrink-0 mt-0.5" style={{ color: 'var(--lagoon-deep)' }}>
+      <span className="shrink-0 mt-0.5 text-primary">
         {icon}
       </span>
       <span className="flex-1 min-w-0">
-        <span className="block text-sm font-semibold" style={{ color: 'var(--sea-ink)' }}>
+        <span className="block text-sm font-semibold text-foreground">
           {label}
         </span>
-        <span className="block text-xs mt-0.5" style={{ color: 'var(--sea-ink-soft)' }}>
+        <span className="block text-xs mt-0.5 text-muted-foreground">
           {description}
         </span>
       </span>

@@ -28,7 +28,7 @@ function BookmarksPage() {
     <div>
       <PageHeader title="栞" />
       <section className="px-4 pt-4">
-        <h2 className="text-xs font-medium mb-2" style={{ color: 'var(--sea-ink-soft)' }}>
+        <h2 className="text-xs font-medium mb-2 text-muted-foreground">
           続きを読む
         </h2>
         {readingPosition ? (
@@ -39,7 +39,7 @@ function BookmarksPage() {
             style={{ border: '1px solid var(--line)', color: 'var(--sea-ink)' }}
           >
             <span className="font-medium">{getScriptureLabel(readingPosition)}</span>
-            <span style={{ color: 'var(--sea-ink-soft)' }}>›</span>
+            <span className="text-muted-foreground">›</span>
           </Link>
         ) : (
           <EmptyState>
@@ -51,7 +51,7 @@ function BookmarksPage() {
         )}
       </section>
       <section className="px-4 pt-6 pb-8">
-        <h2 className="text-xs font-medium mb-2" style={{ color: 'var(--sea-ink-soft)' }}>
+        <h2 className="text-xs font-medium mb-2 text-muted-foreground">
           栞一覧
         </h2>
         {bookmarks.length === 0 ? (
@@ -70,10 +70,10 @@ function BookmarksPage() {
                     params={toChapterParams(bookmark)}
                     className="flex-1 min-w-0"
                   >
-                    <span className="block font-medium truncate" style={{ color: 'var(--sea-ink)' }}>
+                    <span className="block font-medium truncate text-foreground">
                       {getScriptureLabel(bookmark)}
                     </span>
-                    <span className="block text-xs mt-0.5" style={{ color: 'var(--sea-ink-soft)' }}>
+                    <span className="block text-xs mt-0.5 text-muted-foreground">
                       {formatDate(bookmark.createdAt)}
                     </span>
                   </Link>

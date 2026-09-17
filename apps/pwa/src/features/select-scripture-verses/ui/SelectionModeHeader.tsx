@@ -27,8 +27,7 @@ export function SelectionModeHeader({ count, onCancel, onSubmit }: Props) {
         <span className="text-sm">キャンセル</span>
       </Button>
       <h1
-        className="flex-1 text-center text-sm font-semibold truncate"
-        style={{ color: 'var(--sea-ink)' }}
+        className="flex-1 text-center text-sm font-semibold truncate text-foreground"
       >
         {titleLabel}
       </h1>

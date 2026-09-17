@@ -78,10 +78,10 @@ function PostDetailPage() {
         <div className="flex items-center gap-3 mb-4">
           <UserAvatar name={displayName} url={avatarUrl} size="md" />
           <div>
-            <span className="font-semibold text-sm" style={{ color: 'var(--sea-ink)' }}>
+            <span className="font-semibold text-sm text-foreground">
               {displayName}
             </span>
-            <div className="text-xs" style={{ color: 'var(--sea-ink-soft)' }}>
+            <div className="text-xs text-muted-foreground">
               {formatDate(post.created_at, { year: true })}
               {isEdited && <span>・編集済み</span>}
             </div>

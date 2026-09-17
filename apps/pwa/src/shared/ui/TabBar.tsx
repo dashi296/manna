@@ -1,3 +1,5 @@
+import { cn } from '@/shared/lib/utils'
+
 type Tab<T extends string> = { id: T; label: string }
 
 type Props<T extends string> = {
@@ -16,11 +18,11 @@ export function TabBar<T extends string>({ tabs, active, onChange, className = '
           key={t.id}
           type="button"
           onClick={() => onChange(t.id)}
-          className="flex-1 px-3 py-2 text-sm font-medium border-b-2 transition-colors"
-          style={{
-            borderColor: active === t.id ? 'var(--lagoon-deep)' : 'transparent',
-            color: active === t.id ? 'var(--lagoon-deep)' : 'var(--sea-ink-soft)',
-          }}
+          className={cn(
+            'flex-1 px-3 py-2 text-sm font-medium border-b-2 transition-colors',
+            active === t.id ? 'text-primary' : 'text-muted-foreground',
+          )}
+          style={{ borderColor: active === t.id ? 'var(--lagoon-deep)' : 'transparent' }}
         >
           {t.label}
         </button>
