@@ -58,8 +58,7 @@ export function VerseRow({
 
   const numberLabel = showNumber && (
     <span
-      className="text-xs font-medium"
-      style={{ color: 'var(--sea-ink-soft)' }}
+      className="text-xs font-medium text-muted-foreground"
     >
       {verse}
     </span>
@@ -68,8 +67,7 @@ export function VerseRow({
   const primaryText = textHtml && (
     <SanitizedVerseHtml
       html={textHtml}
-      className={showNumber ? 'ml-2 text-sm' : 'text-sm'}
-      style={{ color: 'var(--sea-ink)' }}
+      className={showNumber ? 'ml-2 text-sm text-foreground' : 'text-sm text-foreground'}
     />
   )
 
@@ -90,8 +88,7 @@ export function VerseRow({
         </div>
       )}
       <div
-        className="flex-1 min-w-0 flex items-start justify-between gap-2"
-        style={{ color: 'var(--sea-ink)' }}
+        className="flex-1 min-w-0 flex items-start justify-between gap-2 text-foreground"
       >
         <div className="flex-1 min-w-0">
           {textHtml && textHtmlSecondary ? (
@@ -102,8 +99,7 @@ export function VerseRow({
               </div>
               <SanitizedVerseHtml
                 html={textHtmlSecondary}
-                className="text-sm lg:flex-1"
-                style={{ color: 'var(--sea-ink-soft)' }}
+                className="text-sm lg:flex-1 text-muted-foreground"
                 lang={secondaryLang}
               />
             </div>

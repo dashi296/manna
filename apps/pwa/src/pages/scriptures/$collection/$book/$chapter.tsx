@@ -343,12 +343,11 @@ function VerseView({ book, chapter, collection, verses, posts, canCompose }: Ver
           href={officialUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-sm underline"
-          style={{ color: 'var(--lagoon-deep)' }}
+          className="text-sm underline text-primary"
         >
           公式サイトで読む →
         </a>
-        <span className="text-xs ml-3" style={{ color: 'var(--sea-ink-soft)' }}>新着順</span>
+        <span className="text-xs ml-3 text-muted-foreground">新着順</span>
       </div>
       {verseTexts.size > 0 && (
         <div className="px-4 py-3 border-b" style={{ borderColor: 'var(--line)', background: 'var(--surface)' }}>
@@ -409,8 +408,8 @@ function ChapterNav({ collection, book, chapter }: ChapterRef) {
     <nav
       data-testid="chapter-nav"
       aria-label="章の移動"
-      className="flex items-center gap-2 px-4 py-4 border-t"
-      style={{ borderColor: 'var(--line)', color: 'var(--lagoon-deep)' }}
+      className="flex items-center gap-2 px-4 py-4 border-t text-primary"
+      style={{ borderColor: 'var(--line)' }}
     >
       {prev && (
         <Link
@@ -455,16 +454,14 @@ function ChapterHeadingBlock({
           読み上げの見出し一覧に「第n章」が続けて二度並び、区別できない */}
       <p
         data-testid="chapter-heading"
-        className="text-center text-base font-display"
-        style={{ color: 'var(--sea-ink)' }}
+        className="text-center text-base font-display text-foreground"
       >
         {heading.title}
       </p>
       {heading.summaryHtml && (
         <SanitizedVerseHtml
           html={heading.summaryHtml}
-          className="mt-2 block pl-[3px] text-sm leading-relaxed"
-          style={{ color: 'var(--sea-ink-soft)' }}
+          className="mt-2 block pl-[3px] text-sm leading-relaxed text-muted-foreground"
         />
       )}
       {secondary?.summaryHtml && (
@@ -473,8 +470,7 @@ function ChapterHeadingBlock({
           // 節の行は選択表示用に左へ 3px の境界を持つ（VerseRow の borderLeft）。
           // 同じ分だけ空けないと節番号と左端がずれる。タイトルは画面の中央に
           // 合わせたいので、この調整は概要だけに入れる
-          className="mt-2 block pl-[3px] text-sm leading-relaxed"
-          style={{ color: 'var(--sea-ink-soft)' }}
+          className="mt-2 block pl-[3px] text-sm leading-relaxed text-muted-foreground"
           lang={SECONDARY_LANGUAGE}
         />
       )}
@@ -888,7 +884,7 @@ function ChapterView({
       >
         {posts.length > 0 && (
           <div className="border-b" style={{ borderColor: 'var(--line)' }}>
-            <p className="px-4 pt-3 pb-1 text-xs font-medium" style={{ color: 'var(--sea-ink-soft)' }}>
+            <p className="px-4 pt-3 pb-1 text-xs font-medium text-muted-foreground">
               この章への投稿
             </p>
             {posts.map((post) => (

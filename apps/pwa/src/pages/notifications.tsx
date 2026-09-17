@@ -73,7 +73,7 @@ function NotificationsPage() {
                   <UserAvatar name={actorName} url={avatarUrl} size="sm" />
                 </Link>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm" style={{ color: 'var(--sea-ink)' }}>
+                  <p className="text-sm text-foreground">
                     <Link
                       to="/profile/$userId"
                       params={{ userId: n.actor_id }}
@@ -81,18 +81,17 @@ function NotificationsPage() {
                     >
                       {actorName}
                     </Link>
-                    <span style={{ color: 'var(--sea-ink-soft)' }}>{LABELS[n.type]}</span>
+                    <span className="text-muted-foreground">{LABELS[n.type]}</span>
                   </p>
                   <div className="flex items-center gap-2 mt-0.5">
-                    <time className="text-xs" style={{ color: 'var(--sea-ink-soft)' }}>
+                    <time className="text-xs text-muted-foreground">
                       {formatDate(n.created_at)}
                     </time>
                     {n.post_id && (
                       <Link
                         to="/posts/$id"
                         params={{ id: n.post_id }}
-                        className="text-xs underline"
-                        style={{ color: 'var(--lagoon-deep)' }}
+                        className="text-xs underline text-primary"
                       >
                         投稿を見る
                       </Link>

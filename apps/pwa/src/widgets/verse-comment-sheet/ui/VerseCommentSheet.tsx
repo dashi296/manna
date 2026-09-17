@@ -86,12 +86,11 @@ export function VerseCommentSheet({
           <div className="flex flex-col gap-2">
             {textHtml && (
               <div className="text-sm">
-                <SanitizedVerseHtml html={textHtml} style={{ color: 'var(--sea-ink)' }} />
+                <SanitizedVerseHtml className="text-foreground" html={textHtml} />
                 {textHtmlSecondary && (
                   <SanitizedVerseHtml
                     html={textHtmlSecondary}
-                    className="block mt-1"
-                    style={{ color: 'var(--sea-ink-soft)' }}
+                    className="block mt-1 text-muted-foreground"
                     lang={secondaryLang}
                   />
                 )}
@@ -108,8 +107,7 @@ export function VerseCommentSheet({
                 href={officialUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-sm underline"
-                style={{ color: 'var(--lagoon-deep)' }}
+                className="inline-flex items-center gap-1 text-sm underline text-primary"
               >
                 公式サイトで読む
                 <ExternalLink size={12} aria-hidden="true" />
@@ -117,7 +115,7 @@ export function VerseCommentSheet({
             </div>
           </div>
           {posts.length > 0 && (
-            <p className="text-xs font-medium" style={{ color: 'var(--sea-ink-soft)' }}>
+            <p className="text-xs font-medium text-muted-foreground">
               この節に関わる投稿 {posts.length}件
             </p>
           )}
@@ -135,7 +133,7 @@ export function VerseCommentSheet({
             </div>
           ))}
           {posts.length === 0 && (
-            <p className="text-sm" style={{ color: 'var(--sea-ink-soft)' }}>
+            <p className="text-sm text-muted-foreground">
               この節への投稿はまだありません
             </p>
           )}

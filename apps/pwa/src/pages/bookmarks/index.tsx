@@ -28,30 +28,30 @@ function BookmarksPage() {
     <div>
       <PageHeader title="栞" />
       <section className="px-4 pt-4">
-        <h2 className="text-xs font-medium mb-2" style={{ color: 'var(--sea-ink-soft)' }}>
+        <h2 className="text-xs font-medium mb-2 text-muted-foreground">
           続きを読む
         </h2>
         {readingPosition ? (
           <Link
             to="/scriptures/$collection/$book/$chapter"
             params={toChapterParams(readingPosition)}
-            className="flex items-center justify-between px-4 py-3.5 rounded-xl"
-            style={{ border: '1px solid var(--line)', color: 'var(--sea-ink)' }}
+            className="flex items-center justify-between px-4 py-3.5 rounded-xl text-foreground"
+            style={{ border: '1px solid var(--line)' }}
           >
             <span className="font-medium">{getScriptureLabel(readingPosition)}</span>
-            <span style={{ color: 'var(--sea-ink-soft)' }}>›</span>
+            <span className="text-muted-foreground">›</span>
           </Link>
         ) : (
           <EmptyState>
             聖典を読むとここに続きが表示されます。
-            <Link to="/scriptures" className="block mt-2 underline" style={{ color: 'var(--lagoon-deep)' }}>
+            <Link to="/scriptures" className="block mt-2 underline text-primary">
               聖典を読む
             </Link>
           </EmptyState>
         )}
       </section>
       <section className="px-4 pt-6 pb-8">
-        <h2 className="text-xs font-medium mb-2" style={{ color: 'var(--sea-ink-soft)' }}>
+        <h2 className="text-xs font-medium mb-2 text-muted-foreground">
           栞一覧
         </h2>
         {bookmarks.length === 0 ? (
@@ -70,10 +70,10 @@ function BookmarksPage() {
                     params={toChapterParams(bookmark)}
                     className="flex-1 min-w-0"
                   >
-                    <span className="block font-medium truncate" style={{ color: 'var(--sea-ink)' }}>
+                    <span className="block font-medium truncate text-foreground">
                       {getScriptureLabel(bookmark)}
                     </span>
-                    <span className="block text-xs mt-0.5" style={{ color: 'var(--sea-ink-soft)' }}>
+                    <span className="block text-xs mt-0.5 text-muted-foreground">
                       {formatDate(bookmark.createdAt)}
                     </span>
                   </Link>

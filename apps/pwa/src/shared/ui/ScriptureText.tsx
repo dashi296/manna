@@ -59,8 +59,7 @@ export function ScriptureText({
     <div className={cn('flex gap-2 py-2 text-sm leading-relaxed', className)}>
       {showNumber && (
         <span
-          className="shrink-0 w-6 text-right text-xs font-medium pt-0.5"
-          style={{ color: 'var(--sea-ink-soft)' }}
+          className="shrink-0 w-6 text-right text-xs font-medium pt-0.5 text-muted-foreground"
         >
           {verse}
         </span>
@@ -69,21 +68,18 @@ export function ScriptureText({
         <div className="flex-1 min-w-0 flex flex-col gap-1 lg:flex-row lg:gap-4">
           <SanitizedVerseHtml
             html={textHtml}
-            className="lg:flex-1"
-            style={{ color: 'var(--sea-ink)' }}
+            className="lg:flex-1 text-foreground"
           />
           <SanitizedVerseHtml
             html={textHtmlSecondary}
-            className="lg:flex-1"
-            style={{ color: 'var(--sea-ink-soft)' }}
+            className="lg:flex-1 text-muted-foreground"
             lang={secondaryLang}
           />
         </div>
       ) : (
         <SanitizedVerseHtml
           html={textHtml}
-          className="flex-1 min-w-0"
-          style={{ color: 'var(--sea-ink)' }}
+          className="flex-1 min-w-0 text-foreground"
         />
       )}
     </div>

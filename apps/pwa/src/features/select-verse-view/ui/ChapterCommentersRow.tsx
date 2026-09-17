@@ -16,7 +16,7 @@ export function ChapterCommentersRow({
 }: Props) {
   if (commenters.length === 0) {
     return (
-      <p className="text-xs" style={{ color: 'var(--sea-ink-soft)' }}>
+      <p className="text-xs text-muted-foreground">
         フォロー中／家族のこの章への投稿はまだありません
       </p>
     )
@@ -48,8 +48,7 @@ export function ChapterCommentersRow({
         <button
           type="button"
           onClick={onClear}
-          className="text-xs shrink-0 underline"
-          style={{ color: 'var(--lagoon-deep)' }}
+          className="text-xs shrink-0 underline text-primary"
         >
           選択解除
         </button>

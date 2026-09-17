@@ -18,12 +18,11 @@ function ScripturesPage() {
               <Link
                 to="/scriptures/$collection"
                 params={{ collection: col.id }}
-                className="flex items-center justify-between px-4 py-3.5 transition-colors"
-                style={{ color: 'var(--sea-ink)' }}
+                className="flex items-center justify-between px-4 py-3.5 transition-colors text-foreground"
                 activeProps={{ style: { color: 'var(--lagoon-deep)' } }}
               >
                 <span className="font-medium">{col.name}</span>
-                <span style={{ color: 'var(--sea-ink-soft)' }}>›</span>
+                <span className="text-muted-foreground">›</span>
               </Link>
             </li>
           ))}

@@ -134,8 +134,7 @@ function ConnectionRow({
       >
         <UserAvatar name={displayName} url={avatarUrl} size="sm" />
         <span
-          className="text-sm font-semibold truncate"
-          style={{ color: 'var(--sea-ink)' }}
+          className="text-sm font-semibold truncate text-foreground"
         >
           {displayName}
         </span>

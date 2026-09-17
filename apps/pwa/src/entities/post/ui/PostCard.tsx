@@ -30,7 +30,7 @@ function NestedLink({ href, className, style, children }: { href: string; classN
 
 const NESTED_COMPONENTS: Components = {
   a: ({ href, children }) => (
-    <NestedLink href={href ?? '#'} style={{ color: 'var(--lagoon-deep)' }}>
+    <NestedLink className="underline cursor-pointer text-primary" href={href ?? '#'}>
       {children}
     </NestedLink>
   ),
@@ -55,13 +55,12 @@ export const PostCard = memo(function PostCard({ post }: Props) {
           <UserAvatar name={displayName} url={avatarUrl} size="sm" />
           <div className="flex-1 min-w-0">
             <div className="flex items-baseline justify-between gap-2">
-              <span className="text-sm font-semibold truncate" style={{ color: 'var(--sea-ink)' }}>
+              <span className="text-sm font-semibold truncate text-foreground">
                 {displayName}
               </span>
               <time
                 dateTime={post.created_at}
-                className="text-xs shrink-0"
-                style={{ color: 'var(--sea-ink-soft)' }}
+                className="text-xs shrink-0 text-muted-foreground"
               >
                 {formatDate(post.created_at)}
               </time>
@@ -69,15 +68,15 @@ export const PostCard = memo(function PostCard({ post }: Props) {
             {scriptureLabel && scriptureUrl && (
               <NestedLink
                 href={scriptureUrl}
-                className="inline-flex items-center mt-0.5 px-2 py-0.5 rounded-full text-[11px] font-medium cursor-pointer"
-                style={{ background: 'var(--chip-bg)', border: '1px solid var(--chip-line)', color: 'var(--palm)' }}
+                className="inline-flex items-center mt-0.5 px-2 py-0.5 rounded-full text-[11px] font-medium cursor-pointer text-secondary"
+                style={{ background: 'var(--chip-bg)', border: '1px solid var(--chip-line)' }}
               >
                 <span aria-hidden="true">📖</span> {scriptureLabel}
               </NestedLink>
             )}
           </div>
         </div>
-        <div className="ml-12" style={{ color: 'var(--sea-ink)' }}>
+        <div className="ml-12 text-foreground">
           <MarkdownRenderer content={post.content} components={NESTED_COMPONENTS} />
         </div>
       </article>

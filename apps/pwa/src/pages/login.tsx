@@ -21,12 +21,11 @@ function LoginPage() {
         <LogoMark className="size-16 mx-auto mb-4" />
         <p className="island-kicker mb-3">聖典学習を分かち合う</p>
         <h1
-          className="display-title text-5xl font-bold mb-3"
-          style={{ color: 'var(--sea-ink)' }}
+          className="display-title text-5xl font-bold mb-3 text-foreground"
         >
           Manna
         </h1>
-        <p className="text-sm" style={{ color: 'var(--sea-ink-soft)' }}>
+        <p className="text-sm text-muted-foreground">
           感動・洞察・感想をコミュニティで共有しよう
         </p>
       </div>
@@ -38,11 +37,10 @@ function LoginPage() {
       >
         <button
           onClick={() => signInWithGoogle()}
-          className="w-full flex items-center justify-center gap-3 px-5 py-3 rounded-xl text-sm font-semibold transition-all"
+          className="w-full flex items-center justify-center gap-3 px-5 py-3 rounded-xl text-sm font-semibold transition-all text-foreground"
           style={{
             background: 'var(--surface-strong)',
             border: '1px solid var(--line)',
-            color: 'var(--sea-ink)',
           }}
         >
           <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
@@ -54,7 +52,7 @@ function LoginPage() {
           Google でサインイン
         </button>
 
-        <p className="text-center text-[11px]" style={{ color: 'var(--sea-ink-soft)' }}>
+        <p className="text-center text-[11px] text-muted-foreground">
           サインインすることで利用規約とプライバシーポリシーに同意します
         </p>
       </div>

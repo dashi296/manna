@@ -29,17 +29,16 @@ function BookPage() {
         backLabel={collection.name}
       />
       <div className="p-4">
-        <p className="text-xs mb-3" style={{ color: 'var(--sea-ink-soft)' }}>章を選んでください</p>
+        <p className="text-xs mb-3 text-muted-foreground">章を選んでください</p>
         <div className="grid grid-cols-5 gap-2">
           {chapters.map((ch) => (
             <Link
               key={ch}
               to="/scriptures/$collection/$book/$chapter"
               params={{ collection: collection.id, book: book.id, chapter: String(ch) }}
-              className="flex items-center justify-center h-12 rounded-xl text-sm font-semibold transition-colors"
+              className="flex items-center justify-center h-12 rounded-xl text-sm font-semibold transition-colors text-foreground"
               style={{
                 border: '1px solid var(--line)',
-                color: 'var(--sea-ink)',
                 background: 'var(--surface)',
               }}
             >
