@@ -108,7 +108,8 @@ function PostDetailPage() {
                 href={officialUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs underline text-primary"
+                className="text-xs underline"
+                style={{ color: 'var(--lagoon-deep)' }}
               >
                 公式サイトで読む →
               </a>

@@ -40,7 +40,8 @@ export function PageHeader({ title, backTo, backLabel, action, className }: Prop
           <Link
             to={backTo as string}
             search={{}}
-            className="flex items-center gap-0.5 text-sm -ml-1 pr-2 text-primary"
+            className="flex items-center gap-0.5 text-sm -ml-1 pr-2"
+            style={{ color: 'var(--lagoon-deep)' }}
             aria-label={backLabel ?? '戻る'}
           >
             <ChevronLeft size={18} aria-hidden="true" className="shrink-0" />

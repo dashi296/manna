@@ -107,7 +107,8 @@ export function VerseCommentSheet({
                 href={officialUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-sm underline text-primary"
+                className="inline-flex items-center gap-1 text-sm underline"
+                style={{ color: 'var(--lagoon-deep)' }}
               >
                 公式サイトで読む
                 <ExternalLink size={12} aria-hidden="true" />

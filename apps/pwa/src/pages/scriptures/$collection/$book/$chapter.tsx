@@ -343,7 +343,8 @@ function VerseView({ book, chapter, collection, verses, posts, canCompose }: Ver
           href={officialUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-sm underline text-primary"
+          className="text-sm underline"
+          style={{ color: 'var(--lagoon-deep)' }}
         >
           公式サイトで読む →
         </a>
