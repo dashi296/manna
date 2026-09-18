@@ -57,11 +57,7 @@ export function VerseRow({
       : ROW_UNSELECTED_STYLE
 
   const numberLabel = showNumber && (
-    <span
-      className="text-xs font-medium text-muted-foreground"
-    >
-      {verse}
-    </span>
+    <span className="text-xs font-medium text-muted-foreground">{verse}</span>
   )
 
   const primaryText = textHtml && (
@@ -82,14 +78,10 @@ export function VerseRow({
             background: selected ? 'var(--lagoon)' : 'transparent',
           }}
         >
-          {selected && (
-            <Check size={12} strokeWidth={3} color="#fff" aria-hidden="true" />
-          )}
+          {selected && <Check size={12} strokeWidth={3} color="#fff" aria-hidden="true" />}
         </div>
       )}
-      <div
-        className="flex-1 min-w-0 flex items-start justify-between gap-2 text-foreground"
-      >
+      <div className="flex-1 min-w-0 flex items-start justify-between gap-2 text-foreground">
         <div className="flex-1 min-w-0">
           {textHtml && textHtmlSecondary ? (
             <div className="flex flex-col gap-1 lg:flex-row lg:gap-4">

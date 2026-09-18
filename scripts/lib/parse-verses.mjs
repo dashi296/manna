@@ -4,9 +4,7 @@ export function cleanVerseHtml(innerHtml) {
   // Unwrap study-note-ref anchors (keep inner text)
   cleaned = cleaned.replace(/<a class="study-note-ref"[^>]*>(.*?)<\/a>/gs, '$1')
   // Remove any remaining non-ruby tags for textHtml
-  const textHtml = cleaned
-    .replace(/<(?!\/?ruby|\/?rb|\/?rt)[^>]+>/g, '')
-    .trim()
+  const textHtml = cleaned.replace(/<(?!\/?ruby|\/?rb|\/?rt)[^>]+>/g, '').trim()
 
   // Plain text: extract rb content from ruby tags, strip all other tags
   const text = cleaned

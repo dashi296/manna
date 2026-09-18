@@ -8,12 +8,7 @@ type Props = {
   onClear: () => void
 }
 
-export function ChapterCommentersRow({
-  commenters,
-  selectedUserId,
-  onSelect,
-  onClear,
-}: Props) {
+export function ChapterCommentersRow({ commenters, selectedUserId, onSelect, onClear }: Props) {
   if (commenters.length === 0) {
     return (
       <p className="text-xs text-muted-foreground">
@@ -45,11 +40,7 @@ export function ChapterCommentersRow({
         })}
       </div>
       {selectedUserId && (
-        <button
-          type="button"
-          onClick={onClear}
-          className="text-xs shrink-0 underline text-primary"
-        >
+        <button type="button" onClick={onClear} className="text-xs shrink-0 underline text-primary">
           選択解除
         </button>
       )}

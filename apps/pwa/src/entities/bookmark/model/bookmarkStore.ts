@@ -46,22 +46,30 @@ export const useBookmarkStore = create<State>()(
         }
         set({ bookmarks: [bookmark, ...get().bookmarks] })
       },
-      removeBookmark: (id) =>
-        set({ bookmarks: get().bookmarks.filter((b) => b.id !== id) }),
+      removeBookmark: (id) => set({ bookmarks: get().bookmarks.filter((b) => b.id !== id) }),
     }),
     { name: BOOKMARK_STORAGE_KEY },
   ),
 )
 
 export function useReadingPosition(): ScriptureLocation | null {
-  return useSSRSafe(useBookmarkStore((s) => s.readingPosition), null)
+  return useSSRSafe(
+    useBookmarkStore((s) => s.readingPosition),
+    null,
+  )
 }
 
 export function useIsBookmarked(loc: ScriptureLocation): boolean {
   const bookmarks = useBookmarkStore((s) => s.bookmarks)
-  return useSSRSafe(bookmarks.some((b) => sameLocation(b, loc)), false)
+  return useSSRSafe(
+    bookmarks.some((b) => sameLocation(b, loc)),
+    false,
+  )
 }
 
 export function useBookmarks(): Bookmark[] {
-  return useSSRSafe(useBookmarkStore((s) => s.bookmarks), [])
+  return useSSRSafe(
+    useBookmarkStore((s) => s.bookmarks),
+    [],
+  )
 }

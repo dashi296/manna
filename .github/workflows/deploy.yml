@@ -41,6 +41,10 @@ jobs:
       - name: Lint
         run: pnpm lint
 
+      # 整形は #164 の PR 2 で全体に適用済み。以降は差分が出たら赤くする
+      - name: Format check
+        run: pnpm fmt:check
+
       # Vitest は型を見ず vite build も型チェックをしないため、これが唯一の検出手段
       - name: Typecheck
         run: pnpm typecheck

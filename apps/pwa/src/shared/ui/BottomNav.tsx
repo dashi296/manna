@@ -17,7 +17,7 @@ export function BottomNav() {
               to={to}
               className={cn(
                 'flex-1 flex flex-col items-center py-2 text-xs gap-1 transition-colors',
-                active ? 'text-lagoon-deep' : 'text-sea-ink-soft hover:text-sea-ink'
+                active ? 'text-lagoon-deep' : 'text-sea-ink-soft hover:text-sea-ink',
               )}
             >
               <Icon size={22} strokeWidth={active ? 2.2 : 1.8} aria-hidden="true" />

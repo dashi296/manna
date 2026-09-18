@@ -18,7 +18,12 @@ const fetchPost = createServerFn({ method: 'POST' })
     const serverSupabase = await createSupabaseServer()
     // maybeSingle は0件を null で返すので loader が 404 にできる。single だと0件も
     // error になり、throwOnError と併せると 404 が 500 に化ける
-    const [{ data: post }, { data: { user } }] = await Promise.all([
+    const [
+      { data: post },
+      {
+        data: { user },
+      },
+    ] = await Promise.all([
       serverSupabase
         .from('posts')
         .select(POST_SELECT)
@@ -51,7 +56,9 @@ function PostDetailPage() {
   const isEdited = post.updated_at !== post.created_at
 
   const scriptureRef = toScriptureRef(post)
-  const scriptureBook = scriptureRef ? getBook(scriptureRef.collection, scriptureRef.book) : undefined
+  const scriptureBook = scriptureRef
+    ? getBook(scriptureRef.collection, scriptureRef.book)
+    : undefined
   const scriptureLabel = scriptureRef ? getScriptureLabel(scriptureRef, scriptureBook) : null
   const officialUrl = scriptureRef ? buildScriptureUrl(scriptureRef, scriptureBook) : null
 
@@ -78,9 +85,7 @@ function PostDetailPage() {
         <div className="flex items-center gap-3 mb-4">
           <UserAvatar name={displayName} url={avatarUrl} size="md" />
           <div>
-            <span className="font-semibold text-sm text-foreground">
-              {displayName}
-            </span>
+            <span className="font-semibold text-sm text-foreground">{displayName}</span>
             <div className="text-xs text-muted-foreground">
               {formatDate(post.created_at, { year: true })}
               {isEdited && <span>・編集済み</span>}
@@ -89,7 +94,10 @@ function PostDetailPage() {
         </div>
 
         {scriptureRef && scriptureLabel && officialUrl && (
-          <div className="mb-4 p-3 rounded-xl" style={{ background: 'var(--chip-bg)', border: '1px solid var(--chip-line)' }}>
+          <div
+            className="mb-4 p-3 rounded-xl"
+            style={{ background: 'var(--chip-bg)', border: '1px solid var(--chip-line)' }}
+          >
             <Link
               to="/scriptures/$collection/$book/$chapter"
               params={{

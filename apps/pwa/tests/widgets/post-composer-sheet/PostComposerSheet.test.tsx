@@ -8,7 +8,9 @@ vi.mock('@/shared/lib/supabase', () => ({
   supabase: {
     from: () => ({
       insert: mockInsert,
-      update: () => ({ eq: () => ({ select: async () => ({ data: [{ id: 'p1' }], error: null }) }) }),
+      update: () => ({
+        eq: () => ({ select: async () => ({ data: [{ id: 'p1' }], error: null }) }),
+      }),
     }),
     auth: { getUser: async () => ({ data: { user: { id: 'u1' } } }) },
   },
@@ -25,9 +27,7 @@ describe('PostComposerSheet', () => {
   })
 
   it('open=false ではシート内容が描画されない', () => {
-    render(
-      <PostComposerSheet open={false} onOpenChange={() => {}} />,
-    )
+    render(<PostComposerSheet open={false} onOpenChange={() => {}} />)
     expect(screen.queryByRole('dialog')).toBeNull()
   })
 

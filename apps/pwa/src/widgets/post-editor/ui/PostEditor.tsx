@@ -31,7 +31,11 @@ type Draft = {
 
 function scriptureDraftKey(scripture: ScriptureRefPartial): string {
   if (!scripture.collection) return `${DRAFT_KEY_PREFIX}none`
-  const verses = scripture.verses?.slice().sort((a, b) => a - b).join(',') ?? ''
+  const verses =
+    scripture.verses
+      ?.slice()
+      .sort((a, b) => a - b)
+      .join(',') ?? ''
   return `${DRAFT_KEY_PREFIX}${scripture.collection}:${scripture.book ?? ''}:${scripture.chapter ?? ''}:${verses}`
 }
 
@@ -116,8 +120,7 @@ export function PostEditor({
     return () => clearTimeout(timer)
   }, [content, visibility, scripture, mode])
 
-  const unchanged =
-    post !== undefined && content === post.content && visibility === post.visibility
+  const unchanged = post !== undefined && content === post.content && visibility === post.visibility
 
   const handleSubmit = async () => {
     if (!content.trim()) return
@@ -142,7 +145,9 @@ export function PostEditor({
       return
     }
 
-    const { data: { user } } = await supabase.auth.getUser()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
     if (!user) {
       end()
       setErrorMessage('投稿するにはログインが必要です。')
@@ -218,16 +223,11 @@ export function PostEditor({
           style={containerStyle}
         />
       ) : (
-        <div
-          className="min-h-[200px] rounded-md border p-3"
-          style={containerStyle}
-        >
+        <div className="min-h-[200px] rounded-md border p-3" style={containerStyle}>
           {content ? (
             <MarkdownRenderer content={content} />
           ) : (
-            <p className="text-sm text-muted-foreground">
-              プレビューする内容がありません
-            </p>
+            <p className="text-sm text-muted-foreground">プレビューする内容がありません</p>
           )}
         </div>
       )}
@@ -256,9 +256,7 @@ export function PostEditor({
         </div>
 
         <div>
-          <p className="text-xs font-medium mb-2 text-muted-foreground">
-            公開範囲
-          </p>
+          <p className="text-xs font-medium mb-2 text-muted-foreground">公開範囲</p>
           <VisibilitySelector value={visibility} onChange={setVisibility} />
         </div>
       </div>
@@ -269,8 +267,12 @@ export function PostEditor({
         className="w-full"
       >
         {isEditing
-          ? (submitting ? '更新中...' : '更新する')
-          : (submitting ? '投稿中...' : '投稿する')}
+          ? submitting
+            ? '更新中...'
+            : '更新する'
+          : submitting
+            ? '投稿中...'
+            : '投稿する'}
       </Button>
     </div>
   )

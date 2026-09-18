@@ -10,9 +10,7 @@ vi.mock('@/shared/lib/auth', () => ({
   signOut: vi.fn(),
 }))
 
-vi.mock('@tanstack/react-router', async () =>
-  (await import('../../helpers/tanstack')).routerMock(),
-)
+vi.mock('@tanstack/react-router', async () => (await import('../../helpers/tanstack')).routerMock())
 
 const renderPage = () => renderWithQueryClient(() => <NotFoundPage />)
 

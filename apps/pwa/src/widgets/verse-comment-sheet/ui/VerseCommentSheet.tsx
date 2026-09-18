@@ -6,13 +6,7 @@ import { copyText } from '@/shared/lib/clipboard'
 import { SanitizedVerseHtml } from '@/shared/ui'
 import { Button } from '@/shared/ui/button'
 import { toast } from '@/shared/ui/sonner'
-import {
-  Drawer,
-  DrawerBody,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-} from '@/shared/ui/drawer'
+import { Drawer, DrawerBody, DrawerContent, DrawerHeader, DrawerTitle } from '@/shared/ui/drawer'
 import { useIsMobile } from '@/shared/hooks/use-mobile'
 
 type Props = {
@@ -98,7 +92,13 @@ export function VerseCommentSheet({
             )}
             <div className="flex items-center gap-2">
               {textHtml && (
-                <Button type="button" variant="outline" size="sm" className="gap-1" onClick={onCopy}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="gap-1"
+                  onClick={onCopy}
+                >
                   <Copy size={14} aria-hidden="true" />
                   コピー
                 </Button>
@@ -134,9 +134,7 @@ export function VerseCommentSheet({
             </div>
           ))}
           {posts.length === 0 && (
-            <p className="text-sm text-muted-foreground">
-              この節への投稿はまだありません
-            </p>
+            <p className="text-sm text-muted-foreground">この節への投稿はまだありません</p>
           )}
           {canCompose && onCompose && (
             <Button

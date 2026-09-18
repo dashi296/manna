@@ -19,7 +19,7 @@ async function renderSidebar({ waitForUser = true } = {}) {
   const result = render(
     <SidebarProvider>
       <AppSidebar />
-    </SidebarProvider>
+    </SidebarProvider>,
   )
   if (waitForUser) {
     // getSession の resolve による setState を待つ（act 警告回避）

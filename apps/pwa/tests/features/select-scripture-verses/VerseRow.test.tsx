@@ -120,7 +120,13 @@ describe('VerseRow', () => {
   it("mode='select' でクリックすると onSelect が呼ばれ、リンク遷移は起きない", async () => {
     const onSelect = vi.fn()
     render(
-      <VerseRow {...baseProps} mode="select" selected={false} onSelect={onSelect} onOpen={() => {}} />,
+      <VerseRow
+        {...baseProps}
+        mode="select"
+        selected={false}
+        onSelect={onSelect}
+        onOpen={() => {}}
+      />,
     )
     await waitFor(() => {
       expect(screen.queryByRole('link')).toBeNull()
@@ -132,7 +138,13 @@ describe('VerseRow', () => {
 
   it("mode='select' かつ selected=true でチェックマークとアクセントを表示", async () => {
     render(
-      <VerseRow {...baseProps} mode="select" selected={true} onSelect={vi.fn()} onOpen={() => {}} />,
+      <VerseRow
+        {...baseProps}
+        mode="select"
+        selected={true}
+        onSelect={vi.fn()}
+        onOpen={() => {}}
+      />,
     )
     await waitFor(() => {
       const checkbox = screen.getByRole('checkbox')
@@ -183,7 +195,14 @@ describe('VerseRow highlighted', () => {
 describe('VerseRow showNumber', () => {
   it("showNumber=false のとき mode='read' で節番号を表示しない", async () => {
     render(
-      <VerseRow {...baseProps} mode="read" selected={false} onSelect={vi.fn()} onOpen={() => {}} showNumber={false} />,
+      <VerseRow
+        {...baseProps}
+        mode="read"
+        selected={false}
+        onSelect={vi.fn()}
+        onOpen={() => {}}
+        showNumber={false}
+      />,
     )
     await waitFor(() => {
       expect(screen.queryByText('19')).toBeNull()
@@ -192,7 +211,14 @@ describe('VerseRow showNumber', () => {
 
   it("showNumber=false のとき mode='select' でも節番号を表示しない", async () => {
     render(
-      <VerseRow {...baseProps} mode="select" selected={false} onSelect={vi.fn()} onOpen={() => {}} showNumber={false} />,
+      <VerseRow
+        {...baseProps}
+        mode="select"
+        selected={false}
+        onSelect={vi.fn()}
+        onOpen={() => {}}
+        showNumber={false}
+      />,
     )
     await waitFor(() => {
       expect(screen.queryByText('19')).toBeNull()

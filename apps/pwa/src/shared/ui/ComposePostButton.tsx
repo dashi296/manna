@@ -28,13 +28,7 @@ export function ComposePostButton({ layout = 'pill', label, className, ...rest }
   }
 
   return (
-    <Button
-      type="button"
-      variant="accent"
-      size="pill"
-      className={cn('gap-1', className)}
-      {...rest}
-    >
+    <Button type="button" variant="accent" size="pill" className={cn('gap-1', className)} {...rest}>
       <PenLine size={12} aria-hidden="true" />
       <span>{label}</span>
     </Button>

@@ -35,17 +35,19 @@ export function routerMock(
       children?: React.ReactNode
       [key: string]: unknown
     }) => {
-      const path = to && params
-        ? Object.entries(params).reduce((acc, [k, v]) => acc.replace(`$${k}`, v), to)
-        : to
+      const path =
+        to && params
+          ? Object.entries(params).reduce((acc, [k, v]) => acc.replace(`$${k}`, v), to)
+          : to
       // 空オブジェクトの search={{}}（PageHeader の戻るリンクなど）で href に
       // 余計な "?" が付かないよう、キーがある場合のみクエリ文字列を付与する。
       // 本番の TanStack Router は配列値を JSON化する（?verses=%5B19%5D）が、
       // ここは String() で結合するため配列は "?verses=19" のようになる。
       const searchEntries = search ? Object.entries(search) : []
-      const query = searchEntries.length > 0
-        ? `?${new URLSearchParams(searchEntries.map(([k, v]) => [k, String(v)]))}`
-        : ''
+      const query =
+        searchEntries.length > 0
+          ? `?${new URLSearchParams(searchEntries.map(([k, v]) => [k, String(v)]))}`
+          : ''
       const href = path ? `${path}${query}` : path
       return (
         <a href={href} {...props}>
@@ -76,13 +78,15 @@ export const routeComponent = (mod: { Route: unknown }) =>
 // routerMock の createFileRoute は config をそのまま展開して返すため、loader も生えている。
 // 本物の Route 型には現れないのでキャストが要る（routeComponent と同じ事情）
 export const routeLoader = (mod: { Route: unknown }) =>
-  (mod.Route as {
-    loader: (ctx: {
-      params: Record<string, string>
-      deps: Record<string, unknown>
-      context: Record<string, unknown>
-    }) => Promise<unknown>
-  }).loader
+  (
+    mod.Route as {
+      loader: (ctx: {
+        params: Record<string, string>
+        deps: Record<string, unknown>
+        context: Record<string, unknown>
+      }) => Promise<unknown>
+    }
+  ).loader
 
 // getServerSession (@/shared/lib/auth) は .inputValidator() を挟まず
 // .handler() を直接呼ぶため、両方のチェーンをスタブする必要がある。

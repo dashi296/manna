@@ -23,11 +23,7 @@ function BookPage() {
   const chapters = Array.from({ length: book.chapters }, (_, i) => i + 1)
   return (
     <div>
-      <PageHeader
-        title={book.name}
-        backTo="/scriptures/$collection"
-        backLabel={collection.name}
-      />
+      <PageHeader title={book.name} backTo="/scriptures/$collection" backLabel={collection.name} />
       <div className="p-4">
         <p className="text-xs mb-3 text-muted-foreground">章を選んでください</p>
         <div className="grid grid-cols-5 gap-2">

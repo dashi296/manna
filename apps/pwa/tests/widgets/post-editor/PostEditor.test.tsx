@@ -90,7 +90,9 @@ describe('PostEditor', () => {
     await user.type(screen.getByPlaceholderText(/感じたこと/), '19節への感想')
 
     await waitFor(() =>
-      expect(localStorage.getItem('manna:post-draft:v2:bofm:mosiah:3:19')).toContain('19節への感想'),
+      expect(localStorage.getItem('manna:post-draft:v2:bofm:mosiah:3:19')).toContain(
+        '19節への感想',
+      ),
     )
     expect(localStorage.getItem('manna:post-draft:v2:bofm:mosiah:3:20')).toBeNull()
     expect(localStorage.getItem('manna:post-draft:v2')).toBeNull()
@@ -108,7 +110,9 @@ describe('PostEditor', () => {
     await waitFor(() => expect(localStorage.getItem('manna:post-draft')).toBeNull())
     expect(localStorage.getItem('manna:post-draft:bofm:mosiah:3:19')).toBeNull()
     // v2 と、そもそも下書きではないキーは触らない
-    expect(localStorage.getItem('manna:post-draft:v2:bofm:mosiah:3:20')).toBe('{"content":"v2 の下書き"}')
+    expect(localStorage.getItem('manna:post-draft:v2:bofm:mosiah:3:20')).toBe(
+      '{"content":"v2 の下書き"}',
+    )
     expect(localStorage.getItem('manna:bookmarks:v1')).toBe('{"state":{}}')
   })
 
@@ -176,7 +180,12 @@ describe('PostEditor（編集モード）', () => {
     )
 
     render(
-      <PostEditor mode="sheet" post={editablePost} initialScripture={scripture} onSuccess={() => {}} />,
+      <PostEditor
+        mode="sheet"
+        post={editablePost}
+        initialScripture={scripture}
+        onSuccess={() => {}}
+      />,
     )
 
     expect(screen.getByPlaceholderText(/感じたこと/)).toHaveValue('元の本文')
@@ -188,7 +197,12 @@ describe('PostEditor（編集モード）', () => {
     localStorage.setItem('manna:post-draft:v2:bofm:mosiah:3:19', draft)
 
     render(
-      <PostEditor mode="sheet" post={editablePost} initialScripture={scripture} onSuccess={() => {}} />,
+      <PostEditor
+        mode="sheet"
+        post={editablePost}
+        initialScripture={scripture}
+        onSuccess={() => {}}
+      />,
     )
     await user.type(screen.getByPlaceholderText(/感じたこと/), '追記')
 
@@ -206,7 +220,12 @@ describe('PostEditor（編集モード）', () => {
     const onSuccess = vi.fn()
 
     render(
-      <PostEditor mode="sheet" post={editablePost} initialScripture={scripture} onSuccess={onSuccess} />,
+      <PostEditor
+        mode="sheet"
+        post={editablePost}
+        initialScripture={scripture}
+        onSuccess={onSuccess}
+      />,
     )
     await user.type(screen.getByPlaceholderText(/感じたこと/), 'を直した')
     await user.click(screen.getByRole('button', { name: '更新する' }))
@@ -217,7 +236,12 @@ describe('PostEditor（編集モード）', () => {
 
   it('聖典参照は編集させず、ラベルだけ表示する', () => {
     render(
-      <PostEditor mode="sheet" post={editablePost} initialScripture={scripture} onSuccess={() => {}} />,
+      <PostEditor
+        mode="sheet"
+        post={editablePost}
+        initialScripture={scripture}
+        onSuccess={() => {}}
+      />,
     )
 
     expect(screen.getByText(/モーサヤ書 3:19/)).toBeInTheDocument()

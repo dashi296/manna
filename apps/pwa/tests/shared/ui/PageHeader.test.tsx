@@ -3,8 +3,18 @@ import { render, screen } from '@testing-library/react'
 import { PageHeader } from '@/shared/ui/PageHeader'
 
 vi.mock('@tanstack/react-router', () => ({
-  Link: ({ to, children, ...props }: { to: string; children: React.ReactNode; [key: string]: unknown }) => (
-    <a href={to} {...props}>{children}</a>
+  Link: ({
+    to,
+    children,
+    ...props
+  }: {
+    to: string
+    children: React.ReactNode
+    [key: string]: unknown
+  }) => (
+    <a href={to} {...props}>
+      {children}
+    </a>
   ),
 }))
 

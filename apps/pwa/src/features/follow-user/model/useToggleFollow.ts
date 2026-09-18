@@ -9,11 +9,16 @@ export function useToggleFollow({ currentUserId, targetUserId, isFollowing }: Ar
     optimistic: (next) => next,
     run: (next) =>
       next
-        ? supabase.from('follows').insert({
-            follower_id: currentUserId,
-            following_id: targetUserId,
-          }).select('follower_id')
-        : supabase.from('follows').delete()
+        ? supabase
+            .from('follows')
+            .insert({
+              follower_id: currentUserId,
+              following_id: targetUserId,
+            })
+            .select('follower_id')
+        : supabase
+            .from('follows')
+            .delete()
             .eq('follower_id', currentUserId)
             .eq('following_id', targetUserId)
             .select('follower_id'),

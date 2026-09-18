@@ -19,7 +19,11 @@ function CollectionPage() {
       <div className="p-4">
         <ul className="overflow-hidden rounded-xl" style={{ border: '1px solid var(--line)' }}>
           {collection.books.map((book) => (
-            <li key={book.id} className="border-b last:border-b-0" style={{ borderColor: 'var(--line)' }}>
+            <li
+              key={book.id}
+              className="border-b last:border-b-0"
+              style={{ borderColor: 'var(--line)' }}
+            >
               <Link
                 to="/scriptures/$collection/$book"
                 params={{ collection: collection.id, book: book.id }}
@@ -27,7 +31,9 @@ function CollectionPage() {
                 style={{ color: 'var(--sea-ink)' }}
               >
                 <span>{book.name}</span>
-                <span className="text-sm text-muted-foreground">{book.isFrontMatter ? '›' : `${book.chapters}章 ›`}</span>
+                <span className="text-sm text-muted-foreground">
+                  {book.isFrontMatter ? '›' : `${book.chapters}章 ›`}
+                </span>
               </Link>
             </li>
           ))}

@@ -34,9 +34,7 @@ describe('VerseCommentMarker', () => {
 
   it('アバターは3人までに抑え、残りは件数表示に任せる', () => {
     render(
-      <VerseCommentMarker
-        entry={{ anchoredCount: 4, commenters: [alice, bob, carol, dave] }}
-      />,
+      <VerseCommentMarker entry={{ anchoredCount: 4, commenters: [alice, bob, carol, dave] }} />,
     )
 
     expect(screen.getByText('ア')).toBeInTheDocument()
@@ -57,9 +55,7 @@ describe('VerseCommentMarker', () => {
   it('件数バッジはアイコンより前面に出す', () => {
     // アバターは flex アイテムに z-index を直接持たせている。flex アイテムは
     // position: static でも z-index が効くため、指定の無いバッジは下に潜る
-    render(
-      <VerseCommentMarker entry={{ anchoredCount: 3, commenters: [alice, bob, carol] }} />,
-    )
+    render(<VerseCommentMarker entry={{ anchoredCount: 3, commenters: [alice, bob, carol] }} />)
 
     const badge = screen.getByText('3')
     const wrapper = badge.parentElement!

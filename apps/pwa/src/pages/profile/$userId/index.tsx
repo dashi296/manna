@@ -196,14 +196,8 @@ function ProfilePage() {
         <div className="flex items-start gap-4">
           <UserAvatar name={displayName} url={avatarUrl} size="lg" />
           <div className="flex-1 min-w-0">
-            <h2 className="text-lg font-bold truncate text-foreground">
-              {displayName}
-            </h2>
-            {profile.bio && (
-              <p className="text-sm mt-1 text-muted-foreground">
-                {profile.bio}
-              </p>
-            )}
+            <h2 className="text-lg font-bold truncate text-foreground">{displayName}</h2>
+            {profile.bio && <p className="text-sm mt-1 text-muted-foreground">{profile.bio}</p>}
             <div className="flex gap-4 mt-2 text-sm text-muted-foreground">
               <Link
                 to="/profile/$userId/connections"

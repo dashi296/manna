@@ -15,9 +15,7 @@ export function NotFoundPage() {
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center gap-6 px-6 text-center">
       <div>
-        <h1 className="text-lg font-bold text-foreground">
-          ページが見つかりません
-        </h1>
+        <h1 className="text-lg font-bold text-foreground">ページが見つかりません</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           URL が変わったか、削除された可能性があります
         </p>

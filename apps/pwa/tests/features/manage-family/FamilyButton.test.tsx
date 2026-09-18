@@ -44,9 +44,7 @@ vi.mock('@/shared/lib/supabase', () => ({
 }))
 
 const renderButton = (status: FamilyStatus) =>
-  renderWithQueryClient(() => (
-    <FamilyButton targetUserId="u2" currentUserId="u1" status={status} />
-  ))
+  renderWithQueryClient(() => <FamilyButton targetUserId="u2" currentUserId="u1" status={status} />)
 
 describe('FamilyButton', () => {
   beforeEach(() => {

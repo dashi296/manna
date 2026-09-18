@@ -31,7 +31,12 @@ export const fetchConnections = createServerFn({ method: 'POST' })
     // フォロー行の取得結果に依存しないので、待たずに先に走らせる
     const userPromise = serverSupabase.auth.getUser()
 
-    const [{ data: followData }, { data: { user: currentUser } }] = await Promise.all([
+    const [
+      { data: followData },
+      {
+        data: { user: currentUser },
+      },
+    ] = await Promise.all([
       serverSupabase
         .rpc(rpcName, {
           target_user_id: userId,
@@ -133,11 +138,7 @@ function ConnectionRow({
         className="flex items-center gap-3 flex-1 min-w-0"
       >
         <UserAvatar name={displayName} url={avatarUrl} size="sm" />
-        <span
-          className="text-sm font-semibold truncate text-foreground"
-        >
-          {displayName}
-        </span>
+        <span className="text-sm font-semibold truncate text-foreground">{displayName}</span>
       </Link>
       {currentUserId && currentUserId !== row.user.id && (
         <FollowButton
@@ -163,11 +164,7 @@ function ConnectionsPage() {
 
   return (
     <div>
-      <PageHeader
-        title={TAB_LABELS[tab]}
-        backTo="/profile/$userId"
-        backLabel="プロフィール"
-      />
+      <PageHeader title={TAB_LABELS[tab]} backTo="/profile/$userId" backLabel="プロフィール" />
       <TabBar
         tabs={TABS}
         active={tab}

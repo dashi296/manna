@@ -1,5 +1,11 @@
 import { useEffect } from 'react'
-import { HeadContent, Scripts, Outlet, createRootRouteWithContext, redirect } from '@tanstack/react-router'
+import {
+  HeadContent,
+  Scripts,
+  Outlet,
+  createRootRouteWithContext,
+  redirect,
+} from '@tanstack/react-router'
 import type { QueryClient } from '@tanstack/react-query'
 import { getSession, getServerSession } from '@/shared/lib/auth'
 import { getCookieHeader } from '@/shared/lib/cookies'
@@ -23,7 +29,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: 'utf-8' },
-      { name: 'viewport', content: 'width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content' },
+      {
+        name: 'viewport',
+        content:
+          'width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content',
+      },
       { title: 'Manna' },
       { name: 'theme-color', content: '#2b7a72' },
       { name: 'apple-mobile-web-app-capable', content: 'yes' },
@@ -52,7 +62,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       const session =
         typeof window === 'undefined'
           ? await getServerSession() // SSR: cookie から読み取る
-          : await getSession()       // CSR: createBrowserClient から読み取る
+          : await getSession() // CSR: createBrowserClient から読み取る
       if (!session) throw redirect({ to: '/login' })
     }
   },

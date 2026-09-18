@@ -33,8 +33,12 @@ vi.mock('@tanstack/react-start', async () => (await import('../../helpers/tansta
 vi.mock('@/shared/lib/supabase', () => ({
   supabase: {
     from: () => ({
-      update: () => ({ eq: () => ({ select: async () => ({ data: [{ id: 'post-1' }], error: null }) }) }),
-      delete: () => ({ eq: () => ({ select: async () => ({ data: [{ id: 'post-1' }], error: null }) }) }),
+      update: () => ({
+        eq: () => ({ select: async () => ({ data: [{ id: 'post-1' }], error: null }) }),
+      }),
+      delete: () => ({
+        eq: () => ({ select: async () => ({ data: [{ id: 'post-1' }], error: null }) }),
+      }),
     }),
     auth: { getUser: async () => ({ data: { user: { id: 'user-1' } } }) },
   },

@@ -53,9 +53,7 @@ describe('シート由来マーカーと window.history.state', () => {
 
     await router.navigate({ to, params: chapterParams, search: { comment: 7 } })
 
-    expect(
-      (window.history.state as { mannaVerseSheet?: true }).mannaVerseSheet,
-    ).toBeUndefined()
+    expect((window.history.state as { mannaVerseSheet?: true }).mannaVerseSheet).toBeUndefined()
   })
 
   it('back すると URL もマーカーも1つ前の状態に戻る', async () => {
@@ -75,8 +73,6 @@ describe('シート由来マーカーと window.history.state', () => {
     await new Promise((resolve) => setTimeout(resolve, 50))
 
     expect(window.location.search).toBe('')
-    expect(
-      (window.history.state as { mannaVerseSheet?: true }).mannaVerseSheet,
-    ).toBeUndefined()
+    expect((window.history.state as { mannaVerseSheet?: true }).mannaVerseSheet).toBeUndefined()
   })
 })

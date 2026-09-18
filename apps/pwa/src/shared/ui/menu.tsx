@@ -21,12 +21,7 @@ type MenuContentProps = MenuPrimitive.Popup.Props & {
 // 包んでしまい、スクリーンリーダーがメニューをダイアログと読み上げる）。
 // Menu.Popup は role="menu" を自身に持ち、矢印キー移動とロービングタブ
 // インデックスも標準で備える
-function MenuContent({
-  className,
-  align = 'end',
-  sideOffset = 6,
-  ...props
-}: MenuContentProps) {
+function MenuContent({ className, align = 'end', sideOffset = 6, ...props }: MenuContentProps) {
   return (
     <MenuPrimitive.Portal>
       <MenuPrimitive.Positioner sideOffset={sideOffset} align={align} className="z-50">

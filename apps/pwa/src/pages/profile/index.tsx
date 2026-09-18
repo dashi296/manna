@@ -6,7 +6,7 @@ export const Route = createFileRoute('/profile/')({
     const session =
       typeof window === 'undefined'
         ? await getServerSession() // SSR: cookie から読み取る
-        : await getSession()       // CSR: createBrowserClient から読み取る
+        : await getSession() // CSR: createBrowserClient から読み取る
     if (!session?.user?.id) throw redirect({ to: '/login' })
     throw redirect({ to: '/profile/$userId', params: { userId: session.user.id } })
   },

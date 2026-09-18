@@ -3,8 +3,7 @@ import { useEffect, useLayoutEffect, useState } from 'react'
 // useLayoutEffect fires before paint, so the mounted flip happens before the
 // browser shows a frame — avoiding the one-frame flicker useEffect causes.
 // Falls back to useEffect on the server, where useLayoutEffect warns.
-const useIsomorphicLayoutEffect =
-  typeof window !== 'undefined' ? useLayoutEffect : useEffect
+const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect
 
 // SSR / hydration safety: returns false on the server and during the first
 // client render, true after mount. Use to gate reads from client-only state

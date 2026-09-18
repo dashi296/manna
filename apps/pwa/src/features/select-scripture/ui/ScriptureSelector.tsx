@@ -1,12 +1,6 @@
 import { useState, useEffect } from 'react'
 import { getAllCollections, getCollection, getBook } from '@/entities/scripture'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/shared/ui/select'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/ui/select'
 import { Input } from '@/shared/ui/input'
 
 import { parseVerses, buildChapterItems, type ScriptureRefPartial } from '../model'
@@ -32,7 +26,9 @@ function RefSelect({ items, value, placeholder, disabled, onSelect }: RefSelectP
     <Select
       items={items}
       value={value}
-      onValueChange={(v: string | null) => { if (v) onSelect(v) }}
+      onValueChange={(v: string | null) => {
+        if (v) onSelect(v)
+      }}
       disabled={disabled}
     >
       <SelectTrigger>
@@ -81,9 +77,7 @@ export function ScriptureSelector({ value, onChange, lockRef = false }: Props) {
             value={value.book ?? null}
             placeholder="書籍を選択"
             disabled={!selectedCollection}
-            onSelect={(v) =>
-              onChange({ ...value, book: v, chapter: undefined, verses: undefined })
-            }
+            onSelect={(v) => onChange({ ...value, book: v, chapter: undefined, verses: undefined })}
           />
 
           <RefSelect
@@ -91,9 +85,7 @@ export function ScriptureSelector({ value, onChange, lockRef = false }: Props) {
             value={value.chapter?.toString() ?? null}
             placeholder="章を選択"
             disabled={!selectedBook}
-            onSelect={(v) =>
-              onChange({ ...value, chapter: parseInt(v, 10), verses: undefined })
-            }
+            onSelect={(v) => onChange({ ...value, chapter: parseInt(v, 10), verses: undefined })}
           />
         </>
       )}
@@ -104,9 +96,8 @@ export function ScriptureSelector({ value, onChange, lockRef = false }: Props) {
         value={versesInput}
         onChange={(e) => setVersesInput(e.target.value)}
         onBlur={() => {
-          const maxVerse = selectedBook && value.chapter
-            ? selectedBook.verses[value.chapter - 1]
-            : undefined
+          const maxVerse =
+            selectedBook && value.chapter ? selectedBook.verses[value.chapter - 1] : undefined
           const parsed = versesInput
             ? parseVerses(versesInput).filter((n) => !maxVerse || n <= maxVerse)
             : undefined

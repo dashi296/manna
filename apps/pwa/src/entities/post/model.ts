@@ -28,6 +28,11 @@ export const POST_SELECT = `
 
 export function toScriptureRef(post: PostWithUser) {
   return post.scripture_collection && post.scripture_book && post.scripture_chapter
-    ? { collection: post.scripture_collection, book: post.scripture_book, chapter: post.scripture_chapter, verses: post.scripture_verses ?? undefined }
+    ? {
+        collection: post.scripture_collection,
+        book: post.scripture_book,
+        chapter: post.scripture_chapter,
+        verses: post.scripture_verses ?? undefined,
+      }
     : null
 }

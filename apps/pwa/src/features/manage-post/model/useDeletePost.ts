@@ -14,11 +14,7 @@ export function useDeletePost(postId: string) {
   const remove = async () => {
     if (!begin()) return
 
-    const { data, error } = await supabase
-      .from('posts')
-      .delete()
-      .eq('id', postId)
-      .select('id')
+    const { data, error } = await supabase.from('posts').delete().eq('id', postId).select('id')
 
     // 0 行は RLS に拒否されたときも返る。削除が起きていない可能性があるので成功にしない
     if (error || !data?.length) {

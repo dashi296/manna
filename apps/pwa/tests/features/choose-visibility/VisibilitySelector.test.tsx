@@ -15,7 +15,10 @@ describe('VisibilitySelector', () => {
 
   it('value に応じたラジオが選択状態になる', () => {
     render(<VisibilitySelector value="family" onChange={() => {}} />)
-    expect(screen.getByRole('radio', { name: /ファミリー/ })).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getByRole('radio', { name: /ファミリー/ })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    )
     expect(screen.getByRole('radio', { name: /全体公開/ })).toHaveAttribute('aria-checked', 'false')
   })
 

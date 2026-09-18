@@ -48,11 +48,7 @@ export function PostComposerSheet({
       const hasMarker = (window.history.state as ComposerHistoryState | null)?.mannaComposer
       if (hasMarker) {
         // プログラム経由の close: composer エントリを pop してから onClosed。
-        window.addEventListener(
-          'popstate',
-          () => onClosedRef.current?.(),
-          { once: true },
-        )
+        window.addEventListener('popstate', () => onClosedRef.current?.(), { once: true })
         window.history.back()
       } else {
         // ブラウザバック経由の close: 既に pop 済みなので即 onClosed。
