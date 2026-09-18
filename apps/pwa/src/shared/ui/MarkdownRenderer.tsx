@@ -14,7 +14,9 @@ type Props = {
 export function MarkdownRenderer({ content, className, components }: Props) {
   return (
     <div className={cn('prose prose-sm max-w-none break-words', className)}>
-      <Markdown remarkPlugins={REMARK_PLUGINS} components={components}>{content}</Markdown>
+      <Markdown remarkPlugins={REMARK_PLUGINS} components={components}>
+        {content}
+      </Markdown>
     </div>
   )
 }

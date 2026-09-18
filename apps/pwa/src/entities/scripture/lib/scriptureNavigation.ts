@@ -1,4 +1,9 @@
-import { findBook, findCollection, getChapterLabel, getScriptureLabel } from '@/shared/lib/scriptureUtils'
+import {
+  findBook,
+  findCollection,
+  getChapterLabel,
+  getScriptureLabel,
+} from '@/shared/lib/scriptureUtils'
 
 export type ChapterRef = { collection: string; book: string; chapter: number }
 

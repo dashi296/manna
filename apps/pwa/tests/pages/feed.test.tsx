@@ -43,7 +43,12 @@ describe('FeedPage', () => {
   })
 
   it('見ているタブの投稿を表示する', async () => {
-    mockFetchFeed.mockResolvedValue(postsPage([makePost({ id: 'p1', content: '最初の投稿' }), makePost({ id: 'p2', content: '次の投稿' })]))
+    mockFetchFeed.mockResolvedValue(
+      postsPage([
+        makePost({ id: 'p1', content: '最初の投稿' }),
+        makePost({ id: 'p2', content: '次の投稿' }),
+      ]),
+    )
     await renderPage()
     expect(await screen.findByText('最初の投稿')).toBeInTheDocument()
     expect(screen.getByText('次の投稿')).toBeInTheDocument()
@@ -75,7 +80,9 @@ describe('FeedPage', () => {
 
   it('「もっと見る」で次のページを末尾に追記する', async () => {
     mockFetchFeed
-      .mockResolvedValueOnce(postsPage([makePost({ id: 'p1', content: '最初の投稿' })], cursorAt('p1')))
+      .mockResolvedValueOnce(
+        postsPage([makePost({ id: 'p1', content: '最初の投稿' })], cursorAt('p1')),
+      )
       .mockResolvedValueOnce(postsPage([makePost({ id: 'p2', content: '古い投稿' })]))
     await renderPage()
     expect(await screen.findByText('最初の投稿')).toBeInTheDocument()
@@ -121,7 +128,9 @@ describe('FeedPage', () => {
   it('取得中にタブを切り替えたら、遅れて届いた前タブの結果を混ぜない', async () => {
     const pending = deferred()
     mockFetchFeed
-      .mockResolvedValueOnce(postsPage([makePost({ id: 'p1', content: 'フォロー中の投稿' })], cursorAt('p1')))
+      .mockResolvedValueOnce(
+        postsPage([makePost({ id: 'p1', content: 'フォロー中の投稿' })], cursorAt('p1')),
+      )
       .mockReturnValueOnce(pending.promise)
     const { rerenderWithQueryClient } = await renderPage()
     expect(await screen.findByText('フォロー中の投稿')).toBeInTheDocument()

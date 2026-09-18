@@ -90,7 +90,12 @@ describe('ProfilePage', () => {
   })
 
   it('投稿を別クエリで取得して表示する', async () => {
-    const { client } = await renderPage({}, [postsPage([makePost({ id: 'p1', content: '最初の投稿' }), makePost({ id: 'p2', content: '次の投稿' })])])
+    const { client } = await renderPage({}, [
+      postsPage([
+        makePost({ id: 'p1', content: '最初の投稿' }),
+        makePost({ id: 'p2', content: '次の投稿' }),
+      ]),
+    ])
     expect(await screen.findByText('最初の投稿')).toBeInTheDocument()
     expect(screen.getByText('次の投稿')).toBeInTheDocument()
     // プロフィール本体と投稿でキーが分かれている（フォロー操作で投稿を取り直さないため）

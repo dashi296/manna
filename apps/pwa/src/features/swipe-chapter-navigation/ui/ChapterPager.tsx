@@ -82,7 +82,12 @@ export function ChapterPager({ loc, disabled, renderPreview, children }: Props) 
         onTouchCancel={onTouchEnd}
       >
         {prev && (
-          <div data-testid="chapter-pager-prev" aria-hidden className={panelClass} style={panelStyle}>
+          <div
+            data-testid="chapter-pager-prev"
+            aria-hidden
+            className={panelClass}
+            style={panelStyle}
+          >
             {panelPreview('prev')}
           </div>
         )}
@@ -90,7 +95,12 @@ export function ChapterPager({ loc, disabled, renderPreview, children }: Props) 
           {children}
         </div>
         {next && (
-          <div data-testid="chapter-pager-next" aria-hidden className={panelClass} style={panelStyle}>
+          <div
+            data-testid="chapter-pager-next"
+            aria-hidden
+            className={panelClass}
+            style={panelStyle}
+          >
             {panelPreview('next')}
           </div>
         )}

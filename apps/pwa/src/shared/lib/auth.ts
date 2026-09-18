@@ -29,10 +29,7 @@ export async function getSession() {
   return session
 }
 
-export async function createSupabaseServer(opts?: {
-  request?: Request
-  onSetAll?: SetAllCookies
-}) {
+export async function createSupabaseServer(opts?: { request?: Request; onSetAll?: SetAllCookies }) {
   const { createServerClient, parseCookieHeader } = await import('@supabase/ssr')
 
   const cookieHeader = opts?.request
@@ -67,8 +64,6 @@ export const getServerSession = createServerFn({ method: 'GET' }).handler(async 
 export function isCodeReuseError(err: unknown): boolean {
   const msg = (err instanceof Error ? err.message : String(err)).toLowerCase()
   return (
-    msg.includes('otp_expired') ||
-    msg.includes('invalid_grant') ||
-    msg.includes('invalid request')
+    msg.includes('otp_expired') || msg.includes('invalid_grant') || msg.includes('invalid request')
   )
 }

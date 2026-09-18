@@ -15,7 +15,10 @@ export function SelectionModeHeader({ count, onCancel, onSubmit }: Props) {
   const titleLabel = count === 0 ? '節を選んでください' : `${count}節選択中`
 
   return (
-    <header className={cn(stickyHeaderClassName, 'px-2 pt-[var(--selection-header-pt)] pb-2')} style={stickyHeaderStyle}>
+    <header
+      className={cn(stickyHeaderClassName, 'px-2 pt-[var(--selection-header-pt)] pb-2')}
+      style={stickyHeaderStyle}
+    >
       <Button
         variant="ghost"
         size="sm"
@@ -26,9 +29,7 @@ export function SelectionModeHeader({ count, onCancel, onSubmit }: Props) {
         <X size={16} aria-hidden="true" />
         <span className="text-sm">キャンセル</span>
       </Button>
-      <h1
-        className="flex-1 text-center text-sm font-semibold truncate text-foreground"
-      >
+      <h1 className="flex-1 text-center text-sm font-semibold truncate text-foreground">
         {titleLabel}
       </h1>
       <ComposePostButton

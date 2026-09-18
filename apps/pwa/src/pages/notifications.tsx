@@ -29,7 +29,9 @@ const fetchNotifications = createServerFn({ method: 'GET' }).handler(async () =>
   const serverSupabase = await createSupabaseServer()
   const { data } = await serverSupabase
     .from('notifications')
-    .select('id, type, read, created_at, post_id, actor_id, users!notifications_actor_id_fkey ( display_name, avatar_url )')
+    .select(
+      'id, type, read, created_at, post_id, actor_id, users!notifications_actor_id_fkey ( display_name, avatar_url )',
+    )
     .order('created_at', { ascending: false })
     .limit(50)
     .throwOnError()

@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 
 const scriptures = JSON.parse(
-  readFileSync(new URL('../apps/pwa/src/shared/config/scriptures.json', import.meta.url), 'utf8')
+  readFileSync(new URL('../apps/pwa/src/shared/config/scriptures.json', import.meta.url), 'utf8'),
 )
 
 const q = (s) => s.replace(/'/g, "''")
@@ -12,9 +12,10 @@ const collections = scriptures.collections
 
 const books = scriptures.collections
   .flatMap((c) =>
-    c.books.map((b, i) =>
-      `  ('${q(b.id)}', '${q(c.id)}', '${q(b.name)}', ${b.chapters}, '{${b.verses.join(',')}}', ${i}, ${b.isFrontMatter ? 'true' : 'false'})`
-    )
+    c.books.map(
+      (b, i) =>
+        `  ('${q(b.id)}', '${q(c.id)}', '${q(b.name)}', ${b.chapters}, '{${b.verses.join(',')}}', ${i}, ${b.isFrontMatter ? 'true' : 'false'})`,
+    ),
   )
   .join(',\n')
 
@@ -39,4 +40,6 @@ ON CONFLICT (collection_id, id) DO UPDATE SET
 `
 
 writeFileSync(new URL('../supabase/seed.sql', import.meta.url), output)
-console.log(`Generated supabase/seed.sql (${scriptures.collections.length} collections, ${scriptures.collections.reduce((n, c) => n + c.books.length, 0)} books)`)
+console.log(
+  `Generated supabase/seed.sql (${scriptures.collections.length} collections, ${scriptures.collections.reduce((n, c) => n + c.books.length, 0)} books)`,
+)

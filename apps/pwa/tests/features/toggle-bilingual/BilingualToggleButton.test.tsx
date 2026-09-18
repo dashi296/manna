@@ -20,7 +20,9 @@ describe('BilingualToggleButton', () => {
     const user = userEvent.setup()
     render(<BilingualToggleButton />)
     await user.click(screen.getByRole('button', { name: '日英併記表示をオンにする' }))
-    expect(await screen.findByRole('button', { name: '日英併記表示をオフにする' })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('button', { name: '日英併記表示をオフにする' }),
+    ).toBeInTheDocument()
     expect(useBilingualDisplayStore.getState().enabled).toBe(true)
   })
 
@@ -29,7 +31,9 @@ describe('BilingualToggleButton', () => {
     const user = userEvent.setup()
     render(<BilingualToggleButton />)
     await user.click(screen.getByRole('button', { name: '日英併記表示をオフにする' }))
-    expect(await screen.findByRole('button', { name: '日英併記表示をオンにする' })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('button', { name: '日英併記表示をオンにする' }),
+    ).toBeInTheDocument()
     expect(useBilingualDisplayStore.getState().enabled).toBe(false)
   })
 })

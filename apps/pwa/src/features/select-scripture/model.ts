@@ -2,7 +2,12 @@ import { getChapterLabel, type ScriptureRef } from '@/entities/scripture'
 
 export type ScriptureRefPartial = Partial<ScriptureRef>
 
-type SelectableBook = { chapters: number; name: string; isFrontMatter?: boolean; chapterUnit?: string }
+type SelectableBook = {
+  chapters: number
+  name: string
+  isFrontMatter?: boolean
+  chapterUnit?: string
+}
 
 export function buildChapterItems(book: SelectableBook): { value: string; label: string }[] {
   if (book.isFrontMatter) return [{ value: '1', label: book.name }]

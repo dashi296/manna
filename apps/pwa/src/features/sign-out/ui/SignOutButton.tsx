@@ -34,9 +34,7 @@ export function SignOutButton() {
       <SheetContent side="bottom" className="pb-6" showCloseButton={false}>
         <SheetHeader>
           <SheetTitle>ログアウトしますか？</SheetTitle>
-          <SheetDescription>
-            再度 Google でサインインすればまた利用できます
-          </SheetDescription>
+          <SheetDescription>再度 Google でサインインすればまた利用できます</SheetDescription>
         </SheetHeader>
         <SheetFooter>
           <Button onClick={confirm} disabled={pending} variant="destructive">

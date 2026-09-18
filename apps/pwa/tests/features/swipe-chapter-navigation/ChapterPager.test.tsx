@@ -8,7 +8,10 @@ vi.mock('@tanstack/react-router', () => ({
   useNavigate: () => navigate,
 }))
 
-let adjacentTexts: { prev: ChapterTexts | null; next: ChapterTexts | null } = { prev: null, next: null }
+let adjacentTexts: { prev: ChapterTexts | null; next: ChapterTexts | null } = {
+  prev: null,
+  next: null,
+}
 vi.mock('@/features/swipe-chapter-navigation/lib/useAdjacentChapterTexts', () => ({
   useAdjacentChapterTexts: () => adjacentTexts,
 }))
@@ -46,7 +49,11 @@ const chapterTexts = (chapter: number): ChapterTexts => ({
   ref: { collection: 'bofm', book: '1-ne', chapter },
   primary: new Map([[1, `第${chapter}章の1節`]]),
   secondary: new Map(),
-  heading: { title: `第${chapter}章`, summary: `第${chapter}章の概要`, summaryHtml: `第${chapter}章の概要` },
+  heading: {
+    title: `第${chapter}章`,
+    summary: `第${chapter}章の概要`,
+    summaryHtml: `第${chapter}章の概要`,
+  },
   secondaryHeading: null,
 })
 
@@ -113,7 +120,9 @@ function renderPager(
 }
 
 const preview = (texts: ChapterTexts) => (
-  <p>プレビュー: {texts.ref.chapter}章 / {texts.primary.get(1)}</p>
+  <p>
+    プレビュー: {texts.ref.chapter}章 / {texts.primary.get(1)}
+  </p>
 )
 
 describe('ChapterPager', () => {
@@ -429,7 +438,11 @@ describe('ChapterPager の移動先プレビュー', () => {
       <div>
         <header>ヘッダー</header>
         <div>投稿者の行</div>
-        <ChapterPager loc={{ collection: 'bofm', book: '1-ne', chapter: 5 }} disabled={false} renderPreview={preview}>
+        <ChapterPager
+          loc={{ collection: 'bofm', book: '1-ne', chapter: 5 }}
+          disabled={false}
+          renderPreview={preview}
+        >
           <p>章の本文</p>
         </ChapterPager>
       </div>,
@@ -463,7 +476,11 @@ describe('ChapterPager の移動先プレビュー', () => {
 
   it('シートを開くとプレビューを畳む', () => {
     adjacentTexts = { prev: null, next: chapterTexts(6) }
-    const { rerender } = renderPager({ collection: 'bofm', book: '1-ne', chapter: 5 }, false, preview)
+    const { rerender } = renderPager(
+      { collection: 'bofm', book: '1-ne', chapter: 5 },
+      false,
+      preview,
+    )
     touchStart()
     scrollTo(PANEL_WIDTH + 1)
     expect(screen.getByText(/6章/)).toBeInTheDocument()

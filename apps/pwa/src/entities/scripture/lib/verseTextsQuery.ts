@@ -51,11 +51,7 @@ export const scriptureVerseTextKeys = {
 
 // ページ本体・隣章の先読み・SSR のローダーが同じキャッシュを共有するための一本化した定義。
 // 別々に書くとキーがずれ、同じ本文を二度取ることになる
-export function scriptureVerseTextsQuery(
-  ref: ChapterRef,
-  language: string,
-  verses?: number[],
-) {
+export function scriptureVerseTextsQuery(ref: ChapterRef, language: string, verses?: number[]) {
   return queryOptions({
     queryKey: scriptureVerseTextKeys.chapter(ref, language, verses),
     queryFn: async ({ signal }) =>

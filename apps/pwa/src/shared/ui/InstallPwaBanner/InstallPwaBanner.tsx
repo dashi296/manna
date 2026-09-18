@@ -1,12 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { XIcon } from 'lucide-react'
 import { Button } from '@/shared/ui/button'
-import {
-  isIosSafari,
-  isRecentlyDismissed,
-  isStandalone,
-  markDismissed,
-} from '@/shared/lib/pwa'
+import { isIosSafari, isRecentlyDismissed, isStandalone, markDismissed } from '@/shared/lib/pwa'
 import { IosInstallInstructionsDialog } from './IosInstallInstructionsDialog'
 
 type BeforeInstallPromptEvent = Event & {
@@ -15,8 +10,7 @@ type BeforeInstallPromptEvent = Event & {
 }
 
 export function InstallPwaBanner() {
-  const [deferredPrompt, setDeferredPrompt] =
-    useState<BeforeInstallPromptEvent | null>(null)
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
   const [visible, setVisible] = useState(false)
   const [iosDialogOpen, setIosDialogOpen] = useState(false)
   const barRef = useRef<HTMLDivElement>(null)
@@ -95,34 +89,20 @@ export function InstallPwaBanner() {
           ref={barRef}
           className="pointer-events-auto mx-auto flex max-w-md items-center gap-3 border-t bg-background px-3 py-2"
         >
-          <img
-            src="/logo192.png"
-            alt=""
-            className="h-8 w-8 shrink-0 rounded"
-          />
+          <img src="/logo192.png" alt="" className="h-8 w-8 shrink-0 rounded" />
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium">アプリとして追加</p>
-            <p className="truncate text-xs text-muted-foreground">
-              ホーム画面から素早く開けます
-            </p>
+            <p className="truncate text-xs text-muted-foreground">ホーム画面から素早く開けます</p>
           </div>
           <Button size="sm" onClick={handleInstall}>
             追加
           </Button>
-          <Button
-            size="icon-sm"
-            variant="ghost"
-            onClick={handleDismiss}
-            aria-label="閉じる"
-          >
+          <Button size="icon-sm" variant="ghost" onClick={handleDismiss} aria-label="閉じる">
             <XIcon />
           </Button>
         </div>
       </div>
-      <IosInstallInstructionsDialog
-        open={iosDialogOpen}
-        onOpenChange={setIosDialogOpen}
-      />
+      <IosInstallInstructionsDialog open={iosDialogOpen} onOpenChange={setIosDialogOpen} />
     </>
   )
 }

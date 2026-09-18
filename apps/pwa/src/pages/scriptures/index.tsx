@@ -14,7 +14,11 @@ function ScripturesPage() {
       <div className="p-4">
         <ul className="overflow-hidden rounded-xl" style={{ border: '1px solid var(--line)' }}>
           {collections.map((col) => (
-            <li key={col.id} className="border-b last:border-b-0" style={{ borderColor: 'var(--line)' }}>
+            <li
+              key={col.id}
+              className="border-b last:border-b-0"
+              style={{ borderColor: 'var(--line)' }}
+            >
               <Link
                 to="/scriptures/$collection"
                 params={{ collection: col.id }}

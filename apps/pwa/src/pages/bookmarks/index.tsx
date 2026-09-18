@@ -28,9 +28,7 @@ function BookmarksPage() {
     <div>
       <PageHeader title="栞" />
       <section className="px-4 pt-4">
-        <h2 className="text-xs font-medium mb-2 text-muted-foreground">
-          続きを読む
-        </h2>
+        <h2 className="text-xs font-medium mb-2 text-muted-foreground">続きを読む</h2>
         {readingPosition ? (
           <Link
             to="/scriptures/$collection/$book/$chapter"
@@ -44,18 +42,22 @@ function BookmarksPage() {
         ) : (
           <EmptyState>
             聖典を読むとここに続きが表示されます。
-            <Link to="/scriptures" className="block mt-2 underline" style={{ color: 'var(--lagoon-deep)' }}>
+            <Link
+              to="/scriptures"
+              className="block mt-2 underline"
+              style={{ color: 'var(--lagoon-deep)' }}
+            >
               聖典を読む
             </Link>
           </EmptyState>
         )}
       </section>
       <section className="px-4 pt-6 pb-8">
-        <h2 className="text-xs font-medium mb-2 text-muted-foreground">
-          栞一覧
-        </h2>
+        <h2 className="text-xs font-medium mb-2 text-muted-foreground">栞一覧</h2>
         {bookmarks.length === 0 ? (
-          <EmptyState>栞はまだありません。聖典を読んでいるときに 🔖 をタップすると追加されます。</EmptyState>
+          <EmptyState>
+            栞はまだありません。聖典を読んでいるときに 🔖 をタップすると追加されます。
+          </EmptyState>
         ) : (
           <ul className="overflow-hidden rounded-xl" style={{ border: '1px solid var(--line)' }}>
             {bookmarks.map((bookmark, i) => (

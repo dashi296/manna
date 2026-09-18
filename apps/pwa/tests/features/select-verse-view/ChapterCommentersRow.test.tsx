@@ -18,9 +18,7 @@ describe('ChapterCommentersRow', () => {
         onClear={vi.fn()}
       />,
     )
-    expect(
-      screen.getByText('フォロー中／家族のこの章への投稿はまだありません'),
-    ).toBeInTheDocument()
+    expect(screen.getByText('フォロー中／家族のこの章への投稿はまだありません')).toBeInTheDocument()
     expect(screen.queryByRole('button')).toBeNull()
   })
 

@@ -19,7 +19,7 @@ const headings = dump(`
   ORDER BY collection_id, book_id, chapter, language
 `)
 
-const countRows = data => data.split('\n').filter(Boolean).length
+const countRows = (data) => data.split('\n').filter(Boolean).length
 const verseRows = countRows(verses)
 const headingRows = countRows(headings)
 

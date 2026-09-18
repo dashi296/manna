@@ -121,7 +121,11 @@ let clientVerseTexts: { verse: number; text_html: string }[] = []
 // scripture_verses へのクライアント側クエリが実行された回数（キャッシュ検証用）
 let clientVerseFetchCount = 0
 // 章の見出し（テストごとに差し替える）
-let clientChapterHeading: { title: string; summary: string | null; summary_html: string | null } | null = null
+let clientChapterHeading: {
+  title: string
+  summary: string | null
+  summary_html: string | null
+} | null = null
 
 vi.mock('@tanstack/react-router', async () => {
   const { routerMock } = await import('../../helpers/tanstack')
@@ -141,7 +145,9 @@ vi.mock('@/shared/lib/supabase', () => ({
   supabase: {
     from: (table: string) => {
       if (table === 'scripture_chapter_headings') {
-        return createSupabaseQueryChain(() => ({ data: clientChapterHeading ? [clientChapterHeading] : [] }))
+        return createSupabaseQueryChain(() => ({
+          data: clientChapterHeading ? [clientChapterHeading] : [],
+        }))
       }
       if (table !== 'scripture_verses') {
         return { insert: vi.fn().mockResolvedValue({ error: null }) }
@@ -267,7 +273,11 @@ describe('ChapterPage', () => {
   it('validateSearch はカンマ区切りの select/verses を配列に復元する', async () => {
     const mod = await import('@/pages/scriptures/$collection/$book/$chapter')
     const Route = mod.Route as unknown as {
-      validateSearch: (s: Record<string, unknown>) => { verses?: number[]; select?: number[]; mode?: string }
+      validateSearch: (s: Record<string, unknown>) => {
+        verses?: number[]
+        select?: number[]
+        mode?: string
+      }
     }
     const validate = Route.validateSearch
 
@@ -322,14 +332,10 @@ describe('ChapterPage', () => {
   it('ログイン済みなら章コメンター行に自身の commenter がある時アバターを描画', () => {
     loaderData = {
       ...baseChapterData,
-      chapterCommenters: [
-        { userId: 'u1', name: '中村さん', avatarUrl: null },
-      ],
+      chapterCommenters: [{ userId: 'u1', name: '中村さん', avatarUrl: null }],
     }
     render(<ChapterPage />)
-    expect(
-      screen.getByRole('button', { name: '中村さん を選ぶ' }),
-    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '中村さん を選ぶ' })).toBeInTheDocument()
   })
 
   it('選択済みだと解除ボタンが出て、押すと store から解除される', async () => {
@@ -337,9 +343,7 @@ describe('ChapterPage', () => {
     useSelectedUserStore.setState({ selectedUserId: 'u1' })
     loaderData = {
       ...baseChapterData,
-      chapterCommenters: [
-        { userId: 'u1', name: '中村さん', avatarUrl: null },
-      ],
+      chapterCommenters: [{ userId: 'u1', name: '中村さん', avatarUrl: null }],
     }
     const user = userEvent.setup()
     render(<ChapterPage />)
@@ -351,14 +355,10 @@ describe('ChapterPage', () => {
     loaderData = {
       ...baseChapterData,
       userId: null,
-      chapterCommenters: [
-        { userId: 'u1', name: '中村さん', avatarUrl: null },
-      ],
+      chapterCommenters: [{ userId: 'u1', name: '中村さん', avatarUrl: null }],
     }
     render(<ChapterPage />)
-    expect(
-      screen.queryByRole('button', { name: '中村さん を選ぶ' }),
-    ).toBeNull()
+    expect(screen.queryByRole('button', { name: '中村さん を選ぶ' })).toBeNull()
   })
 
   const circlePost = (
@@ -945,9 +945,7 @@ describe('ChapterPage', () => {
 
     // シートの見出しは initialScripture を毎レンダー直接参照するため、
     // PostEditor 内部の state 同期を経由せずすり替わりを検出できる
-    expect(
-      screen.getByRole('heading', { name: '📖 第1ニーファイ書 第1章' }),
-    ).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '📖 第1ニーファイ書 第1章' })).toBeInTheDocument()
 
     // ルーターが closeVerseSheet の navigate を実際に反映した状態を再現する。
     // 保留が生きたままだと、ここで見出しが節3向けにすり替わってしまう
@@ -957,9 +955,7 @@ describe('ChapterPage', () => {
     await waitFor(() => {
       expect(document.body.querySelector('[data-slot="sheet-content"]')).not.toBeNull()
     })
-    expect(
-      screen.getByRole('heading', { name: '📖 第1ニーファイ書 第1章' }),
-    ).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '📖 第1ニーファイ書 第1章' })).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: /1:3/ })).toBeNull()
   })
 
@@ -1064,9 +1060,7 @@ describe('ChapterPage', () => {
     expect(scrollIntoView.mock.instances[0]).toBe(target)
     // smooth は移動中に content-visibility の節が実描画されても目標位置を更新せず、
     // 数百px ずれた場所で止まる
-    expect(scrollIntoView).toHaveBeenCalledWith(
-      expect.objectContaining({ behavior: 'auto' }),
-    )
+    expect(scrollIntoView).toHaveBeenCalledWith(expect.objectContaining({ behavior: 'auto' }))
   })
 
   it('節の行を押して開いたときはスムーズにスクロールする', async () => {
@@ -1087,9 +1081,7 @@ describe('ChapterPage', () => {
     rerender(<ChapterPage />)
 
     await waitFor(() => {
-      expect(scrollIntoView).toHaveBeenCalledWith(
-        expect.objectContaining({ behavior: 'smooth' }),
-      )
+      expect(scrollIntoView).toHaveBeenCalledWith(expect.objectContaining({ behavior: 'smooth' }))
     })
   })
 
@@ -1097,13 +1089,12 @@ describe('ChapterPage', () => {
     const scrollIntoView = vi.fn()
     Element.prototype.scrollIntoView = scrollIntoView
     const originalMatchMedia = window.matchMedia
-    window.matchMedia = ((query: string) =>
-      ({
-        matches: query.includes('prefers-reduced-motion'),
-        media: query,
-        addEventListener: () => {},
-        removeEventListener: () => {},
-      })) as unknown as typeof window.matchMedia
+    window.matchMedia = ((query: string) => ({
+      matches: query.includes('prefers-reduced-motion'),
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    })) as unknown as typeof window.matchMedia
 
     const { useSelectedUserStore } = await import('@/features/select-verse-view')
     useSelectedUserStore.setState({ selectedUserId: null })
@@ -1120,9 +1111,7 @@ describe('ChapterPage', () => {
     await waitFor(() => {
       expect(scrollIntoView).toHaveBeenCalled()
     })
-    expect(scrollIntoView).not.toHaveBeenCalledWith(
-      expect.objectContaining({ behavior: 'smooth' }),
-    )
+    expect(scrollIntoView).not.toHaveBeenCalledWith(expect.objectContaining({ behavior: 'smooth' }))
     window.matchMedia = originalMatchMedia
   })
 
@@ -1382,7 +1371,9 @@ describe('ChapterPage', () => {
     // 節の前に出す。後ろに付くと本文を読み始めてから概要に出会う
     const title = screen.getByTestId('chapter-heading')
     const firstVerse = document.querySelector('li[data-verse="1"]')!
-    expect(title.compareDocumentPosition(firstVerse) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(
+      title.compareDocumentPosition(firstVerse) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
   })
 
   it('概要が無い章（旧約・新約）ではタイトルだけを出す', async () => {
@@ -1636,17 +1627,22 @@ describe('ChapterPage', () => {
     it('前付け文書からは残りの前付けを飛ばして最初の書へ送る', () => {
       loaderData = {
         ...baseChapterData,
-        book: { id: 'bofm-title', name: 'モルモン書のタイトルページ', chapters: 1, verses: [4], isFrontMatter: true },
+        book: {
+          id: 'bofm-title',
+          name: 'モルモン書のタイトルページ',
+          chapters: 1,
+          verses: [4],
+          isFrontMatter: true,
+        },
         chapter: 1,
       }
       search = {}
       render(<ChapterPage />)
 
       const nav = screen.getByRole('navigation', { name: '章の移動' })
-      expect(within(nav).getByRole('link', { name: '次の章: 第1ニーファイ書 第1章' })).toHaveAttribute(
-        'href',
-        expect.stringContaining('/scriptures/bofm/1-ne/1'),
-      )
+      expect(
+        within(nav).getByRole('link', { name: '次の章: 第1ニーファイ書 第1章' }),
+      ).toHaveAttribute('href', expect.stringContaining('/scriptures/bofm/1-ne/1'))
       expect(within(nav).getAllByRole('link')).toHaveLength(1)
     })
 

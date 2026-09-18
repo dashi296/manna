@@ -123,9 +123,7 @@ describe('install-detection', () => {
   describe('markDismissed', () => {
     it('現在時刻を localStorage に保存する', () => {
       markDismissed(1_800_000_000_000)
-      expect(window.localStorage.getItem(PWA_INSTALL_DISMISSED_KEY)).toBe(
-        '1800000000000',
-      )
+      expect(window.localStorage.getItem(PWA_INSTALL_DISMISSED_KEY)).toBe('1800000000000')
     })
   })
 })

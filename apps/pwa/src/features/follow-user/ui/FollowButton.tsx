@@ -9,7 +9,11 @@ type Props = {
 }
 
 export function FollowButton({ targetUserId, currentUserId, isFollowing }: Props) {
-  const { mutate, isPending, shown: following } = useToggleFollow({
+  const {
+    mutate,
+    isPending,
+    shown: following,
+  } = useToggleFollow({
     currentUserId,
     targetUserId,
     isFollowing,

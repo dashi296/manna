@@ -9,10 +9,28 @@ import {
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { createServerFn } from '@tanstack/react-start'
 import { useQuery } from '@tanstack/react-query'
-import { getBook, getCollection, buildScriptureUrl, getChapterLabel, getScriptureLabel, getAdjacentChapterRef, getChapterNavLabel, scriptureVerseTextsQuery, chapterHeadingQuery, type ChapterRef, type ChapterHeading } from '@/entities/scripture'
+import {
+  getBook,
+  getCollection,
+  buildScriptureUrl,
+  getChapterLabel,
+  getScriptureLabel,
+  getAdjacentChapterRef,
+  getChapterNavLabel,
+  scriptureVerseTextsQuery,
+  chapterHeadingQuery,
+  type ChapterRef,
+  type ChapterHeading,
+} from '@/entities/scripture'
 import { PostCard, POST_SELECT, type PostWithUser } from '@/entities/post'
 import { createSupabaseServer } from '@/shared/lib/auth'
-import { ComposePostButton, EmptyState, PageHeader, SanitizedVerseHtml, ScriptureText } from '@/shared/ui'
+import {
+  ComposePostButton,
+  EmptyState,
+  PageHeader,
+  SanitizedVerseHtml,
+  ScriptureText,
+} from '@/shared/ui'
 import { PostComposerSheet } from '@/widgets/post-composer-sheet'
 import { ComposeMenu } from '@/widgets/compose-menu'
 import {
@@ -51,8 +69,7 @@ async function queryCurrentUserId(supabase: SupabaseServer) {
 
 async function queryUserAndCircle(supabase: SupabaseServer) {
   const userId = await queryCurrentUserId(supabase)
-  const circle =
-    userId !== null ? await getCircleUserIds(supabase, userId) : null
+  const circle = userId !== null ? await getCircleUserIds(supabase, userId) : null
   return { userId, circle }
 }
 
@@ -103,11 +120,7 @@ const fetchChapterData = createServerFn({ method: 'POST' })
     const { collection, book, chapter } = ctx.data
     const serverSupabase = await createSupabaseServer()
 
-    const [
-      { data: posts },
-      { data: versePostsData },
-      { userId, circle },
-    ] = await Promise.all([
+    const [{ data: posts }, { data: versePostsData }, { userId, circle }] = await Promise.all([
       serverSupabase
         .from('posts')
         .select(POST_SELECT)
@@ -224,9 +237,13 @@ export const Route = createFileRoute('/scriptures/$collection/$book/$chapter')({
         ),
       ])
       return {
-        book, chapter: chapterNum, collection: params.collection,
-        mode: 'verse' as const, verses: deps.verses,
-        posts, userId,
+        book,
+        chapter: chapterNum,
+        collection: params.collection,
+        mode: 'verse' as const,
+        verses: deps.verses,
+        posts,
+        userId,
         chapterCommenters: [] as AvatarStackItem[],
         circlePosts: [] as PostWithUser[],
       }
@@ -247,8 +264,11 @@ export const Route = createFileRoute('/scriptures/$collection/$book/$chapter')({
     ])
 
     return {
-      book, chapter: chapterNum, collection: params.collection,
-      mode: 'chapter' as const, verses: [] as number[],
+      book,
+      chapter: chapterNum,
+      collection: params.collection,
+      mode: 'chapter' as const,
+      verses: [] as number[],
       ...data,
     }
   },
@@ -264,24 +284,28 @@ function ChapterPage() {
   }, [data.collection, data.book.id, data.chapter, setReadingPosition])
 
   if (data.mode === 'verse') {
-    return <VerseView
+    return (
+      <VerseView
+        book={data.book}
+        chapter={data.chapter}
+        collection={data.collection}
+        verses={data.verses}
+        posts={data.posts}
+        canCompose={Boolean(data.userId)}
+      />
+    )
+  }
+  return (
+    <ChapterView
       book={data.book}
       chapter={data.chapter}
       collection={data.collection}
-      verses={data.verses}
       posts={data.posts}
       canCompose={Boolean(data.userId)}
+      chapterCommenters={data.chapterCommenters}
+      circlePosts={data.circlePosts}
     />
-  }
-  return <ChapterView
-    book={data.book}
-    chapter={data.chapter}
-    collection={data.collection}
-    posts={data.posts}
-    canCompose={Boolean(data.userId)}
-    chapterCommenters={data.chapterCommenters}
-    circlePosts={data.circlePosts}
-  />
+  )
 }
 
 type VerseViewProps = {
@@ -351,7 +375,10 @@ function VerseView({ book, chapter, collection, verses, posts, canCompose }: Ver
         <span className="text-xs ml-3 text-muted-foreground">新着順</span>
       </div>
       {verseTexts.size > 0 && (
-        <div className="px-4 py-3 border-b" style={{ borderColor: 'var(--line)', background: 'var(--surface)' }}>
+        <div
+          className="px-4 py-3 border-b"
+          style={{ borderColor: 'var(--line)', background: 'var(--surface)' }}
+        >
           {[...verseTexts].map(([verse, textHtml]) => (
             <ScriptureText
               key={verse}
@@ -533,8 +560,13 @@ function refToParams(ref: ChapterRef) {
 }
 
 function ChapterView({
-  book, chapter, collection, posts, canCompose,
-  chapterCommenters, circlePosts,
+  book,
+  chapter,
+  collection,
+  posts,
+  canCompose,
+  chapterCommenters,
+  circlePosts,
 }: ChapterViewProps) {
   const router = useRouter()
   const [sheetOpen, setSheetOpen] = useState(false)
@@ -542,9 +574,12 @@ function ChapterView({
   const [sheetHighlight, setSheetHighlight] = useState<number[] | null>(null)
   // 対象の章参照ごと保留する。章参照が無いと、保留中に章移動のリンクなどで
   // 章が変わったときに前の章の節番号で投稿シートを開いてしまう
-  const [pendingCompose, setPendingCompose] = useState<
-    { verse: number; collection: string; book: string; chapter: number } | null
-  >(null)
+  const [pendingCompose, setPendingCompose] = useState<{
+    verse: number
+    collection: string
+    book: string
+    chapter: number
+  } | null>(null)
   const search = Route.useSearch()
   const navigate = Route.useNavigate()
   const maxVerse = book.verses[chapter - 1]
@@ -553,19 +588,20 @@ function ChapterView({
   const verseTextMap = useVerseTexts(loc, PRIMARY_LANGUAGE)
   const secondaryTexts = useVerseTexts(loc, SECONDARY_LANGUAGE, undefined, bilingual)
   const heading = useChapterHeading(loc, PRIMARY_LANGUAGE, !book.isFrontMatter)
-  const secondaryHeading = useChapterHeading(loc, SECONDARY_LANGUAGE, !book.isFrontMatter && bilingual)
+  const secondaryHeading = useChapterHeading(
+    loc,
+    SECONDARY_LANGUAGE,
+    !book.isFrontMatter && bilingual,
+  )
 
   const storedUserId = useSelectedUserId()
   const selectUser = useSelectedUserStore((s) => s.select)
   const clearUser = useSelectedUserStore((s) => s.clear)
-  const selectedUser =
-    chapterCommenters.find((c) => c.userId === storedUserId) ?? null
+  const selectedUser = chapterCommenters.find((c) => c.userId === storedUserId) ?? null
   // ユーザー未選択なら身内全員分を出す。選択は絞り込みであってゲートではない
   const visiblePosts = useMemo(
     () =>
-      selectedUser
-        ? circlePosts.filter((p) => p.user_id === selectedUser.userId)
-        : circlePosts,
+      selectedUser ? circlePosts.filter((p) => p.user_id === selectedUser.userId) : circlePosts,
     [circlePosts, selectedUser],
   )
   // 身内全員分。シートの中身と、印の列の幅を取るかの判定に使う
@@ -575,8 +611,7 @@ function ChapterView({
   )
   // 節の横の印は絞り込みに従う
   const commentIndex = useMemo(
-    () =>
-      selectedUser ? buildVerseCommentIndex(maxVerse, visiblePosts) : allCommentIndex,
+    () => (selectedUser ? buildVerseCommentIndex(maxVerse, visiblePosts) : allCommentIndex),
     [selectedUser, maxVerse, visiblePosts, allCommentIndex],
   )
   // シートの中身は絞り込みを無視する。共有された ?comment= を開いた側が別のユーザーで
@@ -628,8 +663,7 @@ function ChapterView({
     // 開始時点の座標を目標に据えるため、移動中に高さが変わるとずれた位置で止まる
     const isNewSelection = scrolledVerse.current !== commentVerseForScroll
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    const behavior =
-      !reduceMotion && isMounted.current && isNewSelection ? 'smooth' : 'auto'
+    const behavior = !reduceMotion && isMounted.current && isNewSelection ? 'smooth' : 'auto'
     scrolledVerse.current = commentVerseForScroll
 
     target.scrollIntoView({ behavior, block: 'start' })
@@ -660,8 +694,7 @@ function ChapterView({
     })
   }
 
-  const setSelection = (next: number[]) =>
-    patchSearch({ select: next.length ? next : undefined })
+  const setSelection = (next: number[]) => patchSearch({ select: next.length ? next : undefined })
   // mode=select と同じく push する。戻る操作でシートを閉じられるようにするため。
   // ただしシートは非モーダルなので、開いたまま別の節の行を押せる。そのたびに push すると
   // 閉じる操作が前の節のシートに戻ってしまうため、開いている間は差し替える。
@@ -679,8 +712,7 @@ function ChapterView({
     // 離脱してしまう（そのエントリはシートを開いたものではない）。
     // 印を判別する状態を ref に持つとブラウザ履歴と同期せず、進む操作やリロードの
     // 後に取り違えるため、履歴エントリ自身に持たせる
-    const pushedByUs = (window.history.state as VerseSheetHistoryState | null)
-      ?.mannaVerseSheet
+    const pushedByUs = (window.history.state as VerseSheetHistoryState | null)?.mannaVerseSheet
     if (pushedByUs && router.history.canGoBack()) router.history.back()
     else patchSearch({ comment: undefined })
   }

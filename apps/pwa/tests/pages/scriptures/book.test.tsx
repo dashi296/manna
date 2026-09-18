@@ -1,8 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 
-vi.mock('@tanstack/react-router', async () =>
-  (await import('../../helpers/tanstack')).routerMock(),
-)
+vi.mock('@tanstack/react-router', async () => (await import('../../helpers/tanstack')).routerMock())
 
 describe('BookPage loader', () => {
   it('front matter の書は第1章へリダイレクトする', async () => {

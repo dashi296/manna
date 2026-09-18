@@ -39,7 +39,9 @@ vi.mock('@/entities/user', () => ({
 }))
 
 vi.mock('@/shared/ui/sonner', () => ({
-  toast: Object.assign((msg: string) => mockToast(msg), { error: (msg: string) => mockToastError(msg) }),
+  toast: Object.assign((msg: string) => mockToast(msg), {
+    error: (msg: string) => mockToastError(msg),
+  }),
 }))
 
 vi.mock('@tanstack/react-router', async () =>

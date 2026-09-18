@@ -20,5 +20,8 @@ export const useBilingualDisplayStore = create<State>()(
 )
 
 export function useBilingualEnabled(): boolean {
-  return useSSRSafe(useBilingualDisplayStore((s) => s.enabled), false)
+  return useSSRSafe(
+    useBilingualDisplayStore((s) => s.enabled),
+    false,
+  )
 }

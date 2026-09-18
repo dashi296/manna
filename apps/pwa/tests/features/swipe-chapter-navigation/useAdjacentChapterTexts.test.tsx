@@ -96,7 +96,9 @@ describe('useAdjacentChapterTexts', () => {
   })
 
   it('無効なときは1件も取りに行かない', async () => {
-    renderHook(() => useAdjacentChapterTexts({ loc, enabled: false, bilingual: false }), { wrapper })
+    renderHook(() => useAdjacentChapterTexts({ loc, enabled: false, bilingual: false }), {
+      wrapper,
+    })
     await new Promise((r) => setTimeout(r, 30))
     expect(calls).toHaveLength(0)
   })
@@ -141,7 +143,12 @@ describe('useAdjacentChapterTexts', () => {
       { wrapper },
     )
     await waitFor(() => expect(result.current.next?.secondary.get(1)).toBe('en-6'))
-    expect(calls.filter((c) => c.language === 'en').map((c) => c.chapter).sort()).toEqual([4, 6])
+    expect(
+      calls
+        .filter((c) => c.language === 'en')
+        .map((c) => c.chapter)
+        .sort(),
+    ).toEqual([4, 6])
   })
 
   it('併記をオフに戻したら、プレビューからも第2言語が消える', async () => {

@@ -24,6 +24,8 @@ describe('getScriptureLabel', () => {
   })
 
   it('節を指定したときは章の呼び方に依らず n:m で示す', () => {
-    expect(getScriptureLabel({ collection: 'ot', book: 'ps', chapter: 23, verses: [1] })).toBe('詩篇 23:1')
+    expect(getScriptureLabel({ collection: 'ot', book: 'ps', chapter: 23, verses: [1] })).toBe(
+      '詩篇 23:1',
+    )
   })
 })

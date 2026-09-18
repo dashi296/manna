@@ -32,7 +32,9 @@ vi.mock('@/shared/lib/supabase', async () => {
       from: (table: string) => {
         headingFetches.push(table)
         return createSupabaseQueryChain(() =>
-          headingFails ? { data: null, error: { message: 'boom' } } : { data: heading ? [heading] : [] },
+          headingFails
+            ? { data: null, error: { message: 'boom' } }
+            : { data: heading ? [heading] : [] },
         )
       },
     },
@@ -156,7 +158,11 @@ describe('章の節本文のキャッシュ', () => {
     const mod = await import('@/pages/scriptures/$collection/$book/$chapter')
     const serverClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
 
-    loaderData = await routeLoader(mod)({ params, deps: {}, context: { queryClient: serverClient } })
+    loaderData = await routeLoader(mod)({
+      params,
+      deps: {},
+      context: { queryClient: serverClient },
+    })
     expect(fetched).toHaveLength(1)
 
     // 本番の SSR はここを JSON で通してブラウザへ渡す

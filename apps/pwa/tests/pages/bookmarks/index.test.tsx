@@ -39,7 +39,9 @@ describe('BookmarksPage', () => {
   it('栞がなければ空状態を表示する', () => {
     render(<BookmarksPage />)
     expect(
-      screen.getByText('栞はまだありません。聖典を読んでいるときに 🔖 をタップすると追加されます。'),
+      screen.getByText(
+        '栞はまだありません。聖典を読んでいるときに 🔖 をタップすると追加されます。',
+      ),
     ).toBeInTheDocument()
   })
 
@@ -47,8 +49,20 @@ describe('BookmarksPage', () => {
     const { useBookmarkStore } = await import('@/entities/bookmark')
     useBookmarkStore.setState({
       bookmarks: [
-        { id: 'b2', collection: 'bofm', book: '1-ne', chapter: 2, createdAt: '2026-07-02T00:00:00.000Z' },
-        { id: 'b1', collection: 'bofm', book: '1-ne', chapter: 1, createdAt: '2026-07-01T00:00:00.000Z' },
+        {
+          id: 'b2',
+          collection: 'bofm',
+          book: '1-ne',
+          chapter: 2,
+          createdAt: '2026-07-02T00:00:00.000Z',
+        },
+        {
+          id: 'b1',
+          collection: 'bofm',
+          book: '1-ne',
+          chapter: 1,
+          createdAt: '2026-07-01T00:00:00.000Z',
+        },
       ],
     })
     render(<BookmarksPage />)
@@ -61,7 +75,13 @@ describe('BookmarksPage', () => {
     const { useBookmarkStore } = await import('@/entities/bookmark')
     useBookmarkStore.setState({
       bookmarks: [
-        { id: 'b1', collection: 'bofm', book: '1-ne', chapter: 1, createdAt: '2026-07-01T00:00:00.000Z' },
+        {
+          id: 'b1',
+          collection: 'bofm',
+          book: '1-ne',
+          chapter: 1,
+          createdAt: '2026-07-01T00:00:00.000Z',
+        },
       ],
     })
     const user = userEvent.setup()

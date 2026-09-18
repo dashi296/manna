@@ -10,7 +10,13 @@ type Props<T extends string> = {
   style?: React.CSSProperties
 }
 
-export function TabBar<T extends string>({ tabs, active, onChange, className = '', style }: Props<T>) {
+export function TabBar<T extends string>({
+  tabs,
+  active,
+  onChange,
+  className = '',
+  style,
+}: Props<T>) {
   return (
     <div className={`flex border-b ${className}`} style={{ borderColor: 'var(--line)', ...style }}>
       {tabs.map((t) => (

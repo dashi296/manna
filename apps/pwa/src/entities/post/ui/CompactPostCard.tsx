@@ -24,14 +24,8 @@ export function CompactPostCard({ post }: Props) {
     >
       <div className="flex items-center gap-2 mb-1">
         <UserAvatar name={displayName} url={avatarUrl} size="xs" />
-        <span className="text-xs font-medium text-foreground">
-          {displayName}
-        </span>
-        <time
-          className="text-xs ml-auto text-muted-foreground"
-        >
-          {formatDate(post.created_at)}
-        </time>
+        <span className="text-xs font-medium text-foreground">{displayName}</span>
+        <time className="text-xs ml-auto text-muted-foreground">{formatDate(post.created_at)}</time>
       </div>
       <p
         className="text-sm whitespace-pre-wrap break-words text-foreground"
@@ -44,13 +38,7 @@ export function CompactPostCard({ post }: Props) {
       >
         {post.content}
       </p>
-      {scriptureLabel && (
-        <div
-          className="mt-1 text-xs text-primary"
-        >
-          📖 {scriptureLabel}
-        </div>
-      )}
+      {scriptureLabel && <div className="mt-1 text-xs text-primary">📖 {scriptureLabel}</div>}
     </Link>
   )
 }

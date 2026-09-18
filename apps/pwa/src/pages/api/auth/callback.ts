@@ -20,7 +20,11 @@ export const Route = createFileRoute('/api/auth/callback')({
           onSetAll: (cookies, additionalHeaders) => {
             for (const { name, value, options } of cookies) {
               setCookieStrings.push(
-                serializeCookieHeader(name, value, options as Parameters<typeof serializeCookieHeader>[2]),
+                serializeCookieHeader(
+                  name,
+                  value,
+                  options as Parameters<typeof serializeCookieHeader>[2],
+                ),
               )
             }
             Object.assign(extraResponseHeaders, additionalHeaders)

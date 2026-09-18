@@ -17,7 +17,9 @@ const { mockToast, mockToastError } = vi.hoisted(() => ({
 }))
 
 vi.mock('@/shared/ui/sonner', () => ({
-  toast: Object.assign((msg: string) => mockToast(msg), { error: (msg: string) => mockToastError(msg) }),
+  toast: Object.assign((msg: string) => mockToast(msg), {
+    error: (msg: string) => mockToastError(msg),
+  }),
 }))
 
 const posts: PostWithUser[] = [
@@ -326,17 +328,10 @@ describe('VerseCommentSheet の節の面', () => {
     const writeText = vi.fn().mockResolvedValue(undefined)
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
 
-    renderInRouter(
-      <VerseCommentSheet
-        {...base}
-        textHtml="<ruby>両<rt>りょう</rt></ruby>親から"
-      />,
-    )
+    renderInRouter(<VerseCommentSheet {...base} textHtml="<ruby>両<rt>りょう</rt></ruby>親から" />)
     fireEvent.click(await screen.findByRole('button', { name: 'コピー' }))
 
-    await waitFor(() =>
-      expect(writeText).toHaveBeenCalledWith('第1ニーファイ書 3:7\n両親から'),
-    )
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith('第1ニーファイ書 3:7\n両親から'))
     Reflect.deleteProperty(navigator, 'clipboard')
   })
 
@@ -374,9 +369,7 @@ describe('VerseCommentSheet の節の面', () => {
 
   it('投稿できるなら「この節に投稿する」を出し、節番号つきで通知する', async () => {
     const onCompose = vi.fn()
-    renderInRouter(
-      <VerseCommentSheet {...base} textHtml="本文" canCompose onCompose={onCompose} />,
-    )
+    renderInRouter(<VerseCommentSheet {...base} textHtml="本文" canCompose onCompose={onCompose} />)
 
     fireEvent.click(await screen.findByRole('button', { name: 'この節に投稿する' }))
 

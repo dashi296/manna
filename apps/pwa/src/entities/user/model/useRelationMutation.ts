@@ -12,7 +12,12 @@ type Options<V, T> = {
 
 // フォロー/ファミリーのように「操作すると関連する表示が一斉に古くなる」ミューテーション。
 // shown は送信中だけ押した結果を先に見せ、確定後は呼び出し側が渡す current が正になる。
-export function useRelationMutation<V, T>({ current, optimistic, run, errorMessage }: Options<V, T>) {
+export function useRelationMutation<V, T>({
+  current,
+  optimistic,
+  run,
+  errorMessage,
+}: Options<V, T>) {
   const queryClient = useQueryClient()
 
   const { mutate, isPending, variables } = useMutation({

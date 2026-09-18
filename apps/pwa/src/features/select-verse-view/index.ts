@@ -9,7 +9,4 @@ export {
   type VerseCommentIndex,
 } from './model/verseCommentIndex'
 export { ChapterCommentersRow } from './ui/ChapterCommentersRow'
-export {
-  VerseCommentMarker,
-  type VerseMarkerEntry,
-} from './ui/VerseCommentMarker'
+export { VerseCommentMarker, type VerseMarkerEntry } from './ui/VerseCommentMarker'

@@ -15,7 +15,12 @@ type Props = {
   className?: string
 }
 
-export function ComposeMenu({ onSelectChapter, onSelectVerses, layout = 'pill', className }: Props) {
+export function ComposeMenu({
+  onSelectChapter,
+  onSelectVerses,
+  layout = 'pill',
+  className,
+}: Props) {
   const [open, setOpen] = useState(false)
 
   // トリガーは CSS のブレークポイントで隠れるが、開いている Sheet / Popover は
@@ -106,16 +111,10 @@ type EntryProps = {
 function EntryBody({ icon, label, description }: Omit<EntryProps, 'onClick'>) {
   return (
     <>
-      <span className="shrink-0 mt-0.5 text-primary">
-        {icon}
-      </span>
+      <span className="shrink-0 mt-0.5 text-primary">{icon}</span>
       <span className="flex-1 min-w-0">
-        <span className="block text-sm font-semibold text-foreground">
-          {label}
-        </span>
-        <span className="block text-xs mt-0.5 text-muted-foreground">
-          {description}
-        </span>
+        <span className="block text-sm font-semibold text-foreground">{label}</span>
+        <span className="block text-xs mt-0.5 text-muted-foreground">{description}</span>
       </span>
     </>
   )

@@ -45,7 +45,7 @@ describe('parseVerses', () => {
   })
 
   it('ignores non-verse paragraphs', () => {
-    assert.ok(verses.every(v => v.verse > 0))
+    assert.ok(verses.every((v) => v.verse > 0))
   })
 })
 

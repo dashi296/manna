@@ -8,7 +8,17 @@ import { resolveUserIdentity } from '@/shared/lib/constants'
 import { formatDate } from '@/shared/lib/date'
 import { MarkdownRenderer, UserAvatar } from '@/shared/ui'
 
-function NestedLink({ href, className, style, children }: { href: string; className?: string; style?: React.CSSProperties; children: ReactNode }) {
+function NestedLink({
+  href,
+  className,
+  style,
+  children,
+}: {
+  href: string
+  className?: string
+  style?: React.CSSProperties
+  children: ReactNode
+}) {
   const open = (e: MouseEvent | KeyboardEvent) => {
     e.preventDefault()
     e.stopPropagation()
@@ -19,7 +29,9 @@ function NestedLink({ href, className, style, children }: { href: string; classN
       role="link"
       tabIndex={0}
       onClick={open}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') open(e) }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') open(e)
+      }}
       className={className ?? 'underline cursor-pointer'}
       style={style}
     >
@@ -55,13 +67,8 @@ export const PostCard = memo(function PostCard({ post }: Props) {
           <UserAvatar name={displayName} url={avatarUrl} size="sm" />
           <div className="flex-1 min-w-0">
             <div className="flex items-baseline justify-between gap-2">
-              <span className="text-sm font-semibold truncate text-foreground">
-                {displayName}
-              </span>
-              <time
-                dateTime={post.created_at}
-                className="text-xs shrink-0 text-muted-foreground"
-              >
+              <span className="text-sm font-semibold truncate text-foreground">{displayName}</span>
+              <time dateTime={post.created_at} className="text-xs shrink-0 text-muted-foreground">
                 {formatDate(post.created_at)}
               </time>
             </div>

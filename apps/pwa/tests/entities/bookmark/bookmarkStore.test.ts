@@ -1,9 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { act, renderHook } from '@testing-library/react'
-import {
-  BOOKMARK_STORAGE_KEY,
-  useBookmarkStore,
-} from '@/entities/bookmark/model/bookmarkStore'
+import { BOOKMARK_STORAGE_KEY, useBookmarkStore } from '@/entities/bookmark/model/bookmarkStore'
 
 const LOC_A = { collection: 'bofm', book: '1-ne', chapter: 1 }
 const LOC_B = { collection: 'bofm', book: '1-ne', chapter: 2 }

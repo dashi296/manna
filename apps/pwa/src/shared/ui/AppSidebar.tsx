@@ -60,11 +60,7 @@ export function AppSidebar() {
                 const active = isNavItemActive(to, pathname)
                 return (
                   <SidebarMenuItem key={to}>
-                    <SidebarMenuButton
-                      isActive={active}
-                      tooltip={label}
-                      render={<Link to={to} />}
-                    >
+                    <SidebarMenuButton isActive={active} tooltip={label} render={<Link to={to} />}>
                       <Icon strokeWidth={active ? 2.2 : 1.8} aria-hidden="true" />
                       <span>{label}</span>
                     </SidebarMenuButton>
@@ -80,11 +76,7 @@ export function AppSidebar() {
         <SidebarFooter>
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton
-                size="lg"
-                tooltip={displayName}
-                render={<Link to="/profile" />}
-              >
+              <SidebarMenuButton size="lg" tooltip={displayName} render={<Link to="/profile" />}>
                 <UserAvatar name={displayName} url={userInfo.avatarUrl} size="xs" />
                 <span className="text-xs font-medium truncate">{displayName}</span>
               </SidebarMenuButton>

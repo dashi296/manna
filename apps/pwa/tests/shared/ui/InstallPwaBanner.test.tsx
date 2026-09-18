@@ -89,9 +89,7 @@ describe('InstallPwaBanner', () => {
     stubUa(IOS_SAFARI_UA)
     render(<InstallPwaBanner />)
     await user.click(screen.getByRole('button', { name: '追加' }))
-    expect(
-      await screen.findByRole('heading', { name: 'ホーム画面に追加' }),
-    ).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'ホーム画面に追加' })).toBeInTheDocument()
   })
 
   it('BottomNavの実高さ分のオフセットクラスが付与される', () => {

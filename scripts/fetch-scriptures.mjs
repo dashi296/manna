@@ -10,11 +10,11 @@ const RATE_MS = 1000
 const MAX_RETRIES = 3
 
 const scriptures = JSON.parse(
-  readFileSync(new URL('../apps/pwa/src/shared/config/scriptures.json', import.meta.url), 'utf8')
+  readFileSync(new URL('../apps/pwa/src/shared/config/scriptures.json', import.meta.url), 'utf8'),
 )
 
 function parseArgs() {
-  const langArg = process.argv.find(arg => arg.startsWith('--lang='))
+  const langArg = process.argv.find((arg) => arg.startsWith('--lang='))
   const langCode = langArg ? langArg.slice('--lang='.length) : 'ja'
   return resolveLanguage(langCode)
 }
@@ -39,7 +39,7 @@ function buildChapterList() {
 
 function getCompletedHeadings(languageCode) {
   const result = runPsql(
-    `SELECT collection_id, book_id, chapter FROM scripture_chapter_headings WHERE language='${sqlQuote(languageCode)}';`
+    `SELECT collection_id, book_id, chapter FROM scripture_chapter_headings WHERE language='${sqlQuote(languageCode)}';`,
   )
   const set = new Set()
   for (const line of result.trim().split('\n').filter(Boolean)) {
@@ -51,7 +51,7 @@ function getCompletedHeadings(languageCode) {
 
 function getCompletedChapters(languageCode) {
   const result = runPsql(
-    `SELECT collection_id, book_id, chapter, COUNT(*) FROM scripture_verses WHERE language='${sqlQuote(languageCode)}' GROUP BY collection_id, book_id, chapter;`
+    `SELECT collection_id, book_id, chapter, COUNT(*) FROM scripture_verses WHERE language='${sqlQuote(languageCode)}' GROUP BY collection_id, book_id, chapter;`,
   )
   const map = new Map()
   for (const line of result.trim().split('\n').filter(Boolean)) {
@@ -90,7 +90,7 @@ function sqlQuote(s) {
 }
 
 function insertVerses(collectionId, bookId, chapter, verses, languageCode) {
-  const values = verses.map(v => {
+  const values = verses.map((v) => {
     return `('${sqlQuote(collectionId)}','${sqlQuote(bookId)}',${chapter},${v.verse},'${sqlQuote(v.text)}','${sqlQuote(v.textHtml)}','${sqlQuote(languageCode)}')`
   })
 
@@ -99,11 +99,11 @@ function insertVerses(collectionId, bookId, chapter, verses, languageCode) {
 }
 
 function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms))
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 function upsertHeading(collectionId, bookId, chapter, heading, languageCode) {
-  const nullable = v => (v === null || v === undefined ? 'NULL' : `'${sqlQuote(v)}'`)
+  const nullable = (v) => (v === null || v === undefined ? 'NULL' : `'${sqlQuote(v)}'`)
   const sql = `INSERT INTO scripture_chapter_headings
       (collection_id, book_id, chapter, language, title, summary, summary_html)
     VALUES ('${sqlQuote(collectionId)}','${sqlQuote(bookId)}',${chapter},'${sqlQuote(languageCode)}',
@@ -123,7 +123,7 @@ async function main() {
   // 節が揃っていない章か、見出しがまだ無い章。どちらも同じレスポンスから取れるので
   // 通信は1章あたり1回のまま
   const todo = allChapters
-    .map(c => {
+    .map((c) => {
       const key = `${c.collectionId}/${c.bookId}/${c.chapter}`
       const count = completedCounts.get(key)
       return {
@@ -133,10 +133,12 @@ async function main() {
         headingMissing: !c.isFrontMatter && !completedHeadings.has(key),
       }
     })
-    .filter(c => c.versesMissing || c.headingMissing)
+    .filter((c) => c.versesMissing || c.headingMissing)
 
   console.log(`Language: ${language.code} (${language.label})`)
-  console.log(`Total: ${allChapters.length} chapters, Skipping: ${allChapters.length - todo.length}, Remaining: ${todo.length}`)
+  console.log(
+    `Total: ${allChapters.length} chapters, Skipping: ${allChapters.length - todo.length}, Remaining: ${todo.length}`,
+  )
 
   let inserted = 0
   const outcome = createOutcome()
@@ -145,18 +147,28 @@ async function main() {
     const label = `${collectionId}/${bookId}/${chapter}`
 
     try {
-      const html = await fetchChapter(collectionId, bookId, chapter, isFrontMatter, language.apiCode)
+      const html = await fetchChapter(
+        collectionId,
+        bookId,
+        chapter,
+        isFrontMatter,
+        language.apiCode,
+      )
       const verses = isFrontMatter ? parseParagraphs(html) : parseVerses(html)
       const heading = isFrontMatter ? null : parseChapterHeading(html)
 
       if (verses.length !== expectedVerses) {
-        console.warn(`Warning: Expected ${expectedVerses} verses but parsed ${verses.length} for ${label}`)
+        console.warn(
+          `Warning: Expected ${expectedVerses} verses but parsed ${verses.length} for ${label}`,
+        )
       }
 
       // 節が揃っている章は見出しだけを足しに来ている。入れ直さない
       if (verses.length > 0 && versesMissing) {
         if (completedCounts.has(label)) {
-          runPsql(`DELETE FROM scripture_verses WHERE collection_id='${sqlQuote(collectionId)}' AND book_id='${sqlQuote(bookId)}' AND chapter=${chapter} AND language='${sqlQuote(language.code)}';`)
+          runPsql(
+            `DELETE FROM scripture_verses WHERE collection_id='${sqlQuote(collectionId)}' AND book_id='${sqlQuote(bookId)}' AND chapter=${chapter} AND language='${sqlQuote(language.code)}';`,
+          )
         }
         insertVerses(collectionId, bookId, chapter, verses, language.code)
         inserted += verses.length
@@ -188,7 +200,7 @@ async function main() {
   }
 }
 
-main().catch(err => {
+main().catch((err) => {
   console.error('Fatal:', err.message)
   process.exit(1)
 })

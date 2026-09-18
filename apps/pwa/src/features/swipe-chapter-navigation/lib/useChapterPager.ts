@@ -94,10 +94,7 @@ export function useChapterPager({ loc, disabled }: Params) {
   // 画面上の全接触点で、ページャの外に置かれた指まで含んでしまう
   const activeTouches = useRef(new Set<number>())
 
-  const centerOffset = useCallback(
-    (el: HTMLDivElement) => (prev ? el.clientWidth : 0),
-    [prev],
-  )
+  const centerOffset = useCallback((el: HTMLDivElement) => (prev ? el.clientWidth : 0), [prev])
 
   // CSS では中央のパネルから開始できないため、描画前に位置を合わせる
   useLayoutEffect(() => {
@@ -207,9 +204,7 @@ export function useChapterPager({ loc, disabled }: Params) {
       topPending.current = false
       setGesture({ previewTop: measuredTop.current })
     }
-    setPointing(
-      offset > LABEL_THRESHOLD_PX ? 'next' : offset < -LABEL_THRESHOLD_PX ? 'prev' : null,
-    )
+    setPointing(offset > LABEL_THRESHOLD_PX ? 'next' : offset < -LABEL_THRESHOLD_PX ? 'prev' : null)
 
     scheduleSettle()
   }, [centerOffset, scrollable, scheduleSettle])

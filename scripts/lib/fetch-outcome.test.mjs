@@ -23,7 +23,10 @@ describe('createOutcome', () => {
 
   it('見出しが取れていれば数えない', () => {
     const outcome = createOutcome()
-    assert.strictEqual(outcome.recordHeading({ isFrontMatter: false, heading: { title: '第1章' } }), false)
+    assert.strictEqual(
+      outcome.recordHeading({ isFrontMatter: false, heading: { title: '第1章' } }),
+      false,
+    )
     assert.strictEqual(outcome.exitCode, 0)
   })
 
