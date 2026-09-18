@@ -21,7 +21,7 @@
     "react/react-in-jsx-scope": "off",
     "vitest/require-mock-type-parameters": "off",
     "shadcn/no-inline-styles": "warn",
-    "shadcn/no-raw-colors": "warn",
+    "shadcn/no-raw-colors": "error",
     "shadcn/require-static-classes": "error",
     "shadcn/no-unknown-classes": [
       "error",

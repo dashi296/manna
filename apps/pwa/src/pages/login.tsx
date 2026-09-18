@@ -37,6 +37,7 @@ function LoginPage() {
             border: '1px solid var(--line)',
           }}
         >
+          {/* oxlint-disable shadcn/no-raw-colors -- Google ブランド指定色。テーマトークンに置き換えてはいけない */}
           <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
             <path
               fill="#EA4335"
@@ -55,6 +56,7 @@ function LoginPage() {
               d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.8 2.2-8.4 2.2-6.1 0-11.3-4-13.2-9.5l-8.1 6C6.7 42.7 14.7 48 24 48z"
             />
           </svg>
+          {/* oxlint-enable shadcn/no-raw-colors */}
           Google でサインイン
         </button>
 
