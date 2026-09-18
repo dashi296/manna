@@ -209,7 +209,7 @@ export function PostEditor({
       <TabBar tabs={TABS} active={tab} onChange={setTab} />
 
       {errorMessage && (
-        <p className="text-sm text-red-600" role="alert">
+        <p className="text-sm text-destructive" role="alert">
           {errorMessage}
         </p>
       )}
