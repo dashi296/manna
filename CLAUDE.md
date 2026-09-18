@@ -233,3 +233,27 @@ VITE_SUPABASE_URL=http://127.0.0.1:55321 VITE_SUPABASE_KEY=ci-dummy-key pnpm --f
 - UIコンポーネントは TDD（失敗テスト → 実装 → 通過）で実装
 - コンポーネントのテストは `tests/` ディレクトリ下に配置
 - FSD スライスを新規作成したら必ず `index.ts` を作成する
+
+### Lint / Format（oxlint + oxfmt）
+
+```bash
+pnpm lint       # oxlint
+pnpm fmt        # oxfmt --write
+pnpm fmt:check  # oxfmt --check（CI で実行）
+```
+
+- 設定はリポジトリルートの `.oxlintrc.json` / `.oxfmtrc.json`
+- **対象は JS/TS のみ。** `fmt` / `fmt:check` は引数の glob で、`.oxfmtrc.json` は
+  `ignorePatterns` で二重に絞っている（scripts を経由しないエディタ / LSP 経由の整形を塞ぐため）
+- 生成物（`apps/pwa/src/routeTree.gen.ts` / `packages/database/index.ts`）は lint / fmt とも対象外
+- `@shadcn/lint` を `jsPlugins` で読み込んでいる。**`jsPlugins` に足すだけではルールは発火しない**。
+  `rules` に `shadcn/<ルール名>` を明示すること
+- 既存の違反が残っているルールは warn、違反 0 件のルールは error にしている
+
+### git blame の設定
+
+整形コミット（#164）を blame から外すため、clone 後に一度だけ実行する:
+
+```bash
+git config blame.ignoreRevsFile .git-blame-ignore-revs
+```

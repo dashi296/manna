@@ -1,0 +1,6 @@
+# git blame でこのファイルに列挙したコミットを無視する。
+# 有効にするには一度だけ:
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# style: oxfmt --write を全体に適用する (#164)
+64c4d5d7eda2b632cdf1dac117d34ec2be7e6150
