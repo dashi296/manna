@@ -40,7 +40,7 @@ export function PostActionsMenu({ postId, onEdit }: Props) {
             icon={<Trash2 size={16} aria-hidden="true" />}
             label="削除"
             onClick={handleDelete}
-            className="text-destructive"
+            className="text-danger"
           />
         </MenuContent>
       </Menu>
