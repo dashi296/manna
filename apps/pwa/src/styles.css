@@ -36,8 +36,12 @@
   --color-card-foreground: var(--sea-ink);
   --color-accent: var(--sand);
   --color-accent-foreground: var(--sea-ink);
+  /* ボタン・バッジの背景。白文字が乗るためライト/ダークとも同じ値
+     （白文字とのコントラストは 4.83:1）*/
   --color-destructive: #dc2626;
   --color-destructive-foreground: #ffffff;
+  /* 通常背景に乗せるエラー文字。ダークでは --danger が明るくなる */
+  --color-danger: var(--danger);
   --color-input: var(--line);
   --color-popover: var(--surface-strong);
   --color-popover-foreground: var(--sea-ink);
@@ -62,6 +66,10 @@
   --lagoon: #4fb8b2;
   --lagoon-deep: #328f97;
   --palm: #2f6a4a;
+  /* 通常背景に乗せるエラー文字用。ボタン背景の --color-destructive とは
+     役割が違い、ダークで求められる明度が逆向きなので別トークンにしている。
+     #dc2626 は --bg-base に対して 4.24:1 で AA に届かないため一段暗くした */
+  --danger: #b91c1c;
   --sand: #e7f0e8;
   --foam: #f3faf5;
   --surface: rgba(255, 255, 255, 0.74);
@@ -105,6 +113,7 @@
   --lagoon: #60d7cf;
   --lagoon-deep: #8de5db;
   --palm: #6ec89a;
+  --danger: #f87171;
   --sand: #0f1a1e;
   --foam: #101d22;
   --surface: rgba(16, 30, 34, 0.8);
@@ -129,6 +138,7 @@
     --lagoon: #60d7cf;
     --lagoon-deep: #8de5db;
     --palm: #6ec89a;
+    --danger: #f87171;
     --sand: #0f1a1e;
     --foam: #101d22;
     --surface: rgba(16, 30, 34, 0.8);
