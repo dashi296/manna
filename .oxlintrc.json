@@ -21,6 +21,29 @@
     "react/react-in-jsx-scope": "off",
     "vitest/require-mock-type-parameters": "off",
     "shadcn/no-inline-styles": "warn",
+    "shadcn/no-arbitrary-values": [
+      "warn",
+      {
+        "allow": [
+          "bg-[var(--header-bg)]",
+          "bottom-[var(--bottom-nav-h)]",
+          "hover:bg-[var(--chip-bg)]",
+          "pb-[var(--bottom-nav-h)]",
+          "pb-[var(--fab-clearance)]",
+          "pb-[var(--safe-area-bottom)]",
+          "pt-[var(--page-header-pt)]",
+          "pt-[var(--selection-header-pt)]",
+          "gap-[--spacing(var(--gap))]",
+          "data-[side=left]:group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]",
+          "data-[side=right]:group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]",
+          "group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(4)))]",
+          "transition-[width]",
+          "transition-[left,right,width]",
+          "transition-[margin,opacity]",
+          "transition-[width,height,padding]"
+        ]
+      }
+    ],
     "shadcn/no-raw-colors": "error",
     "shadcn/require-static-classes": "error",
     "shadcn/no-unknown-classes": [
