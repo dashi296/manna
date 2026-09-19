@@ -21,6 +21,15 @@
     "react/react-in-jsx-scope": "off",
     "vitest/require-mock-type-parameters": "off",
     "shadcn/no-inline-styles": "warn",
+    "shadcn/no-arbitrary-values": [
+      "warn",
+      {
+        "allow": [
+          "transition-[*]",
+          "*var(--*)*"
+        ]
+      }
+    ],
     "shadcn/no-raw-colors": "error",
     "shadcn/require-static-classes": "error",
     "shadcn/no-unknown-classes": [

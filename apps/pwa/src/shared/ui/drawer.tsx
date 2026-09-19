@@ -93,6 +93,8 @@ function DrawerContent({
           className={cn(
             // --popover は半透明。バックドロップを出さない使い方では背後の本文が
             // 透けて読めなくなるため、ヘッダーと同じすりガラスで背景を落ち着かせる
+            // スワイプの手触りに合わせた実測値。スケール値へ丸めると挙動が変わる
+            // oxlint-disable-next-line shadcn/no-arbitrary-values
             'pointer-events-auto relative flex touch-none flex-col gap-4 bg-popover bg-clip-padding text-sm text-popover-foreground shadow-lg outline-none supports-backdrop-filter:backdrop-blur-[16px] transition-transform duration-[450ms] ease-[cubic-bezier(0.32,0.72,0,1)] data-swiping:duration-0 data-swiping:select-none data-ending-style:duration-[calc(var(--drawer-swipe-strength)*400ms)]',
             popupBySide[side],
             className,
