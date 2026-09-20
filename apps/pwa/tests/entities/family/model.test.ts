@@ -28,8 +28,8 @@ describe('filterFamilyPair', () => {
     const ba = builder()
     filterFamilyPair(ab, 'x', 'y')
     filterFamilyPair(ba, 'y', 'x')
-    expect(ab.calls.map(([col, v]) => [col, [...v].sort()])).toEqual(
-      ba.calls.map(([col, v]) => [col, [...v].sort()]),
+    expect(ab.calls.map(([col, v]) => [col, v.toSorted()])).toEqual(
+      ba.calls.map(([col, v]) => [col, v.toSorted()]),
     )
   })
 

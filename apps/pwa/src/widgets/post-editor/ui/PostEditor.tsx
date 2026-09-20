@@ -31,11 +31,7 @@ type Draft = {
 
 function scriptureDraftKey(scripture: ScriptureRefPartial): string {
   if (!scripture.collection) return `${DRAFT_KEY_PREFIX}none`
-  const verses =
-    scripture.verses
-      ?.slice()
-      .sort((a, b) => a - b)
-      .join(',') ?? ''
+  const verses = scripture.verses?.toSorted((a, b) => a - b).join(',') ?? ''
   return `${DRAFT_KEY_PREFIX}${scripture.collection}:${scripture.book ?? ''}:${scripture.chapter ?? ''}:${verses}`
 }
 

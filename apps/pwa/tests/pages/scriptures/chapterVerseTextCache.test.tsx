@@ -133,13 +133,13 @@ describe('章の節本文のキャッシュ', () => {
       },
     )
     await waitFor(() => expect(result.current.next?.primary.size).toBe(1))
-    expect(fetched.map((f) => f.chapter).sort()).toEqual([3, 5])
+    expect(fetched.map((f) => f.chapter).toSorted()).toEqual([3, 5])
 
     // 5章へ遷移したときのローダー
     await routeLoader(mod)({ params, deps: {}, context: { queryClient } })
 
     // 先読みと同じキーなので取り直さない
-    expect(fetched.map((f) => f.chapter).sort()).toEqual([3, 5])
+    expect(fetched.map((f) => f.chapter).toSorted()).toEqual([3, 5])
   })
 
   it('見出しの取得が失敗しても、章ページの読み込みは止めない', async () => {

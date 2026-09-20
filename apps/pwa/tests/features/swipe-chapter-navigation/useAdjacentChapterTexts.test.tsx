@@ -147,7 +147,7 @@ describe('useAdjacentChapterTexts', () => {
       calls
         .filter((c) => c.language === 'en')
         .map((c) => c.chapter)
-        .sort(),
+        .toSorted(),
     ).toEqual([4, 6])
   })
 
