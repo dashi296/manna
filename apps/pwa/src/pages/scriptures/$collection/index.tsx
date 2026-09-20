@@ -27,8 +27,7 @@ function CollectionPage() {
               <Link
                 to="/scriptures/$collection/$book"
                 params={{ collection: collection.id, book: book.id }}
-                className="flex items-center justify-between px-4 py-3.5 transition-colors"
-                style={{ color: 'var(--sea-ink)' }}
+                className="flex items-center justify-between px-4 py-3.5 transition-colors text-foreground"
               >
                 <span>{book.name}</span>
                 <span className="text-sm text-muted-foreground">
