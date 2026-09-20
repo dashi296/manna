@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useLayoutEffect, useRef } from 'react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/shared/ui/sheet'
 import { PostEditor } from '@/widgets/post-editor'
 import { type ScriptureRefPartial } from '@/features/select-scripture'
@@ -33,10 +33,17 @@ export function PostComposerSheet({
   onClosed,
 }: Props) {
   const isMobile = useIsMobile()
+  // 代入をレンダー中に置くと、破棄されたレンダー（TanStack Router は遷移を
+  // startTransition で包む）の値が ref に残る。かといって useEffect にすると、
+  // open が true→false になるコミットでは下の [open] effect の cleanup のほうが
+  // 先に走り、同じコミットで差し替わった onClosed を読み落とす。
+  // layout effect は passive cleanup より前に走るのでこの順序問題が起きない
   const onOpenChangeRef = useRef(onOpenChange)
   const onClosedRef = useRef(onClosed)
-  onOpenChangeRef.current = onOpenChange
-  onClosedRef.current = onClosed
+  useLayoutEffect(() => {
+    onOpenChangeRef.current = onOpenChange
+    onClosedRef.current = onClosed
+  })
 
   useEffect(() => {
     if (!open) return

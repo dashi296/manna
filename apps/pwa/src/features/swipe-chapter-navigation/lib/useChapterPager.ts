@@ -62,8 +62,12 @@ export function useChapterPager({ loc, disabled }: Params) {
   const adjacentTexts = useAdjacentChapterTexts({ loc, enabled: scrollable, bilingual })
 
   // 判定待ちのタイマーは古いクロージャを掴んだままになるため、最新の値を ref で読む
+  // 代入をレンダー中に置くと、破棄されたレンダーの値が残る。着地判定を止める
+  // ガードなので、塗り前に確定する useLayoutEffect で反映の遅れも作らない
   const scrollableRef = useRef(scrollable)
-  scrollableRef.current = scrollable
+  useLayoutEffect(() => {
+    scrollableRef.current = scrollable
+  })
 
   const containerRef = useRef<HTMLDivElement>(null)
   const [pointing, setPointing] = useState<'prev' | 'next' | null>(null)

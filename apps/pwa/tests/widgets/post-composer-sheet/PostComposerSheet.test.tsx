@@ -26,6 +26,26 @@ describe('PostComposerSheet', () => {
     window.innerWidth = 1024
   })
 
+  // onClosed は ref 経由で読む。呼び出し側は毎描画で callback を作り直すため、
+  // 「閉じる」と「callback の差し替え」が同じコミットに入る。このとき [open] effect の
+  // cleanup が ref 更新より先に走ると古い callback を呼んでしまうので、ref の更新は
+  // layout effect に置いている（passive cleanup より前に走る）
+  it('閉じるのと同じ描画で onClosed が差し替わっても、最新のものが呼ばれる', async () => {
+    const first = vi.fn()
+    const second = vi.fn()
+    // ブラウザバック経由の close を再現するため、マーカーの無い履歴から始める
+    window.history.replaceState(null, '')
+
+    const { rerender } = render(<PostComposerSheet open onOpenChange={() => {}} onClosed={first} />)
+
+    // open=false と新しい onClosed を同じ rerender で渡す。間に描画を挟まない
+    window.history.replaceState(null, '')
+    rerender(<PostComposerSheet open={false} onOpenChange={() => {}} onClosed={second} />)
+
+    await waitFor(() => expect(second).toHaveBeenCalledTimes(1))
+    expect(first).not.toHaveBeenCalled()
+  })
+
   it('open=false ではシート内容が描画されない', () => {
     render(<PostComposerSheet open={false} onOpenChange={() => {}} />)
     expect(screen.queryByRole('dialog')).toBeNull()
