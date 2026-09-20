@@ -110,6 +110,9 @@ export function VerseRow({
     return (
       <button
         type="button"
+        // 節1行まるごとが対象なので input には置き換えられない。
+        // button + role=checkbox + aria-checked は正規の ARIA パターン
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role
         role="checkbox"
         aria-checked={selected}
         aria-label={`${verse}節を選択`}

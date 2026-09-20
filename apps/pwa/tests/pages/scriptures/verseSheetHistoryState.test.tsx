@@ -10,23 +10,23 @@ import {
 // 章ページは navigate の state にマーカーを書き、閉じるときは native の
 // window.history.state から読む。この2つが繋がっていることが実装の前提なので、
 // TanStack Router 側の挙動として固定する
-describe('シート由来マーカーと window.history.state', () => {
-  function buildRouter() {
-    const root = createRootRoute({ component: () => <Outlet />, notFoundComponent: () => null })
-    const chapter = createRoute({
-      getParentRoute: () => root,
-      path: '/scriptures/$collection/$book/$chapter',
-      component: () => null,
-      validateSearch: (search: Record<string, unknown>) => ({
-        comment: search.comment === undefined ? undefined : Number(search.comment),
-      }),
-    })
-    return createRouter({
-      routeTree: root.addChildren([chapter]),
-      history: createBrowserHistory(),
-    })
-  }
+function buildRouter() {
+  const root = createRootRoute({ component: () => <Outlet />, notFoundComponent: () => null })
+  const chapter = createRoute({
+    getParentRoute: () => root,
+    path: '/scriptures/$collection/$book/$chapter',
+    component: () => null,
+    validateSearch: (search: Record<string, unknown>) => ({
+      comment: search.comment === undefined ? undefined : Number(search.comment),
+    }),
+  })
+  return createRouter({
+    routeTree: root.addChildren([chapter]),
+    history: createBrowserHistory(),
+  })
+}
 
+describe('シート由来マーカーと window.history.state', () => {
   const chapterParams = { collection: 'bofm', book: '1-ne', chapter: '3' }
   const to = '/scriptures/$collection/$book/$chapter' as const
 

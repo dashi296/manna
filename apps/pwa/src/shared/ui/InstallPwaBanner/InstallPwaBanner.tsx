@@ -83,8 +83,7 @@ export function InstallPwaBanner() {
 
   return (
     <>
-      <div
-        role="region"
+      <section
         aria-label="アプリのインストール案内"
         className="fixed inset-x-0 bottom-[var(--bottom-nav-h)] z-40 lg:hidden pointer-events-none"
       >
@@ -104,7 +103,7 @@ export function InstallPwaBanner() {
             <XIcon />
           </Button>
         </div>
-      </div>
+      </section>
       <IosInstallInstructionsDialog open={iosDialogOpen} onOpenChange={setIosDialogOpen} />
     </>
   )

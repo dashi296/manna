@@ -1,3 +1,5 @@
+// マッチャを登録する副作用 import。値は受け取らない
+// oxlint-disable-next-line import/no-unassigned-import
 import '@testing-library/jest-dom'
 
 // jsdom は ResizeObserver を実装していない（InstallPwaBanner の高さ計測が依存）

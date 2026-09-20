@@ -21,8 +21,8 @@ export function useRelationMutation<V, T>({
   const queryClient = useQueryClient()
 
   const { mutate, isPending, variables } = useMutation({
-    mutationFn: async (variables: V) => {
-      const { data, error } = await run(variables)
+    mutationFn: async (vars: V) => {
+      const { data, error } = await run(vars)
       // Supabase は失敗時も reject せず { error } を返すため、投げ直さないと成功扱いになる
       if (error) throw error
       // 0 行は RLS に拒否されたときも返る。競合で操作が通っていないので成功にしない
@@ -33,8 +33,8 @@ export function useRelationMutation<V, T>({
     onSuccess: () => invalidateRelationQueries(queryClient),
     // 失敗時も無効化する: 相手の操作と競合して自分の変更が弾かれた場合、
     // 古いキャッシュのまま固まらず実際の状態に取り直す
-    onError: (_error, variables) => {
-      toast.error(errorMessage(variables))
+    onError: (_error, vars) => {
+      toast.error(errorMessage(vars))
       invalidateRelationQueries(queryClient)
     },
   })

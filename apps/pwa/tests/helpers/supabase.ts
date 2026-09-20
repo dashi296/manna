@@ -37,6 +37,8 @@ export function createSupabaseQueryChain(
       shouldThrow = true
       return chain
     },
+    // Supabase のビルダーは thenable。それを模すので then は必須
+    // oxlint-disable-next-line unicorn/no-thenable
     then: (...args: Parameters<Promise<Result>['then']>) => {
       const raw = getResponse()
       const res = selected ? raw : { ...raw, data: null }

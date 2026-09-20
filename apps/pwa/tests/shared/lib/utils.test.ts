@@ -7,6 +7,8 @@ describe('cn', () => {
   })
 
   it('条件付きクラスを処理する', () => {
+    // falsy が捨てられることを確かめるテスト。定数なのは意図的
+    // oxlint-disable-next-line eslint/no-constant-binary-expression
     expect(cn('base', false && 'skipped', 'added')).toBe('base added')
   })
 

@@ -26,6 +26,9 @@ function NestedLink({
   }
   return (
     <span
+      // カード全体が <Link>（= <a>）なので、中に <a> を置くと入れ子になり
+      // HTML として不正。span + role=link で代替する
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role
       role="link"
       tabIndex={0}
       onClick={open}
