@@ -26,14 +26,18 @@ export function AppSidebar() {
   const [userInfo, setUserInfo] = useState<UserInfo>(null)
 
   useEffect(() => {
-    getSession().then((session) => {
-      if (session?.user) {
-        setUserInfo({
-          displayName: session.user.user_metadata?.full_name ?? null,
-          avatarUrl: session.user.user_metadata?.avatar_url ?? null,
-        })
-      }
-    })
+    let cancelled = false
+    void (async () => {
+      const session = await getSession()
+      if (cancelled || !session?.user) return
+      setUserInfo({
+        displayName: session.user.user_metadata?.full_name ?? null,
+        avatarUrl: session.user.user_metadata?.avatar_url ?? null,
+      })
+    })()
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   const displayName = userInfo?.displayName ?? 'ユーザー'

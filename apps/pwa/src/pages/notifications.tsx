@@ -49,7 +49,10 @@ function NotificationsPage() {
   useEffect(() => {
     const unreadIds = notifications.filter((n) => !n.read).map((n) => n.id)
     if (unreadIds.length > 0) {
-      void supabase.from('notifications').update({ read: true }).in('id', unreadIds).then()
+      // Supabase のビルダーは thenable。await して初めてリクエストが飛ぶ
+      void (async () => {
+        await supabase.from('notifications').update({ read: true }).in('id', unreadIds)
+      })()
     }
   }, [])
 

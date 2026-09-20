@@ -172,6 +172,27 @@ beforeAll(async () => {
   ChapterPage = routeComponent(mod)
 })
 
+const circlePost = (
+  id: string,
+  userId: string,
+  name: string,
+  verses: number[],
+  content = `${id} の本文`,
+): PostWithUser =>
+  ({
+    id,
+    content,
+    visibility: 'public' as const,
+    created_at: '2026-07-19T00:00:00.000Z',
+    updated_at: '2026-07-19T00:00:00.000Z',
+    scripture_collection: 'bofm',
+    scripture_book: '1-ne',
+    scripture_chapter: 1,
+    scripture_verses: verses,
+    user_id: userId,
+    users: { display_name: name, avatar_url: null },
+  }) as PostWithUser
+
 describe('ChapterPage', () => {
   beforeEach(async () => {
     loaderData = baseChapterData
@@ -360,27 +381,6 @@ describe('ChapterPage', () => {
     render(<ChapterPage />)
     expect(screen.queryByRole('button', { name: '中村さん を選ぶ' })).toBeNull()
   })
-
-  const circlePost = (
-    id: string,
-    userId: string,
-    name: string,
-    verses: number[],
-    content = `${id} の本文`,
-  ): PostWithUser =>
-    ({
-      id,
-      content,
-      visibility: 'public' as const,
-      created_at: '2026-07-19T00:00:00.000Z',
-      updated_at: '2026-07-19T00:00:00.000Z',
-      scripture_collection: 'bofm',
-      scripture_book: '1-ne',
-      scripture_chapter: 1,
-      scripture_verses: verses,
-      user_id: userId,
-      users: { display_name: name, avatar_url: null },
-    }) as PostWithUser
 
   it('複数節の投稿の印はアンカー節にだけ出る', async () => {
     loaderData = {

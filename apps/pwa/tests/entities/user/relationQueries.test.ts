@@ -34,13 +34,13 @@ describe('invalidateRelationQueries', () => {
   })
 })
 
-describe('invalidatePostLists', () => {
-  const invalidatedPostPrefixes = async () => {
-    const invalidateQueries = vi.fn().mockResolvedValue(undefined)
-    await relationQueries.invalidatePostLists({ invalidateQueries } as unknown as QueryClient)
-    return invalidateQueries.mock.calls.map((call) => call[0].queryKey)
-  }
+const invalidatedPostPrefixes = async () => {
+  const invalidateQueries = vi.fn().mockResolvedValue(undefined)
+  await relationQueries.invalidatePostLists({ invalidateQueries } as unknown as QueryClient)
+  return invalidateQueries.mock.calls.map((call) => call[0].queryKey)
+}
 
+describe('invalidatePostLists', () => {
   it('投稿一覧のプレフィックスだけを落とす', async () => {
     const prefixes = await invalidatedPostPrefixes()
 

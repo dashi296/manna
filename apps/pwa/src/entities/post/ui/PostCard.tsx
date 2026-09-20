@@ -26,6 +26,10 @@ function NestedLink({
   }
   return (
     <span
+      // カード全体が <Link>（= <a>）なので中に <a> は置けない。ただし
+      // span + role=link + tabIndex も <a> の子孫として不正で、これは
+      // 誤検知ではなく既知の a11y 問題（#186）。カード側の構造から直す必要がある
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role
       role="link"
       tabIndex={0}
       onClick={open}
