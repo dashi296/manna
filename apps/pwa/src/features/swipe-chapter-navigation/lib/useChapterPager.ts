@@ -116,6 +116,9 @@ export function useChapterPager({ loc, disabled }: Params) {
     clearTimeout(settleTimer.current)
     touched.current = false
     activeTouches.current.clear()
+    // スワイプを譲る側へ切り替わったのでジェスチャーの表示を畳む。
+    // 直後の el.scrollLeft と同じ effect に置く必要があり、分離できない
+    // oxlint-disable-next-line react/set-state-in-effect
     setPointing(null)
     setGesture(null)
     const el = containerRef.current

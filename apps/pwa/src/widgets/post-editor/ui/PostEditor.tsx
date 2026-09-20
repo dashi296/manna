@@ -101,6 +101,8 @@ export function PostEditor({
     dropOutdatedDrafts()
     const key = draftKey(mode, initialScripture ?? {})
     const draft = loadDraft(key)
+    // localStorage は外部ストア。サーバでは読めないので effect で取り込む
+    // oxlint-disable-next-line react/set-state-in-effect
     setContent(draft.content)
     setVisibility(draft.visibility)
     setScripture(initialScripture?.collection ? initialScripture : draft.scripture)

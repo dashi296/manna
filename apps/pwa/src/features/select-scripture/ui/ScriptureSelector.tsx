@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { getAllCollections, getCollection, getBook } from '@/entities/scripture'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/ui/select'
 import { Input } from '@/shared/ui/input'
@@ -55,11 +55,16 @@ export function ScriptureSelector({ value, onChange, lockRef = false }: Props) {
   const bookItems = (selectedCollection?.books ?? []).map((b) => ({ value: b.id, label: b.name }))
   const chapterItems = selectedBook ? buildChapterItems(selectedBook) : []
 
+  // 外から value.verses が変わったら入力欄を追従させる。effect でやると
+  // 「古い値で1回描画 → setState → 描き直し」の二度手間になるので、
+  // レンダー中に前回値と比べて調整する（React 公式の推奨パターン）
   const versesText = value.verses?.join(', ') ?? ''
   const [versesInput, setVersesInput] = useState(versesText)
-  useEffect(() => {
+  const [prevVersesText, setPrevVersesText] = useState(versesText)
+  if (versesText !== prevVersesText) {
+    setPrevVersesText(versesText)
     setVersesInput(versesText)
-  }, [versesText])
+  }
 
   return (
     <div className="space-y-3">

@@ -739,6 +739,7 @@ function ChapterView({
     // 優先して保留は捨てる。捨てないと、後から発火したこの effect が
     // 開いている投稿シートの対象節・タイトルをすり替えてしまう
     if (sheetOpen) {
+      // oxlint-disable-next-line react/set-state-in-effect
       setPendingCompose(null)
       return
     }
