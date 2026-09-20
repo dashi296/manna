@@ -51,7 +51,10 @@ export function InstallPwaBanner() {
     window.addEventListener('beforeinstallprompt', handleBeforeInstall)
     window.addEventListener('appinstalled', handleAppInstalled)
 
+    // iOS Safari は beforeinstallprompt を出さないので UA から判定する。
+    // UA はサーバでは読めず、レンダー中に読むと hydration がずれる
     if (isIosSafari()) {
+      // oxlint-disable-next-line react/set-state-in-effect
       setVisible(true)
     }
 

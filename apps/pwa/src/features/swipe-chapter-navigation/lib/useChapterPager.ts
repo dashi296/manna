@@ -110,14 +110,24 @@ export function useChapterPager({ loc, disabled }: Params) {
   useEffect(() => () => clearTimeout(settleTimer.current), [])
 
   // 無効化されたらジェスチャーを畳む。判定を止めるだけだと、引きかけの位置と
-  // 「触れた」状態が残り、シートを閉じた後のスナップのやり直しを章移動と読んでしまう
+  // 「触れた」状態が残り、シートを閉じた後のスナップのやり直しを章移動と読んでしまう。
+  // 表示state は effect を待たずレンダー中に畳む（畳んだ結果は centerOffset に
+  // 影響しない。あれは prev の有無と clientWidth だけで決まる）
+  const [prevScrollable, setPrevScrollable] = useState(scrollable)
+  if (scrollable !== prevScrollable) {
+    setPrevScrollable(scrollable)
+    if (!scrollable) {
+      setPointing(null)
+      setGesture(null)
+    }
+  }
+
+  // ref とスクロール位置の後始末。こちらは DOM を触るので effect に残す
   useEffect(() => {
     if (scrollable) return
     clearTimeout(settleTimer.current)
     touched.current = false
     activeTouches.current.clear()
-    setPointing(null)
-    setGesture(null)
     const el = containerRef.current
     if (el) el.scrollLeft = centerOffset(el)
   }, [scrollable, centerOffset])
