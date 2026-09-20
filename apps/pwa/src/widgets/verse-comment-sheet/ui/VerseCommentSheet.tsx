@@ -48,7 +48,9 @@ export function VerseCommentSheet({
   // アンマウント時に塗りが残らないようにする。onHighlight は毎描画で作り直される
   // ことがあるため、ref 経由で読んでクリーンアップの再実行を避ける
   const highlightRef = useRef(onHighlight)
-  highlightRef.current = onHighlight
+  useEffect(() => {
+    highlightRef.current = onHighlight
+  })
   useEffect(() => () => highlightRef.current?.(null), [])
 
   if (!widthResolved) return null

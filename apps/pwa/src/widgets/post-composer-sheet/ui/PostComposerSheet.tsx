@@ -33,10 +33,14 @@ export function PostComposerSheet({
   onClosed,
 }: Props) {
   const isMobile = useIsMobile()
+  // 代入をレンダー中に置くと、破棄されたレンダー（TanStack Router は遷移を
+  // startTransition で包む）の値が ref に residue として残る。コミット後に更新する
   const onOpenChangeRef = useRef(onOpenChange)
   const onClosedRef = useRef(onClosed)
-  onOpenChangeRef.current = onOpenChange
-  onClosedRef.current = onClosed
+  useEffect(() => {
+    onOpenChangeRef.current = onOpenChange
+    onClosedRef.current = onClosed
+  })
 
   useEffect(() => {
     if (!open) return
