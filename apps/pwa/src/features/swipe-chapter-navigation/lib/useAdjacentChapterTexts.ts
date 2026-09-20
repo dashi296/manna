@@ -110,7 +110,6 @@ export function useAdjacentChapterTexts({ loc, enabled, bilingual }: Params) {
   //     外すと「併記をオフに戻してもプレビューに第2言語が残る」（既存テストが落ちる）
   //   - query オブジェクトではなく .data を並べているのは、data が変わらない
   //     再取得で作り直さないため
-  /* oxlint-disable react-hooks/exhaustive-deps */
   return useMemo(
     () => ({
       // 本文だけ先に返った時点でプレビューを出すと、遅れて届いた見出しのぶん
@@ -136,6 +135,7 @@ export function useAdjacentChapterTexts({ loc, enabled, bilingual }: Params) {
             }
           : null,
     }),
+    /* oxlint-disable react-hooks/exhaustive-deps -- 上記のとおり */
     [
       prevRef,
       nextRef,
@@ -151,7 +151,7 @@ export function useAdjacentChapterTexts({ loc, enabled, bilingual }: Params) {
       nextReady,
       // 併記の切り替えは同じデータのまま見せ方だけを変える。依存に入れないと作り直されない
       bilingual,
+      /* oxlint-enable react-hooks/exhaustive-deps */
     ],
   )
-  /* oxlint-enable react-hooks/exhaustive-deps */
 }

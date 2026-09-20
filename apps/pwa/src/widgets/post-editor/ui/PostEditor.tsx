@@ -98,7 +98,6 @@ export function PostEditor({
   // ドラフトはサーバーで読めずハイドレーションがずれるため、こちらは effect のまま。
   // 復元はマウント時 1 回だけ。依存を足すと入力中に再読み込みが走り、打った内容を
   // 下書きで上書きしてしまう
-  /* oxlint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
     if (post) return
     dropOutdatedDrafts()
@@ -109,6 +108,7 @@ export function PostEditor({
     setVisibility(draft.visibility)
     setScripture(initialScripture?.collection ? initialScripture : draft.scripture)
     draftLoaded.current = true
+    /* oxlint-disable react-hooks/exhaustive-deps -- 上記のとおりマウント時 1 回だけ */
   }, [])
   /* oxlint-enable react-hooks/exhaustive-deps */
 
