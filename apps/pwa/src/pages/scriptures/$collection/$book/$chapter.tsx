@@ -166,7 +166,7 @@ const fetchChapterData = createServerFn({ method: 'POST' })
         if (cur > prev) latestByUser.set(p.user_id, cur)
       }
       chapterCommenters = [...latestByUser.entries()]
-        .sort((a, b) => (a[1] < b[1] ? 1 : a[1] > b[1] ? -1 : 0))
+        .toSorted((a, b) => (a[1] < b[1] ? 1 : a[1] > b[1] ? -1 : 0))
         .map(([uid]) => userLookup.get(uid)!)
     }
 

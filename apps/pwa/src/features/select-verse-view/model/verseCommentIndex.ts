@@ -36,7 +36,9 @@ export function buildVerseCommentIndex(maxVerse: number, posts: PostWithUser[]):
     const verses = post.scripture_verses
     if (!verses?.length) continue
 
-    const sorted = [...new Set(verses)].filter((v) => v >= 1 && v <= maxVerse).sort((a, b) => a - b)
+    const sorted = [...new Set(verses)]
+      .filter((v) => v >= 1 && v <= maxVerse)
+      .toSorted((a, b) => a - b)
     if (sorted.length === 0) continue
     for (const [i, verse] of sorted.entries()) {
       const entry = entryFor(index, verse)

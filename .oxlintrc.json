@@ -20,6 +20,7 @@
   "rules": {
     "react/react-in-jsx-scope": "off",
     "vitest/require-mock-type-parameters": "off",
+    "unicorn/no-array-sort": "error",
     "shadcn/no-inline-styles": "warn",
     "shadcn/no-arbitrary-values": [
       "warn",

@@ -33,7 +33,7 @@ export function getVerseTextClient(): Promise<SupabaseClient<Database>> {
 
 // 同じ節の集合が並び順や重複でキーごと割れないようにそろえる
 function normalizeVerses(verses: number[] | undefined) {
-  return verses?.length ? [...new Set(verses)].sort((a, b) => a - b) : []
+  return verses?.length ? [...new Set(verses)].toSorted((a, b) => a - b) : []
 }
 
 export const scriptureVerseTextKeys = {

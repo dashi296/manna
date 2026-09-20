@@ -4,14 +4,14 @@ export function parseSelection(input: unknown, maxVerse: number = Infinity): num
     .flatMap((v) => String(v).split(','))
     .map((s) => parseInt(s.trim(), 10))
     .filter((n) => Number.isInteger(n) && n >= 1 && n <= maxVerse)
-  return Array.from(new Set(nums)).sort((a, b) => a - b)
+  return Array.from(new Set(nums)).toSorted((a, b) => a - b)
 }
 
 export function toggleVerse(selection: number[], verse: number): number[] {
   const set = new Set(selection)
   if (set.has(verse)) set.delete(verse)
   else set.add(verse)
-  return Array.from(set).sort((a, b) => a - b)
+  return Array.from(set).toSorted((a, b) => a - b)
 }
 
 export type SelectionMode = 'read' | 'select'

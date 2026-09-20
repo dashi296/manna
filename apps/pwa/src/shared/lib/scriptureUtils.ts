@@ -41,7 +41,7 @@ export function buildScriptureUrl(ref: ScriptureRef, book: ScriptureBook = findB
   const base = 'https://www.churchofjesuschrist.org/study/scriptures'
   const chapterSegment = book?.isFrontMatter ? '' : `/${ref.chapter}`
   let url = `${base}/${ref.collection}/${ref.book}${chapterSegment}?lang=jpn`
-  const first = ref.verses ? [...ref.verses].sort((a, b) => a - b)[0] : undefined
+  const first = ref.verses ? ref.verses.toSorted((a, b) => a - b)[0] : undefined
   if (first) url += `&id=p${first}`
   return url
 }
@@ -63,7 +63,7 @@ export function getScriptureLabel(ref: ScriptureRef, book: ScriptureBook = findB
   if (!ref.verses?.length) {
     return book?.isFrontMatter ? bookName : `${bookName} ${getChapterLabel(book, ref.chapter)}`
   }
-  const sorted = [...ref.verses].sort((a, b) => a - b)
+  const sorted = ref.verses.toSorted((a, b) => a - b)
   if (sorted.length === 1) return `${bookName} ${ref.chapter}:${sorted[0]}`
   const isConsecutive = sorted.every((v, i) => i === 0 || v === sorted[i - 1] + 1)
   if (isConsecutive) return `${bookName} ${ref.chapter}:${sorted[0]}–${sorted[sorted.length - 1]}`
