@@ -54,6 +54,9 @@ function NotificationsPage() {
         await supabase.from('notifications').update({ read: true }).in('id', unreadIds)
       })()
     }
+    // 開いた時点で読み込まれていた分だけを既読にする。notifications を依存に入れると
+    // 再取得のたびに更新が飛ぶ
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return (

@@ -105,6 +105,9 @@ export function useChapterPager({ loc, disabled }: Params) {
     const el = containerRef.current
     if (!el) return
     el.scrollLeft = centerOffset(el)
+    // next は本体では読まないが、隣の章が変わるとパネルの数が変わるので測り直す。
+    // 意図的なトリガ依存
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies
   }, [centerOffset, next])
 
   useEffect(() => () => clearTimeout(settleTimer.current), [])

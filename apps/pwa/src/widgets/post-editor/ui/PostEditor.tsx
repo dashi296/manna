@@ -95,19 +95,22 @@ export function PostEditor({
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const draftLoaded = useRef(false)
 
-  // ドラフトはサーバーで読めずハイドレーションがずれるため、こちらは effect のまま
+  // ドラフトはサーバーで読めずハイドレーションがずれるため、こちらは effect のまま。
+  // 復元はマウント時 1 回だけ。依存を足すと入力中に再読み込みが走り、打った内容を
+  // 下書きで上書きしてしまう
+  /* oxlint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
     if (post) return
     dropOutdatedDrafts()
     const key = draftKey(mode, initialScripture ?? {})
     const draft = loadDraft(key)
     // localStorage は外部ストア。サーバでは読めないので effect で取り込む
-    // oxlint-disable-next-line react/set-state-in-effect
     setContent(draft.content)
     setVisibility(draft.visibility)
     setScripture(initialScripture?.collection ? initialScripture : draft.scripture)
     draftLoaded.current = true
   }, [])
+  /* oxlint-enable react-hooks/exhaustive-deps */
 
   useEffect(() => {
     if (!draftLoaded.current) return
