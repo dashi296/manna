@@ -93,8 +93,7 @@ function NotificationsPage() {
                       <Link
                         to="/posts/$id"
                         params={{ id: n.post_id }}
-                        className="text-xs underline"
-                        style={{ color: 'var(--lagoon-deep)' }}
+                        className="text-xs underline text-primary"
                       >
                         投稿を見る
                       </Link>

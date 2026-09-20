@@ -33,8 +33,8 @@ function BookmarksPage() {
           <Link
             to="/scriptures/$collection/$book/$chapter"
             params={toChapterParams(readingPosition)}
-            className="flex items-center justify-between px-4 py-3.5 rounded-xl"
-            style={{ border: '1px solid var(--line)', color: 'var(--sea-ink)' }}
+            className="flex items-center justify-between px-4 py-3.5 rounded-xl text-foreground"
+            style={{ border: '1px solid var(--line)' }}
           >
             <span className="font-medium">{getScriptureLabel(readingPosition)}</span>
             <span className="text-muted-foreground">›</span>
@@ -42,11 +42,7 @@ function BookmarksPage() {
         ) : (
           <EmptyState>
             聖典を読むとここに続きが表示されます。
-            <Link
-              to="/scriptures"
-              className="block mt-2 underline"
-              style={{ color: 'var(--lagoon-deep)' }}
-            >
+            <Link to="/scriptures" className="block mt-2 underline text-primary">
               聖典を読む
             </Link>
           </EmptyState>

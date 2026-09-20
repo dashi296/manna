@@ -367,8 +367,7 @@ function VerseView({ book, chapter, collection, verses, posts, canCompose }: Ver
           href={officialUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-sm underline"
-          style={{ color: 'var(--lagoon-deep)' }}
+          className="text-sm underline text-primary"
         >
           公式サイトで読む →
         </a>

@@ -106,8 +106,7 @@ function PostDetailPage() {
                 chapter: String(scriptureRef.chapter),
               }}
               search={scriptureRef.verses ? { verses: scriptureRef.verses } : {}}
-              className="font-medium text-sm"
-              style={{ color: 'var(--palm)' }}
+              className="font-medium text-sm text-secondary"
             >
               📖 {scriptureLabel}
             </Link>
@@ -116,8 +115,7 @@ function PostDetailPage() {
                 href={officialUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs underline"
-                style={{ color: 'var(--lagoon-deep)' }}
+                className="text-xs underline text-primary"
               >
                 公式サイトで読む →
               </a>
