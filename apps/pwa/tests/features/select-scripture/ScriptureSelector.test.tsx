@@ -24,6 +24,16 @@ describe('ScriptureSelector', () => {
       <ScriptureSelector value={{ ...chapterRef, verses: [11, 13] }} onChange={() => {}} lockRef />,
     )
     expect(screen.getByPlaceholderText(/節/)).toHaveValue('11, 13')
+
+    // 空になる向きも追従する（「空への変更だけ無視する」実装を弾く）
+    rerender(
+      <ScriptureSelector
+        value={{ ...chapterRef, verses: undefined }}
+        onChange={() => {}}
+        lockRef
+      />,
+    )
+    expect(screen.getByPlaceholderText(/節/)).toHaveValue('')
   })
 
   // 外の値が同じままなら、利用者が打った内容を上書きしない
