@@ -26,19 +26,19 @@ describe('PostComposerSheet', () => {
     window.innerWidth = 1024
   })
 
-  // onClosed は ref 経由で読む。その ref が満たすべき契約（最新の値が呼ばれる）を
-  // 固定する。なお ref の更新をレンダー中からコミット後へ移した変更自体は、
-  // 破棄されたレンダーでしか差が出ないため、このテストでは検出できない
-  it('再描画で onClosed が差し替わったら、閉じたときは最新のものが呼ばれる', async () => {
+  // onClosed は ref 経由で読む。呼び出し側は毎描画で callback を作り直すため、
+  // 「閉じる」と「callback の差し替え」が同じコミットに入る。このとき [open] effect の
+  // cleanup が ref 更新より先に走ると古い callback を呼んでしまうので、ref の更新は
+  // layout effect に置いている（passive cleanup より前に走る）
+  it('閉じるのと同じ描画で onClosed が差し替わっても、最新のものが呼ばれる', async () => {
     const first = vi.fn()
     const second = vi.fn()
     // ブラウザバック経由の close を再現するため、マーカーの無い履歴から始める
     window.history.replaceState(null, '')
 
     const { rerender } = render(<PostComposerSheet open onOpenChange={() => {}} onClosed={first} />)
-    rerender(<PostComposerSheet open onOpenChange={() => {}} onClosed={second} />)
 
-    // マーカーを消してから閉じると「既に pop 済み」の経路に入り、即 onClosed が走る
+    // open=false と新しい onClosed を同じ rerender で渡す。間に描画を挟まない
     window.history.replaceState(null, '')
     rerender(<PostComposerSheet open={false} onOpenChange={() => {}} onClosed={second} />)
 
