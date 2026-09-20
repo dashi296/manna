@@ -66,6 +66,10 @@
   --lagoon: #4fb8b2;
   --lagoon-deep: #328f97;
   --palm: #2f6a4a;
+  /* リンクの下線色と hover 色。どちらも --lagoon-deep から機械的に導けない
+     （hover はライトで暗く、ダークで明るく振れる）ため、テーマごとに値を持つ */
+  --link-underline: rgba(50, 143, 151, 0.4);
+  --link-hover: #246f76;
   /* 通常背景に乗せるエラー文字用。ボタン背景の --color-destructive とは
      役割が違い、ダークで求められる明度が逆向きなので別トークンにしている。
      #dc2626 は --bg-base に対して 4.24:1 で AA に届かないため一段暗くした */
@@ -114,6 +118,8 @@
   --lagoon-deep: #8de5db;
   --palm: #6ec89a;
   --danger: #f87171;
+  --link-underline: rgba(141, 229, 219, 0.4);
+  --link-hover: #c2f7ee;
   --sand: #0f1a1e;
   --foam: #101d22;
   --surface: rgba(16, 30, 34, 0.8);
@@ -139,6 +145,8 @@
     --lagoon-deep: #8de5db;
     --palm: #6ec89a;
     --danger: #f87171;
+    --link-underline: rgba(141, 229, 219, 0.4);
+    --link-hover: #c2f7ee;
     --sand: #0f1a1e;
     --foam: #101d22;
     --surface: rgba(16, 30, 34, 0.8);
@@ -271,15 +279,21 @@ body::after {
   mask-image: radial-gradient(circle at 50% 30%, black, transparent 78%);
 }
 
-a {
-  color: var(--lagoon-deep);
-  text-decoration-color: rgba(50, 143, 151, 0.4);
-  text-decoration-thickness: 1px;
-  text-underline-offset: 2px;
-}
+/* レイヤー外に置くと、Tailwind のユーティリティ（@layer utilities）が
+   どれだけ詳細度を持っていても勝てない。リンクに text-* を指定できるよう
+   @layer base に入れる。BottomNav の active/非 active の出し分けはこれが
+   無いと効かない */
+@layer base {
+  a {
+    color: var(--lagoon-deep);
+    text-decoration-color: var(--link-underline);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 2px;
+  }
 
-a:hover {
-  color: #246f76;
+  a:hover {
+    color: var(--link-hover);
+  }
 }
 
 code {
