@@ -70,8 +70,7 @@ function NotificationsPage() {
             return (
               <li
                 key={n.id}
-                className="flex items-start gap-3 px-4 py-3 border-b border-border"
-                style={{ background: n.read ? 'transparent' : 'var(--chip-bg)' }}
+                className={`flex items-start gap-3 px-4 py-3 border-b border-border ${n.read ? 'bg-transparent' : 'bg-chip'}`}
               >
                 <Link to="/profile/$userId" params={{ userId: n.actor_id }}>
                   <UserAvatar name={actorName} url={avatarUrl} size="sm" />

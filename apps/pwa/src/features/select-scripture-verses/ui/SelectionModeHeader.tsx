@@ -1,7 +1,7 @@
 import { X } from 'lucide-react'
 import { Button } from '@/shared/ui/button'
 import { ComposePostButton } from '@/shared/ui/ComposePostButton'
-import { stickyHeaderClassName, stickyHeaderStyle } from '@/shared/ui'
+import { stickyHeaderClassName } from '@/shared/ui'
 import { cn } from '@/shared/lib/utils'
 
 type Props = {
@@ -15,10 +15,7 @@ export function SelectionModeHeader({ count, onCancel, onSubmit }: Props) {
   const titleLabel = count === 0 ? '節を選んでください' : `${count}節選択中`
 
   return (
-    <header
-      className={cn(stickyHeaderClassName, 'px-2 pt-[var(--selection-header-pt)] pb-2')}
-      style={stickyHeaderStyle}
-    >
+    <header className={cn(stickyHeaderClassName, 'px-2 pt-[var(--selection-header-pt)] pb-2')}>
       <Button
         variant="ghost"
         size="sm"

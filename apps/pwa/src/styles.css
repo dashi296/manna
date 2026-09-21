@@ -23,6 +23,11 @@
   --color-surface-strong: var(--surface-strong);
   --color-line: var(--line);
 
+  /* アプリ固有のロール（ブランド色でも shadcn のロールでもない） */
+  --color-chip: var(--chip-bg);
+  --color-chip-line: var(--chip-line);
+  --color-header: var(--header-bg);
+
   /* shadcn/ui token mapping */
   --color-background: var(--foam);
   --color-foreground: var(--sea-ink);

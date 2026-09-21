@@ -426,7 +426,7 @@ function ChapterNav({ collection, book, chapter }: ChapterRef) {
   if (!prev && !next) return null
 
   const linkClass =
-    'flex items-center gap-1 px-3 py-2 text-sm rounded-md transition-colors hover:bg-[var(--chip-bg)]'
+    'flex items-center gap-1 px-3 py-2 text-sm rounded-md transition-colors hover:bg-chip'
 
   return (
     <nav

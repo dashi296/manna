@@ -26,9 +26,7 @@
       "warn",
       {
         "allow": [
-          "bg-[var(--header-bg)]",
           "bottom-[var(--bottom-nav-h)]",
-          "hover:bg-[var(--chip-bg)]",
           "pb-[var(--bottom-nav-h)]",
           "pb-[var(--fab-clearance)]",
           "pb-[var(--safe-area-bottom)]",

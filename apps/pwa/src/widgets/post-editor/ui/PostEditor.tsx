@@ -278,10 +278,7 @@ export function PostEditor({
 
 function ScriptureChip({ label }: { label: string }) {
   return (
-    <span
-      className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium text-secondary"
-      style={{ background: 'var(--chip-bg)', border: '1px solid var(--chip-line)' }}
-    >
+    <span className="inline-flex items-center rounded-full border border-chip-line bg-chip px-2 py-0.5 text-[11px] font-medium text-secondary">
       <span aria-hidden="true">📖</span> {label}
     </span>
   )
