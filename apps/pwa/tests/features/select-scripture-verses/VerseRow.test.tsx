@@ -212,7 +212,7 @@ describe('VerseRow highlighted', () => {
         highlighted
       />,
     )
-    // 両方立っているときは選択が勝つ。順序は styles.css の verse-row で決まる
+    // 両方立っているときは選択が勝つ（styles.css の verse-row が :not() で決める）
     const checkbox = await screen.findByRole('checkbox')
     expect(checkbox).toHaveAttribute('data-selected')
     expect(checkbox).toHaveAttribute('data-highlighted')

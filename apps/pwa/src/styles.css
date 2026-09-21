@@ -209,7 +209,6 @@
    select モードでは同じ要素に付く */
 @utility verse-row {
   border-left: 3px solid transparent;
-  transition: background-color 200ms, border-color 200ms;
 
   /* 節シートに出ているコメントが対象にしている節を示す。選択中は選択の色が勝つ。
      記述順ではなく :not() で決めるのは、並べ替えで黙って壊れないようにするため */
@@ -383,6 +382,13 @@ button,
 a {
   transition: background-color 180ms ease, color 180ms ease, border-color 180ms ease,
     transform 180ms ease;
+}
+
+/* 節1行の transition。@utility は utilities レイヤーに入るので、レイヤー外の
+   上の button ルールに負ける。選択モードの行は button なので、ここに置かないと
+   読みモードの行と時間もプロパティも食い違う */
+.verse-row {
+  transition: background-color 200ms, border-color 200ms;
 }
 
 .island-kicker {
