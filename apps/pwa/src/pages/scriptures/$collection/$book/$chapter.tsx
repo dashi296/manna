@@ -666,6 +666,9 @@ function ChapterView({
     scrolledVerse.current = commentVerseForScroll
 
     target.scrollIntoView({ behavior, block: 'start' })
+    // secondaryTexts は本体では読まないが、英文が届くと高さが変わるので測り直す。
+    // 意図的なトリガ依存（上のコメントの「英文が届いた後の再調整」）
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies
   }, [commentVerseForScroll, secondaryTexts])
 
   // 上のスクロール effect より後に置く。effect は宣言順に走るため、マウント時の

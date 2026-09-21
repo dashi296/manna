@@ -54,7 +54,9 @@ function NotificationsPage() {
         await supabase.from('notifications').update({ read: true }).in('id', unreadIds)
       })()
     }
-  }, [])
+    // 再取得で新しい未読が届いたらそれも既読にする。未読が無ければ
+    // リクエストは送らないので、依存に入れても余計な更新は飛ばない
+  }, [notifications])
 
   return (
     <div>

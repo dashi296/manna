@@ -103,6 +103,13 @@ export function useAdjacentChapterTexts({ loc, enabled, bilingual }: Params) {
   const secondaryHeadingOf = (result: { data?: unknown }) =>
     bilingual ? ((result.data as ChapterHeading | null) ?? null) : null
 
+  // リンタは secondaryOf / secondaryHeadingOf と各 query オブジェクトを依存に足し、
+  // bilingual を外せと言うが、どちらも従うと壊れる:
+  //   - 2 つの関数は毎描画で作り直されるので、入れるとメモ化が無意味になる
+  //   - 関数が閉じ込めているのは bilingual なので、こちらを依存に置くのが正しい。
+  //     外すと「併記をオフに戻してもプレビューに第2言語が残る」（既存テストが落ちる）
+  //   - query オブジェクトではなく .data を並べているのは、data が変わらない
+  //     再取得で作り直さないため
   return useMemo(
     () => ({
       // 本文だけ先に返った時点でプレビューを出すと、遅れて届いた見出しのぶん
@@ -128,6 +135,7 @@ export function useAdjacentChapterTexts({ loc, enabled, bilingual }: Params) {
             }
           : null,
     }),
+    /* oxlint-disable react-hooks/exhaustive-deps -- 上記のとおり */
     [
       prevRef,
       nextRef,
@@ -143,6 +151,7 @@ export function useAdjacentChapterTexts({ loc, enabled, bilingual }: Params) {
       nextReady,
       // 併記の切り替えは同じデータのまま見せ方だけを変える。依存に入れないと作り直されない
       bilingual,
+      /* oxlint-enable react-hooks/exhaustive-deps */
     ],
   )
 }
