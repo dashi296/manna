@@ -54,6 +54,8 @@ describe('通知ページの既読化', () => {
     render(<NotificationsPage />)
 
     await waitFor(() => expect(inFn).toHaveBeenCalledWith('id', ['n1']))
+    // 何を書き込むかも固定する（{ read: false } などへの変異を検出する）
+    expect(update).toHaveBeenCalledWith({ read: true })
     expect(update).toHaveBeenCalledTimes(1)
   })
 
