@@ -21,8 +21,7 @@ export function UserAvatar({ name, url, size = 'sm' }: Props) {
   }
   return (
     <span
-      className={`${wh} rounded-full flex items-center justify-center ${text} font-bold shrink-0 text-white`}
-      style={{ background: 'var(--lagoon)' }}
+      className={`${wh} rounded-full flex items-center justify-center ${text} font-bold shrink-0 bg-lagoon text-white`}
       aria-hidden="true"
     >
       {name.charAt(0).toUpperCase()}

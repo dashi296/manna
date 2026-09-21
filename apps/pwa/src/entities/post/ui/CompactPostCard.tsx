@@ -18,8 +18,7 @@ export function CompactPostCard({ post }: Props) {
     <Link
       to="/posts/$id"
       params={{ id: post.id }}
-      className="block px-3 py-2 rounded-lg no-underline"
-      style={{ background: 'var(--surface)', border: '1px solid var(--line)' }}
+      className="block px-3 py-2 rounded-lg border border-border bg-surface no-underline"
       aria-label={`${displayName}: ${post.content}`}
     >
       <div className="flex items-center gap-2 mb-1">

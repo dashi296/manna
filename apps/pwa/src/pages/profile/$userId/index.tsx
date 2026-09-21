@@ -192,7 +192,7 @@ function ProfilePage() {
   return (
     <div>
       <PageHeader title={displayName} backTo="/" backLabel="フィード" />
-      <div className="p-4 border-b" style={{ borderColor: 'var(--line)' }}>
+      <div className="p-4 border-b border-border">
         <div className="flex items-start gap-4">
           <UserAvatar name={displayName} url={avatarUrl} size="lg" />
           <div className="flex-1 min-w-0">

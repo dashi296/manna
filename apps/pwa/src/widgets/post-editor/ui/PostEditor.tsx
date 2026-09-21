@@ -21,8 +21,6 @@ const TABS = [
   { id: 'preview' as const, label: 'プレビュー' },
 ]
 
-const containerStyle = { borderColor: 'var(--line)', background: 'var(--surface)' }
-
 type Draft = {
   content: string
   visibility: Visibility
@@ -220,11 +218,10 @@ export function PostEditor({
           value={content}
           onChange={(e) => setContent(e.target.value)}
           placeholder="聖典を読んで感じたことを書いてみましょう..."
-          className="w-full min-h-[200px] rounded-md border p-3 text-sm resize-y focus:outline-none focus:ring-2"
-          style={containerStyle}
+          className="w-full min-h-[200px] rounded-md border border-border bg-surface p-3 text-sm resize-y focus:outline-none focus:ring-2"
         />
       ) : (
-        <div className="min-h-[200px] rounded-md border p-3" style={containerStyle}>
+        <div className="min-h-[200px] rounded-md border border-border bg-surface p-3">
           {content ? (
             <MarkdownRenderer content={content} />
           ) : (

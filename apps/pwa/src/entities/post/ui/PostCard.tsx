@@ -66,7 +66,7 @@ export const PostCard = memo(function PostCard({ post }: Props) {
 
   return (
     <Link to="/posts/$id" params={{ id: post.id }} className="block">
-      <article className="px-4 py-4 border-b" style={{ borderColor: 'var(--line)' }}>
+      <article className="px-4 py-4 border-b border-border">
         <div className="flex items-start gap-3 mb-2">
           <UserAvatar name={displayName} url={avatarUrl} size="sm" />
           <div className="flex-1 min-w-0">

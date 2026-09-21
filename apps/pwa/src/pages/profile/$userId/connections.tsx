@@ -128,10 +128,7 @@ function ConnectionRow({
 }) {
   const { displayName, avatarUrl } = resolveUserIdentity(row.user)
   return (
-    <div
-      className="flex items-center gap-3 px-4 py-3 border-b"
-      style={{ borderColor: 'var(--line)' }}
-    >
+    <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
       <Link
         to="/profile/$userId"
         params={{ userId: row.user.id }}

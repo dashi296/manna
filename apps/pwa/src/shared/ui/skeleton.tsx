@@ -1,18 +1,12 @@
 import { cn } from '@/shared/lib/utils'
 
 export function Skeleton({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return (
-    <div
-      className={cn('animate-pulse rounded-md', className)}
-      style={{ background: 'var(--line)' }}
-      {...props}
-    />
-  )
+  return <div className={cn('animate-pulse rounded-md bg-line', className)} {...props} />
 }
 
 export function PostCardSkeleton() {
   return (
-    <div className="px-4 py-4 border-b" style={{ borderColor: 'var(--line)' }}>
+    <div className="px-4 py-4 border-b border-border">
       <div className="flex items-start gap-3 mb-2">
         <Skeleton className="w-9 h-9 rounded-full shrink-0" />
         <div className="flex-1 min-w-0 space-y-1.5">

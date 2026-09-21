@@ -17,13 +17,9 @@ function CollectionPage() {
     <div>
       <PageHeader title={collection.name} backTo="/scriptures" backLabel="聖典" />
       <div className="p-4">
-        <ul className="overflow-hidden rounded-xl" style={{ border: '1px solid var(--line)' }}>
+        <ul className="overflow-hidden rounded-xl border border-border">
           {collection.books.map((book) => (
-            <li
-              key={book.id}
-              className="border-b last:border-b-0"
-              style={{ borderColor: 'var(--line)' }}
-            >
+            <li key={book.id} className="border-b border-border last:border-b-0">
               <Link
                 to="/scriptures/$collection/$book"
                 params={{ collection: collection.id, book: book.id }}

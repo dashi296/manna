@@ -33,8 +33,7 @@ function BookmarksPage() {
           <Link
             to="/scriptures/$collection/$book/$chapter"
             params={toChapterParams(readingPosition)}
-            className="flex items-center justify-between px-4 py-3.5 rounded-xl text-foreground"
-            style={{ border: '1px solid var(--line)' }}
+            className="flex items-center justify-between px-4 py-3.5 rounded-xl border border-border text-foreground"
           >
             <span className="font-medium">{getScriptureLabel(readingPosition)}</span>
             <span className="text-muted-foreground">›</span>
@@ -55,12 +54,11 @@ function BookmarksPage() {
             栞はまだありません。聖典を読んでいるときに 🔖 をタップすると追加されます。
           </EmptyState>
         ) : (
-          <ul className="overflow-hidden rounded-xl" style={{ border: '1px solid var(--line)' }}>
+          <ul className="overflow-hidden rounded-xl border border-border">
             {bookmarks.map((bookmark, i) => (
               <li
                 key={bookmark.id}
-                className={i === bookmarks.length - 1 ? '' : 'border-b'}
-                style={{ borderColor: 'var(--line)' }}
+                className={`border-border ${i === bookmarks.length - 1 ? '' : 'border-b'}`}
               >
                 <div className="flex items-center justify-between px-4 py-3">
                   <Link

@@ -362,7 +362,7 @@ function VerseView({ book, chapter, collection, verses, posts, canCompose }: Ver
           aria-haspopup="dialog"
         />
       )}
-      <div className="px-4 py-2 border-b" style={{ borderColor: 'var(--line)' }}>
+      <div className="px-4 py-2 border-b border-border">
         <a
           href={officialUrl}
           target="_blank"
@@ -374,10 +374,7 @@ function VerseView({ book, chapter, collection, verses, posts, canCompose }: Ver
         <span className="text-xs ml-3 text-muted-foreground">新着順</span>
       </div>
       {verseTexts.size > 0 && (
-        <div
-          className="px-4 py-3 border-b"
-          style={{ borderColor: 'var(--line)', background: 'var(--surface)' }}
-        >
+        <div className="px-4 py-3 border-b border-border bg-surface">
           {[...verseTexts].map(([verse, textHtml]) => (
             <ScriptureText
               key={verse}
@@ -435,8 +432,7 @@ function ChapterNav({ collection, book, chapter }: ChapterRef) {
     <nav
       data-testid="chapter-nav"
       aria-label="章の移動"
-      className="flex items-center gap-2 px-4 py-4 border-t text-primary"
-      style={{ borderColor: 'var(--line)' }}
+      className="flex items-center gap-2 px-4 py-4 border-t border-border text-primary"
     >
       {prev && (
         <Link
@@ -529,11 +525,7 @@ const ChapterPreview = memo(function ChapterPreview({ texts }: { texts: ChapterT
           {verses.map((verse, i) => {
             const isLast = i === verses.length - 1 && verses.length === all.length
             return (
-              <li
-                key={verse}
-                className={isLast ? '' : 'border-b'}
-                style={{ borderColor: 'var(--line)' }}
-              >
+              <li key={verse} className={`border-border ${isLast ? '' : 'border-b'}`}>
                 <VerseRow
                   verse={verse}
                   textHtml={texts.primary.get(verse)}
@@ -815,7 +807,7 @@ function ChapterView({
         action={headerAction}
       />
       {showCommenters && (
-        <div className="px-4 py-2 border-b" style={{ borderColor: 'var(--line)' }}>
+        <div className="px-4 py-2 border-b border-border">
           <ChapterCommentersRow
             commenters={chapterCommenters}
             selectedUserId={selectedUser?.userId ?? null}
@@ -849,8 +841,7 @@ function ChapterView({
               key={verse}
               data-verse={verse}
               // sticky ヘッダーの下に潜り込まないよう、スクロール先に余白を取る
-              className={`scroll-mt-16 ${isLast ? '' : 'border-b'}`}
-              style={{ borderColor: 'var(--line)' }}
+              className={`scroll-mt-16 border-border ${isLast ? '' : 'border-b'}`}
             >
               <VerseRow
                 verse={verse}
@@ -919,7 +910,7 @@ function ChapterView({
         renderPreview={(texts) => <ChapterPreview texts={texts} />}
       >
         {posts.length > 0 && (
-          <div className="border-b" style={{ borderColor: 'var(--line)' }}>
+          <div className="border-b border-border">
             <p className="px-4 pt-3 pb-1 text-xs font-medium text-muted-foreground">
               この章への投稿
             </p>
