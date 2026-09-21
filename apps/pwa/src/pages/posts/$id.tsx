@@ -94,10 +94,7 @@ function PostDetailPage() {
         </div>
 
         {scriptureRef && scriptureLabel && officialUrl && (
-          <div
-            className="mb-4 p-3 rounded-xl"
-            style={{ background: 'var(--chip-bg)', border: '1px solid var(--chip-line)' }}
-          >
+          <div className="mb-4 rounded-xl border border-chip-line bg-chip p-3">
             <Link
               to="/scriptures/$collection/$book/$chapter"
               params={{

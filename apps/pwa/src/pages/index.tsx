@@ -75,8 +75,7 @@ function FeedPage() {
         tabs={TABS}
         active={tab}
         onChange={(id) => navigate({ to: '/', search: id === DEFAULT_TAB ? {} : { tab: id } })}
-        className="sticky top-0 z-10"
-        style={{ background: 'var(--header-bg)', backdropFilter: 'blur(8px)' }}
+        className="sticky top-0 z-10 bg-header backdrop-blur-sm"
       />
       {posts.length === 0 ? (
         <EmptyState>{EMPTY_LABELS[tab]}</EmptyState>

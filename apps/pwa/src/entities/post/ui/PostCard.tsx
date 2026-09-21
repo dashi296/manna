@@ -79,8 +79,7 @@ export const PostCard = memo(function PostCard({ post }: Props) {
             {scriptureLabel && scriptureUrl && (
               <NestedLink
                 href={scriptureUrl}
-                className="inline-flex items-center mt-0.5 px-2 py-0.5 rounded-full text-[11px] font-medium cursor-pointer text-secondary"
-                style={{ background: 'var(--chip-bg)', border: '1px solid var(--chip-line)' }}
+                className="inline-flex items-center mt-0.5 rounded-full border border-chip-line bg-chip px-2 py-0.5 text-[11px] font-medium cursor-pointer text-secondary"
               >
                 <span aria-hidden="true">📖</span> {scriptureLabel}
               </NestedLink>

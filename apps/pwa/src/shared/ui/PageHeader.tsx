@@ -1,16 +1,12 @@
-import type { CSSProperties } from 'react'
 import { Link } from '@tanstack/react-router'
 import { ChevronLeft } from 'lucide-react'
 import { cn } from '@/shared/lib/utils'
 
-const stickyHeaderBaseClassName = 'sticky top-0 z-10 border-b border-b-border'
-export const stickyHeaderClassName = `${stickyHeaderBaseClassName} flex items-center gap-2`
-// backdropFilter は position: fixed の子孫にとって containing block になるため、
+// backdrop-blur は position: fixed の子孫にとって containing block になるため、
 // 画面固定したい要素（FAB など）はこのヘッダーの中ではなく兄弟として置くこと
-export const stickyHeaderStyle: CSSProperties = {
-  background: 'var(--header-bg)',
-  backdropFilter: 'blur(8px)',
-}
+const stickyHeaderBaseClassName =
+  'sticky top-0 z-10 border-b border-b-border bg-header backdrop-blur-sm'
+export const stickyHeaderClassName = `${stickyHeaderBaseClassName} flex items-center gap-2`
 
 type Props = {
   title: string
@@ -32,7 +28,6 @@ export function PageHeader({ title, backTo, backLabel, action, className }: Prop
         'px-4 pt-[var(--page-header-pt)] pb-3',
         className,
       )}
-      style={stickyHeaderStyle}
     >
       <div className="min-w-0">
         {backTo && (
