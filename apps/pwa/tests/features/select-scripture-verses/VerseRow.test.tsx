@@ -150,6 +150,25 @@ describe('VerseRow', () => {
       const checkbox = screen.getByRole('checkbox')
       expect(checkbox).toHaveAttribute('aria-checked', 'true')
     })
+    // 地色と左帯は styles.css の verse-row が data-selected で出し分ける
+    const checkbox = screen.getByRole('checkbox')
+    expect(checkbox).toHaveAttribute('data-selected')
+    expect(checkbox.querySelector('.verse-check')).toHaveAttribute('data-selected')
+  })
+
+  it("mode='select' かつ selected=false なら data-selected を付けない", async () => {
+    render(
+      <VerseRow
+        {...baseProps}
+        mode="select"
+        selected={false}
+        onSelect={vi.fn()}
+        onOpen={() => {}}
+      />,
+    )
+    const checkbox = await screen.findByRole('checkbox')
+    expect(checkbox).not.toHaveAttribute('data-selected')
+    expect(checkbox.querySelector('.verse-check')).not.toHaveAttribute('data-selected')
   })
 
   it('本文に明朝体クラスを適用する', async () => {
@@ -179,6 +198,24 @@ describe('VerseRow highlighted', () => {
     })
     const row = container.querySelector('[data-highlighted="true"]')
     expect(row).not.toBeNull()
+    expect(row).toHaveClass('verse-row')
+  })
+
+  it('selected と highlighted が同時なら両方の属性を付ける', async () => {
+    render(
+      <VerseRow
+        {...baseProps}
+        mode="select"
+        selected={true}
+        onSelect={vi.fn()}
+        onOpen={() => {}}
+        highlighted
+      />,
+    )
+    // 両方立っているときは選択が勝つ。順序は styles.css の verse-row で決まる
+    const checkbox = await screen.findByRole('checkbox')
+    expect(checkbox).toHaveAttribute('data-selected')
+    expect(checkbox).toHaveAttribute('data-highlighted')
   })
 
   it('highlighted 未指定なら背景を敷かない', async () => {
