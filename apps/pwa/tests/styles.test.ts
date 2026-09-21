@@ -3,32 +3,55 @@ import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 // jsdom はスタイルシートを評価しないので、カスケードの前提はソースで確かめるしかない。
-// ここで見ているのは、壊れても画面にしか出ず、他のテストが素通りする2点
+// 文字列一致だと整形で落ちるうえ、コメント内の波括弧で数え違える。CSS パーサは
+// 依存に無いので、コメントと文字列を落としてから深さだけ追う
 const css = readFileSync(resolve(process.cwd(), 'src/styles.css'), 'utf8')
 
-function block(header: string): string {
-  const start = css.indexOf(header)
-  expect(start, `${header} が見つからない`).toBeGreaterThan(-1)
+function stripNoise(source: string): string {
+  return source.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(["'])(?:\\.|(?!\1).)*\1/g, '""')
+}
+
+/** ネストの外側（どの @layer にも @utility にも入っていない）にある規則だけを返す */
+function topLevelRules(source: string): { prelude: string; body: string }[] {
+  const clean = stripNoise(source)
+  const rules: { prelude: string; body: string }[] = []
+  let preludeStart = 0
   let depth = 0
-  for (let i = start + header.length - 1; i < css.length; i++) {
-    if (css[i] === '{') depth++
-    else if (css[i] === '}' && --depth === 0) return css.slice(start, i + 1)
+  let bodyStart = 0
+  for (let i = 0; i < clean.length; i++) {
+    if (clean[i] === '{') {
+      if (depth === 0) bodyStart = i + 1
+      depth++
+    } else if (clean[i] === '}') {
+      depth--
+      if (depth === 0) {
+        rules.push({
+          prelude: clean.slice(preludeStart, bodyStart - 1).trim(),
+          body: clean.slice(bodyStart, i),
+        })
+        preludeStart = i + 1
+      }
+    }
   }
-  throw new Error(`${header} の括弧が閉じていない`)
+  return rules
+}
+
+function rule(prelude: string): string {
+  const found = topLevelRules(css).find((r) => r.prelude === prelude)
+  expect(found, `${prelude} がネストの外側に無い`).toBeDefined()
+  return found!.body
 }
 
 describe('verse-row のカスケード', () => {
-  it('transition を @utility の外に置く', () => {
+  it('transition は @utility の外、かつどのレイヤーにも入れない', () => {
     // @utility は utilities レイヤーに入り、レイヤー外の button ルールに負ける。
-    // 選択モードの行は button なので、中に戻すと読みモードと時間もプロパティも食い違う
-    expect(block('@utility verse-row {')).not.toContain('transition')
-    expect(css).toMatch(
-      /^\.verse-row \{\n\s*transition: background-color 200ms, border-color 200ms;/m,
-    )
+    // 選択モードの行は button なので、レイヤーに入れた時点で読みモードと食い違う
+    expect(rule('@utility verse-row')).not.toContain('transition')
+    expect(rule('.verse-row')).toMatch(/transition:\s*background-color 200ms,\s*border-color 200ms/)
   })
 
   it('強調は選択中には当たらない', () => {
     // 記述順ではなく排他条件で決める。順序で決めると並べ替えで黙って壊れる
-    expect(block('@utility verse-row {')).toContain('&[data-highlighted]:not([data-selected])')
+    expect(rule('@utility verse-row')).toContain('&[data-highlighted]:not([data-selected])')
   })
 })
