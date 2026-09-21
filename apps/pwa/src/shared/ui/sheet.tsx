@@ -82,8 +82,8 @@ function SheetHeader({
   return (
     <div
       data-slot="sheet-header"
-      className={cn('flex flex-col gap-0.5 p-4', bordered && 'border-b', className)}
-      style={bordered ? { borderColor: 'var(--line)', ...style } : style}
+      className={cn('flex flex-col gap-0.5 p-4', bordered && 'border-b border-border', className)}
+      style={style}
       {...props}
     />
   )

@@ -31,11 +31,7 @@ function LoginPage() {
       >
         <button
           onClick={() => signInWithGoogle()}
-          className="w-full flex items-center justify-center gap-3 px-5 py-3 rounded-xl text-sm font-semibold transition-all text-foreground"
-          style={{
-            background: 'var(--surface-strong)',
-            border: '1px solid var(--line)',
-          }}
+          className="w-full flex items-center justify-center gap-3 px-5 py-3 rounded-xl border border-border bg-surface-strong text-sm font-semibold transition-all text-foreground"
         >
           {/* oxlint-disable shadcn/no-raw-colors -- Google ブランド指定色。テーマトークンに置き換えてはいけない */}
           <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">

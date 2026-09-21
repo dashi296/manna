@@ -18,7 +18,7 @@ export function TabBar<T extends string>({
   style,
 }: Props<T>) {
   return (
-    <div className={`flex border-b ${className}`} style={{ borderColor: 'var(--line)', ...style }}>
+    <div className={`flex border-b border-border ${className}`} style={style}>
       {tabs.map((t) => (
         <button
           key={t.id}
