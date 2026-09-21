@@ -525,7 +525,7 @@ const ChapterPreview = memo(function ChapterPreview({ texts }: { texts: ChapterT
           {verses.map((verse, i) => {
             const isLast = i === verses.length - 1 && verses.length === all.length
             return (
-              <li key={verse} className={isLast ? '' : 'border-b border-border'}>
+              <li key={verse} className={`border-border ${isLast ? '' : 'border-b'}`}>
                 <VerseRow
                   verse={verse}
                   textHtml={texts.primary.get(verse)}
@@ -841,7 +841,7 @@ function ChapterView({
               key={verse}
               data-verse={verse}
               // sticky ヘッダーの下に潜り込まないよう、スクロール先に余白を取る
-              className={`scroll-mt-16 ${isLast ? '' : 'border-b border-border'}`}
+              className={`scroll-mt-16 border-border ${isLast ? '' : 'border-b'}`}
             >
               <VerseRow
                 verse={verse}

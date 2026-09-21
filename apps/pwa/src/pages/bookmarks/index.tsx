@@ -58,7 +58,7 @@ function BookmarksPage() {
             {bookmarks.map((bookmark, i) => (
               <li
                 key={bookmark.id}
-                className={i === bookmarks.length - 1 ? '' : 'border-b border-border'}
+                className={`border-border ${i === bookmarks.length - 1 ? '' : 'border-b'}`}
               >
                 <div className="flex items-center justify-between px-4 py-3">
                   <Link
