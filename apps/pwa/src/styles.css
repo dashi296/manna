@@ -205,14 +205,15 @@
   }
 }
 
-/* 節1行の選択・強調の地色と左帯。verse-item（高さの見積もり）とは別の要素に付く。
-   選択が強調に勝つよう、data-selected を後ろに置く */
+/* 節1行の選択・強調の地色と左帯。read モードでは verse-item とは別の要素に、
+   select モードでは同じ要素に付く */
 @utility verse-row {
   border-left: 3px solid transparent;
   transition: background-color 200ms, border-color 200ms;
 
-  /* 節シートに出ているコメントが対象にしている節を示す */
-  &[data-highlighted] {
+  /* 節シートに出ているコメントが対象にしている節を示す。選択中は選択の色が勝つ。
+     記述順ではなく :not() で決めるのは、並べ替えで黙って壊れないようにするため */
+  &[data-highlighted]:not([data-selected]) {
     background-color: var(--verse-highlight);
   }
 
