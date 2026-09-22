@@ -1,3 +1,6 @@
+import { createElement } from 'react'
+import { hydrateRoot } from 'react-dom/client'
+import { renderToString } from 'react-dom/server'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import { useIsMobile } from '@/shared/hooks/use-mobile'
@@ -15,6 +18,8 @@ function setupMatchMedia(width: number) {
   }))
   return { triggerChange: () => listeners.forEach((cb) => cb()) }
 }
+
+const Probe = () => createElement('span', { 'data-testid': 'v' }, String(useIsMobile()))
 
 describe('useIsMobile', () => {
   beforeEach(() => {
@@ -43,6 +48,29 @@ describe('useIsMobile', () => {
     })
     // 1 回目の描画が false だと、モバイルでも一度デスクトップ用の配置で DOM に入る
     expect(seen[0]).toBe(true)
+  })
+
+  it('SSR は幅を持たないので false を返し、ハイドレーションで実際の幅に移る', async () => {
+    setupMatchMedia(390)
+
+    // サーバーには幅が無い。getServerSnapshot の false がそのまま出る
+    const html = renderToString(createElement(Probe))
+    expect(html).toContain('>false<')
+
+    const container = document.createElement('div')
+    container.innerHTML = html
+    document.body.append(container)
+    const errors: unknown[] = []
+    const spy = vi.spyOn(console, 'error').mockImplementation((...args) => errors.push(args))
+    await act(async () => {
+      hydrateRoot(container, createElement(Probe))
+    })
+    spy.mockRestore()
+
+    // ハイドレーション自体は SSR と同じ false で始まるので不一致の警告は出ない
+    expect(errors).toEqual([])
+    expect(container.querySelector('[data-testid="v"]')?.textContent).toBe('true')
+    container.remove()
   })
 
   it('matchMedia の change イベントで再評価する', () => {

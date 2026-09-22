@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { afterEach, describe, it, expect, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import {
   createRootRoute,
@@ -71,38 +71,12 @@ function renderInRouter(ui: React.ReactNode) {
 }
 
 describe('VerseCommentSheet', () => {
-  it('モバイル幅では下から出す（デスクトップ配置を経由しない）', async () => {
-    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 390 })
-    renderInRouter(
-      <VerseCommentSheet
-        open={true}
-        verse={7}
-        label={LABEL}
-        officialUrl={OFFICIAL_URL}
-        posts={posts}
-        onOpenChange={vi.fn()}
-      />,
-    )
-    // useIsMobile が幅を初回描画で返すので、side の確定に 1 フレーム待つ必要が無い
-    await waitFor(() => {
-      expect(document.querySelector('[data-side]')).toHaveAttribute('data-side', 'bottom')
-    })
-  })
-
-  it('デスクトップ幅では右から出す', async () => {
-    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 1280 })
-    renderInRouter(
-      <VerseCommentSheet
-        open={true}
-        verse={7}
-        label={LABEL}
-        officialUrl={OFFICIAL_URL}
-        posts={posts}
-        onOpenChange={vi.fn()}
-      />,
-    )
-    await waitFor(() => {
-      expect(document.querySelector('[data-side]')).toHaveAttribute('data-side', 'right')
+  const defaultWidth = window.innerWidth
+  afterEach(() => {
+    Object.defineProperty(window, 'innerWidth', {
+      writable: true,
+      configurable: true,
+      value: defaultWidth,
     })
   })
 
@@ -230,9 +204,6 @@ describe('VerseCommentSheet', () => {
   })
 
   it('モバイル幅では下シートで開く', async () => {
-    // useIsMobile は effect でしか画面幅を反映しないため、初回描画をそのまま出すと
-    // モバイルでも一度 side="right" で DOM に入る。実装側は幅が確定するまで描画を
-    // 止めている（この後段の値だけでは初回描画の有無まで固定できない）
     Object.defineProperty(window, 'innerWidth', { writable: true, value: 390 })
     renderInRouter(
       <VerseCommentSheet
@@ -250,7 +221,6 @@ describe('VerseCommentSheet', () => {
         document.body.querySelector('[data-slot="drawer-content"]')?.getAttribute('data-side'),
       ).toBe('bottom')
     })
-    Object.defineProperty(window, 'innerWidth', { writable: true, value: 1024 })
   })
 
   it('デスクトップ幅では右パネルで開く', async () => {
@@ -271,7 +241,6 @@ describe('VerseCommentSheet', () => {
         document.body.querySelector('[data-slot="drawer-content"]')?.getAttribute('data-side'),
       ).toBe('right')
     })
-    Object.defineProperty(window, 'innerWidth', { writable: true, value: 1024 })
   })
 
   it('開いている間もページのスクロールをロックしない', async () => {
