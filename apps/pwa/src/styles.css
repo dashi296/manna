@@ -205,6 +205,33 @@
   }
 }
 
+/* 節1行の選択・強調の地色と左帯。read モードでは verse-item とは別の要素に、
+   select モードでは同じ要素に付く */
+@utility verse-row {
+  border-left: 3px solid transparent;
+
+  /* 節シートに出ているコメントが対象にしている節を示す。選択中は選択の色が勝つ。
+     記述順ではなく :not() で決めるのは、並べ替えで黙って壊れないようにするため */
+  &[data-highlighted]:not([data-selected]) {
+    background-color: var(--verse-highlight);
+  }
+
+  &[data-selected] {
+    background-color: var(--chip-bg);
+    border-left-color: var(--lagoon);
+  }
+}
+
+/* 選択モードの丸いチェック。1.5px は Tailwind の border 幅スケールに無い */
+@utility verse-check {
+  border: 1.5px solid var(--line);
+
+  &[data-selected] {
+    border-color: var(--lagoon);
+    background-color: var(--lagoon);
+  }
+}
+
 /* @tailwindcss/typography の既定色はライト固定で、テーマ変数を見ない。
    .prose 自身が --tw-prose-* を再定義するため :root 側で上書きしても効かず、
    ダークでは本文が gray-700 のまま沈む。@layer に入れると plugin 側と同じ
@@ -355,6 +382,13 @@ button,
 a {
   transition: background-color 180ms ease, color 180ms ease, border-color 180ms ease,
     transform 180ms ease;
+}
+
+/* 節1行の transition。@utility は utilities レイヤーに入るので、レイヤー外の
+   上の button ルールに負ける。選択モードの行は button なので、ここに置かないと
+   読みモードの行と時間もプロパティも食い違う */
+.verse-row {
+  transition: background-color 200ms, border-color 200ms;
 }
 
 .island-kicker {

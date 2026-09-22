@@ -1,24 +1,6 @@
-import type { CSSProperties, ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { Check } from 'lucide-react'
 import { SanitizedVerseHtml } from '@/shared/ui'
-
-const ROW_TRANSITION = 'background-color 200ms, border-color 200ms'
-const ROW_SELECTED_STYLE: CSSProperties = {
-  background: 'var(--chip-bg)',
-  borderLeft: '3px solid var(--lagoon)',
-  transition: ROW_TRANSITION,
-}
-const ROW_UNSELECTED_STYLE: CSSProperties = {
-  background: 'transparent',
-  borderLeft: '3px solid transparent',
-  transition: ROW_TRANSITION,
-}
-// 節シートに出ているコメントが対象にしている節を示す
-const ROW_HIGHLIGHTED_STYLE: CSSProperties = {
-  background: 'var(--verse-highlight)',
-  borderLeft: '3px solid transparent',
-  transition: ROW_TRANSITION,
-}
 
 type Props = {
   verse: number
@@ -50,12 +32,6 @@ export function VerseRow({
   showNumber = true,
   marker,
 }: Props) {
-  const containerStyle = selected
-    ? ROW_SELECTED_STYLE
-    : highlighted
-      ? ROW_HIGHLIGHTED_STYLE
-      : ROW_UNSELECTED_STYLE
-
   const numberLabel = showNumber && (
     <span className="text-xs font-medium text-muted-foreground">{verse}</span>
   )
@@ -72,11 +48,8 @@ export function VerseRow({
       {mode === 'select' && (
         <div
           aria-hidden="true"
-          className="shrink-0 w-5 h-5 rounded-full flex items-center justify-center transition-colors"
-          style={{
-            border: `1.5px solid ${selected ? 'var(--lagoon)' : 'var(--line)'}`,
-            background: selected ? 'var(--lagoon)' : 'transparent',
-          }}
+          className="verse-check shrink-0 w-5 h-5 rounded-full flex items-center justify-center transition-colors"
+          data-selected={selected || undefined}
         >
           {selected && <Check size={12} strokeWidth={3} color="#fff" aria-hidden="true" />}
         </div>
@@ -117,10 +90,11 @@ export function VerseRow({
         aria-checked={selected}
         aria-label={`${verse}節を選択`}
         onClick={() => onSelect(verse)}
-        className="verse-item block w-full text-left cursor-pointer"
+        className="verse-item verse-row block w-full text-left cursor-pointer"
         // 画面外の節の高さ見積もりを併記の有無で切り替えるため（styles.css の verse-item）
         data-bilingual={textHtmlSecondary ? '' : undefined}
-        style={containerStyle}
+        data-selected={selected || undefined}
+        data-highlighted={highlighted || undefined}
       >
         {inner}
       </button>
@@ -128,7 +102,11 @@ export function VerseRow({
   }
 
   return (
-    <div style={containerStyle} data-highlighted={highlighted || undefined}>
+    <div
+      className="verse-row"
+      data-selected={selected || undefined}
+      data-highlighted={highlighted || undefined}
+    >
       <button
         type="button"
         onClick={() => onOpen(verse)}
