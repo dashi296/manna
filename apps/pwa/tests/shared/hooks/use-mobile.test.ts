@@ -33,6 +33,18 @@ describe('useIsMobile', () => {
     expect(result.current).toBe(false)
   })
 
+  it('初回描画の時点で正しい値を返す（effect の後まで待たない）', () => {
+    setupMatchMedia(800)
+    const seen: boolean[] = []
+    renderHook(() => {
+      const value = useIsMobile()
+      seen.push(value)
+      return value
+    })
+    // 1 回目の描画が false だと、モバイルでも一度デスクトップ用の配置で DOM に入る
+    expect(seen[0]).toBe(true)
+  })
+
   it('matchMedia の change イベントで再評価する', () => {
     const { triggerChange } = setupMatchMedia(1024)
     const { result } = renderHook(() => useIsMobile())

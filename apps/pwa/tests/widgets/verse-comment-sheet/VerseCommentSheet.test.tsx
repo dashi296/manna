@@ -71,6 +71,41 @@ function renderInRouter(ui: React.ReactNode) {
 }
 
 describe('VerseCommentSheet', () => {
+  it('モバイル幅では下から出す（デスクトップ配置を経由しない）', async () => {
+    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 390 })
+    renderInRouter(
+      <VerseCommentSheet
+        open={true}
+        verse={7}
+        label={LABEL}
+        officialUrl={OFFICIAL_URL}
+        posts={posts}
+        onOpenChange={vi.fn()}
+      />,
+    )
+    // useIsMobile が幅を初回描画で返すので、side の確定に 1 フレーム待つ必要が無い
+    await waitFor(() => {
+      expect(document.querySelector('[data-side]')).toHaveAttribute('data-side', 'bottom')
+    })
+  })
+
+  it('デスクトップ幅では右から出す', async () => {
+    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 1280 })
+    renderInRouter(
+      <VerseCommentSheet
+        open={true}
+        verse={7}
+        label={LABEL}
+        officialUrl={OFFICIAL_URL}
+        posts={posts}
+        onOpenChange={vi.fn()}
+      />,
+    )
+    await waitFor(() => {
+      expect(document.querySelector('[data-side]')).toHaveAttribute('data-side', 'right')
+    })
+  })
+
   it('open=true でヘッダーに節ラベルを出し、投稿数を見出しに出す', async () => {
     renderInRouter(
       <VerseCommentSheet
