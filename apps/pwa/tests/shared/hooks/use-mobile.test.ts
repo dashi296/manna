@@ -53,23 +53,27 @@ describe('useIsMobile', () => {
   it('SSR は幅を持たないので false を返し、ハイドレーションで実際の幅に移る', async () => {
     setupMatchMedia(390)
 
-    // サーバーには幅が無い。getServerSnapshot の false がそのまま出る
-    const html = renderToString(createElement(Probe))
-    expect(html).toContain('>false<')
-
     const container = document.createElement('div')
-    container.innerHTML = html
+    container.innerHTML = renderToString(createElement(Probe))
     document.body.append(container)
+    const value = () => container.querySelector('[data-testid="v"]')?.textContent
+
+    // サーバーには幅が無い。getServerSnapshot の false がそのまま出る
+    expect(value()).toBe('false')
+
     const errors: unknown[] = []
     const spy = vi.spyOn(console, 'error').mockImplementation((...args) => errors.push(args))
+    let root: ReturnType<typeof hydrateRoot> | undefined
     await act(async () => {
-      hydrateRoot(container, createElement(Probe))
+      root = hydrateRoot(container, createElement(Probe))
     })
     spy.mockRestore()
 
     // ハイドレーション自体は SSR と同じ false で始まるので不一致の警告は出ない
     expect(errors).toEqual([])
-    expect(container.querySelector('[data-testid="v"]')?.textContent).toBe('true')
+    expect(value()).toBe('true')
+
+    await act(async () => root?.unmount())
     container.remove()
   })
 
