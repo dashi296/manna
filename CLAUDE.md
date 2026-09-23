@@ -249,15 +249,17 @@ pnpm fmt:check  # oxfmt --check（CI で実行）
 - `@shadcn/lint` を `jsPlugins` で読み込んでいる。**`jsPlugins` に足すだけではルールは発火しない**。
   `rules` に `shadcn/<ルール名>` を明示すること
 - **違反は 0 件。`--deny-warnings` なので、警告を1件でも増やすと CI が赤くなる**（#164 の PR 3）
-- 任意値（`max-h-[92dvh]` など）を新しく使いたいときは、まず**トークンやスケールで表せないか**を見る。
-  `text-[11px]` は `--text-2xs`、`min-h-[200px]` は `min-h-50` のように置き換えられることが多い。
-  スケールに載らないビューポート値・構造値だけを `no-arbitrary-values` の `allow` に足す
+- 任意値（`grid-cols-[1fr_auto_1fr]` など）を新しく使いたいときは、まず**トークンやスケールで
+  表せないか**を見る。`text-[11px]` は `--text-2xs`、`min-h-[200px]` は `min-h-50` のように
+  置き換えられることが多い。スケールに載らないビューポート値・構造値だけを
+  `no-arbitrary-values` の `allow` に足す
 - インラインスタイルも同様に、まず Tailwind のユーティリティを探す（`line-clamp-3` / `snap-always` /
   `overscroll-x-contain` / `ring-2` など）。実行時に変わる値は**カスタムプロパティだけを**
   `style` で渡し、`z-(--stack-z)` のようにクラス側で参照する。Tailwind に無い宣言は `@utility` にする
 - `shared/ui` の shadcn から取り込んだままの 6 ファイル（`menu` / `popover` / `sheet` / `sidebar` /
   `toggle-group` / `tooltip`）だけ、`overrides` で `no-arbitrary-values` を切っている。
-  再取得で任意値が戻るため。7 つ目が出たら、直すか overrides に足すかをその場で決める
+  再取得で任意値が戻るため。**7 つ目の shadcn 由来ファイル**が出たら、直すか overrides に
+  足すかをその場で決める（`select.tsx` のようにトークンで書き直せることもある）
 
 ### git blame の設定
 
