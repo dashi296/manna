@@ -218,10 +218,10 @@ export function PostEditor({
           value={content}
           onChange={(e) => setContent(e.target.value)}
           placeholder="聖典を読んで感じたことを書いてみましょう..."
-          className="w-full min-h-[200px] rounded-md border border-border bg-surface p-3 text-sm resize-y focus:outline-none focus:ring-2"
+          className="w-full min-h-50 rounded-md border border-border bg-surface p-3 text-sm resize-y focus:outline-none focus:ring-2"
         />
       ) : (
-        <div className="min-h-[200px] rounded-md border border-border bg-surface p-3">
+        <div className="min-h-50 rounded-md border border-border bg-surface p-3">
           {content ? (
             <MarkdownRenderer content={content} />
           ) : (
