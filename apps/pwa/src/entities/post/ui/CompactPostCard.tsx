@@ -26,15 +26,7 @@ export function CompactPostCard({ post }: Props) {
         <span className="text-xs font-medium text-foreground">{displayName}</span>
         <time className="text-xs ml-auto text-muted-foreground">{formatDate(post.created_at)}</time>
       </div>
-      <p
-        className="text-sm whitespace-pre-wrap break-words text-foreground"
-        style={{
-          display: '-webkit-box',
-          WebkitLineClamp: 3,
-          WebkitBoxOrient: 'vertical',
-          overflow: 'hidden',
-        }}
-      >
+      <p className="line-clamp-3 text-sm whitespace-pre-wrap break-words text-foreground">
         {post.content}
       </p>
       {scriptureLabel && <div className="mt-1 text-xs text-primary">📖 {scriptureLabel}</div>}

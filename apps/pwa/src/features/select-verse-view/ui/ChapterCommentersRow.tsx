@@ -29,10 +29,7 @@ export function ChapterCommentersRow({ commenters, selectedUserId, onSelect, onC
               aria-pressed={active}
               aria-label={`${c.name} を選ぶ`}
               onClick={() => onSelect(c.userId)}
-              className="rounded-full transition-shadow"
-              style={{
-                boxShadow: active ? '0 0 0 2px var(--lagoon)' : 'none',
-              }}
+              className={`rounded-full transition-shadow ${active ? 'ring-2 ring-lagoon' : ''}`}
             >
               <UserAvatar name={c.name} url={c.avatarUrl} size="xs" />
             </button>

@@ -26,9 +26,10 @@ export function TabBar<T extends string>({
           onClick={() => onChange(t.id)}
           className={cn(
             'flex-1 px-3 py-2 text-sm font-medium border-b-2 transition-colors',
-            active === t.id ? 'text-primary' : 'text-muted-foreground',
+            active === t.id
+              ? 'border-primary text-primary'
+              : 'border-transparent text-muted-foreground',
           )}
-          style={{ borderColor: active === t.id ? 'var(--lagoon-deep)' : 'transparent' }}
         >
           {t.label}
         </button>

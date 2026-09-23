@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react'
 import { UserAvatar } from '@/shared/ui'
 import type { AvatarStackItem } from '@/shared/ui'
 
@@ -29,8 +30,8 @@ export function VerseCommentMarker({ entry }: { entry: VerseMarkerEntry | undefi
         {avatars.map((c, i) => (
           <span
             key={c.userId}
-            className={i === 0 ? '' : '-ml-2 hidden lg:block'}
-            style={{ zIndex: avatars.length - i }}
+            className={`z-(--stack-z) ${i === 0 ? '' : '-ml-2 hidden lg:block'}`}
+            style={{ '--stack-z': String(avatars.length - i) } as CSSProperties}
           >
             <UserAvatar name={c.name} url={c.avatarUrl} size="2xs" />
           </span>
@@ -42,8 +43,8 @@ export function VerseCommentMarker({ entry }: { entry: VerseMarkerEntry | undefi
           // アバターは flex アイテムに z-index を持つ（static でも効く）ので、
           // それより前に出さないとバッジが下に潜る
           <span
-            className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-lagoon px-1 text-3xs leading-none font-medium text-foreground"
-            style={{ zIndex: avatars.length + 1 }}
+            className="absolute -top-1 -right-1 z-(--stack-z) flex h-4 min-w-4 items-center justify-center rounded-full bg-lagoon px-1 text-3xs leading-none font-medium text-foreground"
+            style={{ '--stack-z': String(avatars.length + 1) } as CSSProperties}
           >
             {entry.anchoredCount}
           </span>

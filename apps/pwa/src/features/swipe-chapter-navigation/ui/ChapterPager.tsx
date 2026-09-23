@@ -14,19 +14,11 @@ type Props = {
   children: ReactNode
 }
 
-const panelClass = 'relative w-full min-w-0 shrink-0 snap-start'
-const panelStyle = { scrollSnapStop: 'always' as const }
+const panelClass = 'relative w-full min-w-0 shrink-0 snap-start snap-always'
 
 // 見えるのは画面1つぶんだけ。それ以上描いてもパネルの高さ（＝本文の高さ）に
 // 埋もれるので切り落とす
-const previewStyle = (top: number): CSSProperties => ({
-  position: 'absolute',
-  top,
-  left: 0,
-  width: '100%',
-  height: '100dvh',
-  overflow: 'hidden',
-})
+const previewClass = 'absolute top-(--chapter-preview-top) left-0 h-dvh w-full overflow-hidden'
 
 // 章の本文を横スクロールの中央パネルに置き、両脇の空パネルへ着地したら隣の章へ移る。
 // ジェスチャの処理をブラウザに任せるのが狙い。方向ロック・パン後のクリック抑止・
@@ -55,7 +47,8 @@ export function ChapterPager({ loc, disabled, renderPreview, children }: Props) 
         data-testid={`chapter-pager-preview-${side}`}
         aria-hidden
         inert
-        style={previewStyle(previewTop)}
+        className={previewClass}
+        style={{ '--chapter-preview-top': `${previewTop}px` } as CSSProperties}
       >
         {renderPreview(texts)}
       </div>
@@ -67,40 +60,22 @@ export function ChapterPager({ loc, disabled, renderPreview, children }: Props) 
       <div
         ref={containerRef}
         data-testid="chapter-pager"
-        className="no-scrollbar flex"
-        style={{
-          overflowX: scrollable ? 'auto' : 'hidden',
-          scrollSnapType: scrollable ? 'x mandatory' : undefined,
-          overscrollBehaviorX: 'contain',
-          // 両脇のパネルが後から挿入されると、ブラウザが見た目を保とうとして
-          // その幅だけスクロール位置をずらす。中央合わせと二重になる
-          overflowAnchor: 'none',
-        }}
+        className={`no-scrollbar chapter-scroller flex overscroll-x-contain ${
+          scrollable ? 'snap-x snap-mandatory overflow-x-auto' : 'overflow-x-hidden'
+        }`}
         onScroll={onScroll}
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
         onTouchCancel={onTouchEnd}
       >
         {prev && (
-          <div
-            data-testid="chapter-pager-prev"
-            aria-hidden
-            className={panelClass}
-            style={panelStyle}
-          >
+          <div data-testid="chapter-pager-prev" aria-hidden className={panelClass}>
             {panelPreview('prev')}
           </div>
         )}
-        <div className={panelClass} style={panelStyle}>
-          {children}
-        </div>
+        <div className={panelClass}>{children}</div>
         {next && (
-          <div
-            data-testid="chapter-pager-next"
-            aria-hidden
-            className={panelClass}
-            style={panelStyle}
-          >
+          <div data-testid="chapter-pager-next" aria-hidden className={panelClass}>
             {panelPreview('next')}
           </div>
         )}
