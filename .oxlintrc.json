@@ -21,25 +21,25 @@
     "react/react-in-jsx-scope": "off",
     "vitest/require-mock-type-parameters": "off",
     "unicorn/no-array-sort": "error",
-    "shadcn/no-inline-styles": "warn",
+    "shadcn/no-inline-styles": "error",
     "shadcn/no-arbitrary-values": [
-      "warn",
+      "error",
       {
         "allow": [
+          "bottom-[calc(var(--bottom-nav-h)+var(--install-banner-h)+1rem)]",
           "bottom-[var(--bottom-nav-h)]",
+          "grid-cols-[1fr_auto_1fr]",
+          "h-[70dvh]",
+          "max-h-[50dvh]",
+          "max-h-[70vh]",
+          "max-h-[92dvh]",
+          "min-h-[60vh]",
           "pb-[var(--bottom-nav-h)]",
           "pb-[var(--fab-clearance)]",
           "pb-[var(--safe-area-bottom)]",
           "pt-[var(--page-header-pt)]",
           "pt-[var(--selection-header-pt)]",
-          "gap-[--spacing(var(--gap))]",
-          "data-[side=left]:group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]",
-          "data-[side=right]:group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]",
-          "group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(4)))]",
-          "transition-[width]",
-          "transition-[left,right,width]",
-          "transition-[margin,opacity]",
-          "transition-[width,height,padding]"
+          "w-[min(520px,40vw)]"
         ]
       }
     ],
@@ -73,6 +73,19 @@
       ],
       "rules": {
         "shadcn/no-unknown-classes": "off"
+      }
+    },
+    {
+      "files": [
+        "apps/pwa/src/shared/ui/menu.tsx",
+        "apps/pwa/src/shared/ui/popover.tsx",
+        "apps/pwa/src/shared/ui/sheet.tsx",
+        "apps/pwa/src/shared/ui/sidebar.tsx",
+        "apps/pwa/src/shared/ui/toggle-group.tsx",
+        "apps/pwa/src/shared/ui/tooltip.tsx"
+      ],
+      "rules": {
+        "shadcn/no-arbitrary-values": "off"
       }
     }
   ]
