@@ -484,16 +484,14 @@ function ChapterHeadingBlock({
       {heading.summaryHtml && (
         <SanitizedVerseHtml
           html={heading.summaryHtml}
-          className="mt-2 block pl-[3px] text-sm leading-relaxed text-muted-foreground"
+          className="mt-2 block verse-indent text-sm leading-relaxed text-muted-foreground"
         />
       )}
       {secondary?.summaryHtml && (
         <SanitizedVerseHtml
           html={secondary.summaryHtml}
-          // 節の行は選択表示用に左へ 3px の境界を持つ（styles.css の verse-row）。
-          // 同じ分だけ空けないと節番号と左端がずれる。タイトルは画面の中央に
-          // 合わせたいので、この調整は概要だけに入れる
-          className="mt-2 block pl-[3px] text-sm leading-relaxed text-muted-foreground"
+          // タイトルは画面の中央に合わせたいので、この字下げは概要だけに入れる
+          className="mt-2 block verse-indent text-sm leading-relaxed text-muted-foreground"
           lang={SECONDARY_LANGUAGE}
         />
       )}

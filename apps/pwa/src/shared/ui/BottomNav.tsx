@@ -21,7 +21,7 @@ export function BottomNav() {
               )}
             >
               <Icon size={22} strokeWidth={active ? 2.2 : 1.8} aria-hidden="true" />
-              <span className="text-[10px] font-medium">{shortLabel ?? label}</span>
+              <span className="text-3xs font-medium">{shortLabel ?? label}</span>
             </Link>
           )
         })}

@@ -56,7 +56,7 @@ function LoginPage() {
           Google でサインイン
         </button>
 
-        <p className="text-center text-[11px] text-muted-foreground">
+        <p className="text-center text-2xs text-muted-foreground">
           サインインすることで利用規約とプライバシーポリシーに同意します
         </p>
       </div>
