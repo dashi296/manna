@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react'
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { signInWithGoogle, getSession, getServerSession } from '@/shared/lib/auth'
 import { LogoMark } from '@/shared/ui/LogoMark'
@@ -27,7 +28,7 @@ function LoginPage() {
       {/* サインインカード */}
       <div
         className="island-shell w-full max-w-xs rounded-2xl p-6 flex flex-col gap-4 rise-in"
-        style={{ animationDelay: '120ms' }}
+        style={{ '--rise-delay': '120ms' } as CSSProperties}
       >
         <button
           onClick={() => signInWithGoogle()}

@@ -125,6 +125,10 @@ const preview = (texts: ChapterTexts) => (
   </p>
 )
 
+// プレビューの縦位置は --chapter-preview-top で渡し、top-(--chapter-preview-top) が参照する
+const previewTopVar = () =>
+  screen.getByTestId('chapter-pager-preview-next').style.getPropertyValue('--chapter-preview-top')
+
 describe('ChapterPager', () => {
   it('両隣に章があるとき、前後のパネルを描画する', () => {
     renderPager()
@@ -322,7 +326,7 @@ describe('ChapterPager', () => {
     renderPager({ collection: 'bofm', book: '1-ne', chapter: 5 }, true)
     // 読んでいた位置を失わないよう、パネルの構成自体は変えない
     expect(screen.getByTestId('chapter-pager-prev')).toBeInTheDocument()
-    expect(pager()).toHaveStyle({ overflowX: 'hidden' })
+    expect(pager()).toHaveClass('overflow-x-hidden')
     swipeTo(PANEL_WIDTH * 2)
     settle()
     expect(navigate).not.toHaveBeenCalled()
@@ -341,7 +345,7 @@ describe('ChapterPager', () => {
     renderPager()
     expect(screen.queryByTestId('chapter-pager-prev')).not.toBeInTheDocument()
     expect(screen.queryByTestId('chapter-pager-next')).not.toBeInTheDocument()
-    expect(pager()).toHaveStyle({ overflowX: 'hidden' })
+    expect(pager()).toHaveClass('overflow-x-hidden')
   })
 
   it('粗いポインタでない環境ではパネルを描画しない', () => {
@@ -426,7 +430,10 @@ describe('ChapterPager の移動先プレビュー', () => {
     touchStart()
     scrollTo(PANEL_WIDTH + 1)
     // 章の先頭に置くと、下の方を読んでいるときに画面の外へ出る
-    expect(screen.getByTestId('chapter-pager-preview-next')).toHaveStyle({ top: '900px' })
+    expect(previewTopVar()).toBe('900px')
+    expect(screen.getByTestId('chapter-pager-preview-next')).toHaveClass(
+      'top-(--chapter-preview-top)',
+    )
     Object.defineProperty(window, 'scrollY', { value: 0, configurable: true })
   })
 
@@ -450,7 +457,7 @@ describe('ChapterPager の移動先プレビュー', () => {
     Object.defineProperty(window, 'scrollY', { value: 1200, configurable: true })
     touchStart()
     scrollTo(PANEL_WIDTH + 1)
-    expect(screen.getByTestId('chapter-pager-preview-next')).toHaveStyle({ top: '1200px' })
+    expect(previewTopVar()).toBe('1200px')
     Object.defineProperty(window, 'scrollY', { value: 0, configurable: true })
   })
 
@@ -462,13 +469,13 @@ describe('ChapterPager の移動先プレビュー', () => {
     touchStart()
     scrollTo(PANEL_WIDTH + 1)
     touchEnd()
-    expect(screen.getByTestId('chapter-pager-preview-next')).toHaveStyle({ top: '900px' })
+    expect(previewTopVar()).toBe('900px')
 
     // 畳む前（着地判定の 120ms 以内）に読み進めて次の指が来る
     Object.defineProperty(window, 'scrollY', { value: 1500, configurable: true })
     touchStart(1)
     scrollTo(PANEL_WIDTH + 2)
-    expect(screen.getByTestId('chapter-pager-preview-next')).toHaveStyle({ top: '1500px' })
+    expect(previewTopVar()).toBe('1500px')
 
     touchEnd(1)
     Object.defineProperty(window, 'scrollY', { value: 0, configurable: true })

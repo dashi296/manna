@@ -229,6 +229,12 @@
   }
 }
 
+/* 両脇のパネルが後から挿入されると、ブラウザが見た目を保とうとしてその幅だけ
+   スクロール位置をずらす。中央合わせと二重になる。Tailwind に該当するものが無い */
+@utility chapter-scroller {
+  overflow-anchor: none;
+}
+
 /* 節の左帯と同じだけ字下げする。章の概要文で節番号と左端を揃えるため */
 @utility verse-indent {
   padding-left: var(--verse-accent-w);
@@ -462,6 +468,9 @@ rt {
 
 .rise-in {
   animation: rise-in 700ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  /* 開始を遅らせたい呼び出し元が --rise-delay を渡す。shorthand が
+     animation-delay を初期化するので、必ずその後ろに置く */
+  animation-delay: var(--rise-delay, 0ms);
 }
 
 @keyframes rise-in {

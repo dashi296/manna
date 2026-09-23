@@ -7,6 +7,9 @@ const bob = { userId: 'u2', name: 'ボブ', avatarUrl: null }
 const carol = { userId: 'u3', name: 'キャロル', avatarUrl: null }
 const dave = { userId: 'u4', name: 'デイブ', avatarUrl: null }
 
+// 重なり順は --stack-z で渡し、z-(--stack-z) が参照する
+const stackZ = (el: HTMLElement) => Number(el.style.getPropertyValue('--stack-z') || 0)
+
 describe('VerseCommentMarker', () => {
   it('押せる要素を描画しない', () => {
     render(<VerseCommentMarker entry={{ anchoredCount: 1, commenters: [alice] }} />)
@@ -61,9 +64,10 @@ describe('VerseCommentMarker', () => {
     const wrapper = badge.parentElement!
     const avatarZ = Array.from(
       wrapper.querySelectorAll<HTMLElement>(':scope > span:not(.absolute)'),
-    ).map((a) => Number(a.style.zIndex || 0))
+    ).map(stackZ)
 
-    expect(Number(badge.style.zIndex || 0)).toBeGreaterThan(Math.max(...avatarZ))
+    expect(stackZ(badge)).toBeGreaterThan(Math.max(...avatarZ))
+    expect(badge).toHaveClass('z-(--stack-z)')
   })
 
   it('コメントのない節では幅だけ確保する', () => {
