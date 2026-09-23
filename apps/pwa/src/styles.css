@@ -10,6 +10,11 @@
   --font-display: "Fraunces", Georgia, serif;
   --font-scripture: "Noto Serif JP", "Hiragino Mincho ProN", "Yu Mincho", serif;
 
+  /* バッジ・チップ・タブラベル用。xs(12px) より下は Tailwind の既定に無い。
+     行の高さは連れてこない（付けた要素は周りの行間を引き継いでいる） */
+  --text-2xs: 0.6875rem;
+  --text-3xs: 0.625rem;
+
   /* Brand colors — named Tailwind utilities */
   --color-sea-ink: var(--sea-ink);
   --color-sea-ink-soft: var(--sea-ink-soft);
@@ -102,6 +107,8 @@
   --sidebar-accent-foreground: var(--lagoon-deep);
   --sidebar-border: var(--line);
   --sidebar-ring: var(--lagoon);
+  /* 節1行の左帯の幅。章の概要文も同じだけ空けて左端を揃える */
+  --verse-accent-w: 3px;
   --safe-area-top: env(safe-area-inset-top, 0px);
   --safe-area-bottom: env(safe-area-inset-bottom, 0px);
   /* 4rem は BottomNav の content 高さの実測値。BottomNav の padding/内容を変えたらここも合わせる */
@@ -208,7 +215,7 @@
 /* 節1行の選択・強調の地色と左帯。read モードでは verse-item とは別の要素に、
    select モードでは同じ要素に付く */
 @utility verse-row {
-  border-left: 3px solid transparent;
+  border-left: var(--verse-accent-w) solid transparent;
 
   /* 節シートに出ているコメントが対象にしている節を示す。選択中は選択の色が勝つ。
      記述順ではなく :not() で決めるのは、並べ替えで黙って壊れないようにするため */
@@ -220,6 +227,11 @@
     background-color: var(--chip-bg);
     border-left-color: var(--lagoon);
   }
+}
+
+/* 節の左帯と同じだけ字下げする。章の概要文で節番号と左端を揃えるため */
+@utility verse-indent {
+  padding-left: var(--verse-accent-w);
 }
 
 /* 選択モードの丸いチェック。1.5px は Tailwind の border 幅スケールに無い */
