@@ -57,18 +57,39 @@ describe('PostCard', () => {
     expect(screen.queryByText(/第1ニーファイ書/)).not.toBeInTheDocument()
   })
 
-  it('カード全体が投稿詳細ページへのリンクになっている', () => {
+  it('投稿詳細へのリンクに、誰のいつの投稿かが分かる名前を付ける', () => {
     render(<PostCard post={basePost} />)
-    const links = screen.getAllByRole('link')
-    expect(links[0]).toHaveAttribute('href', '/posts/post-1')
+    // 包むのは日付だけなので、中身まかせだと「5月31日」としか読まれない。
+    // 一覧に日付だけのリンクが並んでも行き先が分からないので aria-label で補う
+    const link = screen.getByRole('link', { name: /テスト太郎/ })
+    expect(link).toHaveAttribute('href', '/posts/post-1')
+    expect(link.getAttribute('aria-label')).toMatch(/テスト太郎/)
   })
 
-  it('聖典バッジのクリックは外側リンクへ伝播しない', () => {
+  it('対話要素を入れ子にしない', () => {
+    const { container } = render(<PostCard post={basePost} />)
+    const interactive = container.querySelectorAll('a,button,[role="link"],[role="button"]')
+    for (const el of interactive) {
+      // 自分自身より外側に対話要素があってはいけない
+      expect(el.parentElement?.closest('a,button,[role="link"],[role="button"]')).toBeNull()
+    }
+  })
+
+  it('聖典バッジを本物のリンクにする', () => {
     render(<PostCard post={basePost} />)
-    const badge = screen.getByText(/第1ニーファイ書/).closest('span[role="link"]')!
-    const clickEvent = new MouseEvent('click', { bubbles: true, cancelable: true })
-    const stopSpy = vi.spyOn(clickEvent, 'stopPropagation')
-    badge.dispatchEvent(clickEvent)
-    expect(stopSpy).toHaveBeenCalled()
+    const badge = screen.getByRole('link', { name: /第1ニーファイ書/ })
+    expect(badge.tagName).toBe('A')
+    expect(badge).toHaveAttribute('href', expect.stringContaining('churchofjesuschrist.org'))
+    // 外部サイトなので別タブ。rel も付ける
+    expect(badge).toHaveAttribute('target', '_blank')
+    expect(badge).toHaveAttribute('rel', expect.stringContaining('noopener'))
+  })
+
+  it('本文中のリンクも本物のリンクにする', () => {
+    const post = { ...basePost, content: '参考: [リンク](https://example.com/a)' }
+    render(<PostCard post={post} />)
+    const link = screen.getByRole('link', { name: 'リンク' })
+    expect(link.tagName).toBe('A')
+    expect(link).toHaveAttribute('href', 'https://example.com/a')
   })
 })
