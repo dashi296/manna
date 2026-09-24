@@ -229,6 +229,17 @@
   }
 }
 
+/* 投稿カードは全面を押せるが、HTML では中のリンクと兄弟にする（#186）。
+   日付のリンクの ::after でカード全面を覆い、中のリンクは z-10 で上に出す */
+@utility post-card-open {
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+  }
+}
+
 /* 両脇のパネルが後から挿入されると、ブラウザが見た目を保とうとしてその幅だけ
    スクロール位置をずらす。中央合わせと二重になる。Tailwind に該当するものが無い */
 @utility chapter-scroller {
