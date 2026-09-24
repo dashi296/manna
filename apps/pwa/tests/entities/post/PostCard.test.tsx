@@ -63,15 +63,21 @@ describe('PostCard', () => {
     // 一覧に日付だけのリンクが並んでも行き先が分からないので aria-label で補う
     const link = screen.getByRole('link', { name: /テスト太郎/ })
     expect(link).toHaveAttribute('href', '/posts/post-1')
-    expect(link.getAttribute('aria-label')).toMatch(/テスト太郎/)
+    // 画面に出ている日付をそのまま読み上げに含める
+    expect(link).toHaveAccessibleName(`テスト太郎 の投稿（${link.textContent?.trim()}）`)
   })
 
   it('対話要素を入れ子にしない', () => {
-    const { container } = render(<PostCard post={basePost} />)
-    const interactive = container.querySelectorAll('a,button,[role="link"],[role="button"]')
+    const post = { ...basePost, content: '本文 [リンク](https://example.com/a) のあと' }
+    const { container } = render(<PostCard post={post} />)
+    const SELECTOR =
+      'a,button,input,select,textarea,[role="link"],[role="button"],[tabindex]:not([tabindex="-1"])'
+    const interactive = container.querySelectorAll(SELECTOR)
+    // 聖典バッジ・本文中リンク・日付の 3 つが揃った状態で見る
+    expect(interactive.length).toBeGreaterThanOrEqual(3)
     for (const el of interactive) {
       // 自分自身より外側に対話要素があってはいけない
-      expect(el.parentElement?.closest('a,button,[role="link"],[role="button"]')).toBeNull()
+      expect(el.parentElement?.closest(SELECTOR)).toBeNull()
     }
   })
 
@@ -91,5 +97,8 @@ describe('PostCard', () => {
     const link = screen.getByRole('link', { name: 'リンク' })
     expect(link.tagName).toBe('A')
     expect(link).toHaveAttribute('href', 'https://example.com/a')
+    // 投稿者が書いた URL。外部へ出るので別タブにする
+    expect(link).toHaveAttribute('target', '_blank')
+    expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'))
   })
 })

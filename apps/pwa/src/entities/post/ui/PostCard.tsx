@@ -37,8 +37,10 @@ export const PostCard = memo(function PostCard({ post }: Props) {
   return (
     // カード全体を <a> で包むと、中のリンクが入れ子の対話要素になり、
     // 外側のリンク自体もアクセシブル名を失う（#186）。日付だけを本物のリンクにして、
-    // その ::after でカード全面を覆う。中のリンクは z-index で上に出す
-    <article className="relative px-4 py-4 border-b border-border">
+    // その ::after でカード全面を覆う。中のリンクは z-index で上に出す。
+    // isolate が無いと、その z-index が sticky ヘッダー（同じ z-10）と張り合い、
+    // スクロールで重なったときにカードのリンクが前面へ出る
+    <article className="relative isolate px-4 py-4 border-b border-border">
       <div className="flex items-start gap-3 mb-2">
         <UserAvatar name={displayName} url={avatarUrl} size="sm" />
         <div className="flex-1 min-w-0">
