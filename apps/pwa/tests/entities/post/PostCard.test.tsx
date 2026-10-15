@@ -67,6 +67,17 @@ describe('PostCard', () => {
     expect(link).toHaveAccessibleName(`テスト太郎 の投稿（${link.textContent?.trim()}）`)
   })
 
+  it('日付のリンクがカード全面を覆い、中のリンクはその上に出る', () => {
+    const post = { ...basePost, content: '参考: [リンク](https://example.com/a)' }
+    const { container } = render(<PostCard post={post} />)
+    // jsdom では ::after のヒット判定を見られないので、成立に要るクラスの組を確かめる
+    expect(container.querySelector('article')).toHaveClass('relative', 'isolate')
+    expect(screen.getByRole('link', { name: /テスト太郎/ })).toHaveClass('post-card-open')
+    for (const name of [/第1ニーファイ書/, 'リンク']) {
+      expect(screen.getByRole('link', { name })).toHaveClass('relative', 'z-10')
+    }
+  })
+
   it('対話要素を入れ子にしない', () => {
     const post = { ...basePost, content: '本文 [リンク](https://example.com/a) のあと' }
     const { container } = render(<PostCard post={post} />)
