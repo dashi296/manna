@@ -28,18 +28,16 @@
         "allow": [
           "bottom-[calc(var(--bottom-nav-h)+var(--install-banner-h)+1rem)]",
           "bottom-[var(--bottom-nav-h)]",
+          "data-[side=bottom]:h-[70dvh]",
           "grid-cols-[1fr_auto_1fr]",
-          "h-[70dvh]",
           "max-h-[50dvh]",
           "max-h-[70vh]",
-          "max-h-[92dvh]",
           "min-h-[60vh]",
           "pb-[var(--bottom-nav-h)]",
           "pb-[var(--fab-clearance)]",
           "pb-[var(--safe-area-bottom)]",
           "pt-[var(--page-header-pt)]",
-          "pt-[var(--selection-header-pt)]",
-          "w-[min(520px,40vw)]"
+          "pt-[var(--selection-header-pt)]"
         ]
       }
     ],

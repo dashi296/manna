@@ -79,10 +79,11 @@ export function PostComposerSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side={isMobile ? 'bottom' : 'right'}
+        // 基底のサイズ指定は data-[side=*] 付きで詳細度が高い。同じ変種で書かないと負ける（#195）
         className={
           isMobile
-            ? 'max-h-[92dvh] h-[70dvh] flex flex-col gap-0 rounded-t-2xl'
-            : 'h-dvh w-[min(520px,40vw)] max-w-none flex flex-col gap-0 rounded-none'
+            ? 'data-[side=bottom]:h-[70dvh] flex flex-col gap-0 rounded-t-2xl'
+            : 'data-[side=right]:w-2/5 data-[side=right]:sm:max-w-130 flex flex-col gap-0 rounded-none'
         }
       >
         <SheetHeader bordered>
