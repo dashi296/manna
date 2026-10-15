@@ -91,13 +91,18 @@ describe('PostComposerSheet', () => {
     expect(screen.getByText('新しい投稿')).toBeInTheDocument()
   })
 
-  it('デスクトップ幅では右サイドパネルとして表示する', async () => {
+  // SheetContent の基底は data-[side=*] 付きで詳細度が高い。同じ変種で書いて
+  // tailwind-merge に基底側を落とさせないと、jsdom では見えないまま CSS で負ける（#195）
+  it('デスクトップ幅では幅 520px 上限の右サイドパネルとして表示する', async () => {
     window.innerWidth = 1200
 
     render(<PostComposerSheet open onOpenChange={() => {}} />)
 
     await waitFor(() => expect(screen.getByRole('dialog')).toHaveAttribute('data-side', 'right'))
-    expect(screen.getByRole('dialog')).toHaveClass('w-[min(520px,40vw)]')
+    const dialog = screen.getByRole('dialog')
+    expect(dialog).toHaveClass('data-[side=right]:w-2/5', 'data-[side=right]:sm:max-w-130')
+    expect(dialog).not.toHaveClass('data-[side=right]:w-3/4')
+    expect(dialog).not.toHaveClass('data-[side=right]:sm:max-w-sm')
   })
 
   it('モバイル幅ではボトムシートとして表示する', async () => {
@@ -106,7 +111,14 @@ describe('PostComposerSheet', () => {
     render(<PostComposerSheet open onOpenChange={() => {}} />)
 
     await waitFor(() => expect(screen.getByRole('dialog')).toHaveAttribute('data-side', 'bottom'))
-    expect(screen.getByRole('dialog')).toHaveClass('h-[70dvh]')
+    const dialog = screen.getByRole('dialog')
+    expect(dialog).toHaveClass('data-[side=bottom]:h-[70dvh]')
+    expect(dialog).not.toHaveClass('data-[side=bottom]:h-auto')
+  })
+
+  it('閉じるボタンの名前が日本語', () => {
+    render(<PostComposerSheet open onOpenChange={() => {}} />)
+    expect(screen.getByRole('button', { name: '閉じる' })).toBeInTheDocument()
   })
 
   it('post があるとタイトルが「投稿を編集」になる', () => {
