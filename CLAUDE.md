@@ -110,14 +110,17 @@ CREATE INDEX posts_scripture_verses_gin ON posts USING GIN (scripture_verses);
 
 ### family_relationships は双方向
 
-requester/addressee の区別があるため、両方向を検索する必要がある:
+requester/addressee の区別があるため、両方向を検索する必要がある。`entities/family` の
+`filterFamilyPair` を使う（両列を同じ2人組の `.in()` で絞る）:
 
 ```typescript
-.or(
-  `and(requester_id.eq.${userId},addressee_id.eq.${targetId}),` +
-  `and(requester_id.eq.${targetId},addressee_id.eq.${userId})`
-)
+filterFamilyPair(supabase.from('family_relationships').select('*'), userId, targetId)
+// = .in('requester_id', [userId, targetId]).in('addressee_id', [userId, targetId])
 ```
+
+**値を `.or()` のフィルタ式に文字列補間しない**（#68 / PR #69）。route param のような入力が
+PostgREST の式として解釈される。`CHECK (requester_id <> addressee_id)` と逆方向重複を防ぐ一意
+インデックスがあるので、`.in()` 2段で両方向の検索と等価になる
 
 ### 認証ガード
 
