@@ -85,7 +85,9 @@ export const supabase = createBrowserClient<Database>(
 )
 ```
 
-- **SSR Supabase クライアント**: `@supabase/ssr` の `createServerClient` を `createServerFn` 内で使う（`getRequest().headers` から cookie を読み取り `beforeLoad` で認証チェックを行う）
+- **SSR Supabase クライアント**: `shared/lib/auth.ts` の `createSupabaseServer`（中身は `@supabase/ssr` の `createServerClient`）を
+  `createServerFn` や server route handler から使う。cookie は引数の `Request`、無ければ `getCookieHeader()`
+  （SSR では Start コンテキストのリクエストヘッダ）から読む
 
 ---
 
@@ -137,7 +139,7 @@ const needsAuth =
 - **デプロイは CI が行う**: main への push で `.github/workflows/deploy.yml` が走り、Supabase の
   マイグレーション適用 → Cloudflare Workers へのデプロイ、の順で実行される。手元からの
   `cf:deploy` は基本的に不要
-  - `check` ジョブ（typecheck / test / build）が落ちると `deploy` はスキップされる。
+  - `check` ジョブ（lint / fmt:check / typecheck / test / test:scripts / build）が落ちると `deploy` はスキップされる。
     **main が赤いままだと本番に出ない**
   - 認証情報は GitHub Secrets（`CLOUDFLARE_API_TOKEN` ほか）にある
   - **`deploy` が `project is paused` で落ちたら、本番 Supabase が止まっている**（2026-10 に発生。
@@ -173,7 +175,7 @@ node scripts/export-verses-seed.mjs
 ```
 
 - `supabase/seed.sql` — コレクション・書のメタデータ（git管理）
-- `supabase/seed-verses.sql` — 節テキスト 84,052行（日本語 42,010 + 英語 42,042。`.gitignore`、ローカルのみ）
+- `supabase/seed-verses.sql` — 節テキスト 84,052行（日本語 42,010 + 英語 42,042）と章見出し（`scripture_chapter_headings`）。`.gitignore`、ローカルのみ
 - `npx supabase db reset` を直接実行すると節データが消えるため、代わりに `bash scripts/db-reset.sh` を使う
 
 ### ローカル Supabase のポート
@@ -185,9 +187,9 @@ Supabase CLI のデフォルト（54321台）は他プロジェクトのロー�
 | API (Kong) | 55321 | Studio | 55323 |
 | DB | 55322 | Inbucket | 55324 |
 | DB shadow | 55320 | Analytics | 55327 |
-| DB pooler | 55329 | Edge inspector | 8183 |
+| DB pooler（無効） | 55329 | Edge inspector | 8183 |
 
-`.env.local` は `.gitignore` 対象のため、clone 後は自分で作成する（ルートと `apps/pwa/` の両方）:
+`.env.local` は `.gitignore` 対象のため、clone 後は `apps/pwa/.env.local` を自分で作成する:
 
 ```
 VITE_SUPABASE_URL=http://127.0.0.1:55321
@@ -203,6 +205,7 @@ VITE_SUPABASE_KEY=<npx supabase status の publishable key>
 | `scripture_collections` | コレクション（モルモン書、旧約聖書など）|
 | `scripture_books` | 書（第1ニーファイ書、創世記など）|
 | `scripture_verses` | 節テキスト（`text`: プレーン、`text_html`: ルビ付き）|
+| `scripture_chapter_headings` | 章タイトルと概要文（#154）|
 
 ---
 
