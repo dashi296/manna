@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { QueryClient, InfiniteQueryObserver } from '@tanstack/react-query'
+import { QueryClient, InfiniteQueryObserver, onlineManager } from '@tanstack/react-query'
 import { keysetInfiniteOptions, loadFirstPage } from '@/shared/lib/keysetQuery'
 import type { Cursor } from '@/shared/lib/cursor'
 import { deferred } from '../../helpers/deferred'
@@ -20,6 +20,7 @@ function setup() {
 
 afterEach(() => {
   vi.useRealTimers()
+  onlineManager.setOnline(true)
 })
 
 describe('loadFirstPage', () => {
@@ -115,6 +116,31 @@ describe('loadFirstPage', () => {
     unsubscribe()
 
     expect(fetchPage).toHaveBeenCalledTimes(4)
+    expect(data.pages).toEqual([{ items: ['first'], nextCursor: CURSOR }])
+  })
+
+  // オフラインで止まった取得も fetchStatus が 'paused' のまま Promise を使い回される
+  it('「もっと見る」がオフラインで止まっている最中に戻ってきても、それを待たない', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    const { queryClient, fetchPage, options } = setup()
+    await loadFirstPage(queryClient, options)
+    vi.setSystemTime(Date.now() + 11 * 1000)
+
+    onlineManager.setOnline(false)
+    const observer = new InfiniteQueryObserver(queryClient, options)
+    const unsubscribe = observer.subscribe(() => {})
+    void observer.fetchNextPage()
+    await vi.waitFor(() =>
+      expect(queryClient.getQueryState(options.queryKey)?.fetchStatus).toBe('paused'),
+    )
+
+    const loading = loadFirstPage(queryClient, options)
+    onlineManager.setOnline(true)
+    // 止まっていた「もっと見る」に相乗りすると、復帰後にその続きが走って2ページ目まで持ち込む
+    const data = await loading
+    unsubscribe()
+
+    expect(fetchPage).toHaveBeenLastCalledWith(null)
     expect(data.pages).toEqual([{ items: ['first'], nextCursor: CURSOR }])
   })
 })

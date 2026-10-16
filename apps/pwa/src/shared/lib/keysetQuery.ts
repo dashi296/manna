@@ -40,7 +40,8 @@ export async function loadFirstPage<T extends Page>(
 ) {
   const state = queryClient.getQueryState(options.queryKey)
   const fetchingMoreThanFirstPage =
-    state?.fetchStatus === 'fetching' &&
+    state !== undefined &&
+    state.fetchStatus !== 'idle' &&
     (state.fetchMeta?.fetchMore !== undefined || (state.data?.pages.length ?? 0) > 1)
   if (fetchingMoreThanFirstPage) {
     await queryClient.cancelQueries({ queryKey: options.queryKey })
