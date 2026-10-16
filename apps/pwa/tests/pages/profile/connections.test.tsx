@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { act, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { routeComponent, routeLoader } from '../../helpers/tanstack'
@@ -47,6 +47,10 @@ const renderPage = async () => {
 }
 
 describe('ConnectionsPage', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   beforeEach(() => {
     currentTab = 'followers'
     mockFetchConnections.mockReset()
@@ -143,6 +147,9 @@ describe('ConnectionsPage', () => {
     const { client } = await renderPage()
     expect(await screen.findByText('山田花子')).toBeInTheDocument()
     await userEvent.click(loadMoreButton())
+    // 直後の再訪は先読みの使い回しとして取り直さない（#86）。猶予を過ぎた再訪で見る
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(Date.now() + 11 * 1000)
 
     const loader = routeLoader(await import('@/pages/profile/$userId/connections'))
     const outcome = await Promise.race([
