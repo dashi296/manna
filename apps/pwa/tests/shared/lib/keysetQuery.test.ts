@@ -92,4 +92,29 @@ describe('loadFirstPage', () => {
     expect(fetchPage).toHaveBeenLastCalledWith(null)
     expect(data.pages).toEqual([{ items: ['first'], nextCursor: CURSOR }])
   })
+
+  // 無効化やフォーカスで走る全ページの取り直しは fetchMore を持たないが、pages 1 が効かず
+  // 遷移が全ページの完了待ちになる点は「もっと見る」と同じ
+  it('複数ページの取り直しが飛んでいる最中に戻ってきたら、それを打ち切って1ページ目だけを返す', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    const { queryClient, fetchPage, options } = setup()
+    await loadFirstPage(queryClient, options)
+    const observer = new InfiniteQueryObserver(queryClient, options)
+    const unsubscribe = observer.subscribe(() => {})
+    await observer.fetchNextPage()
+    expect(observer.getCurrentResult().data?.pages).toHaveLength(2)
+    vi.setSystemTime(Date.now() + 11 * 1000)
+
+    const pending = deferred<Page>()
+    fetchPage.mockImplementationOnce(() => pending.promise)
+    void queryClient.refetchQueries({ queryKey: options.queryKey })
+    await vi.waitFor(() => expect(fetchPage).toHaveBeenCalledTimes(3))
+
+    // pending は解決しないまま。打ち切らなければここで止まる
+    const data = await loadFirstPage(queryClient, options)
+    unsubscribe()
+
+    expect(fetchPage).toHaveBeenCalledTimes(4)
+    expect(data.pages).toEqual([{ items: ['first'], nextCursor: CURSOR }])
+  })
 })
