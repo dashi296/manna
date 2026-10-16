@@ -32,7 +32,7 @@
 ## 技術スタック
 
 - **フロントエンド**: TanStack Start (TypeScript / Vite / SSR)
-- **UI**: shadcn/ui (Radix UI + TailwindCSS v4)
+- **UI**: shadcn/ui (Base UI + TailwindCSS v4)。Radix 版からの移行は #41 で完了
 - **バックエンド / DB**: Supabase (PostgreSQL + Auth + Realtime)
 - **認証**: Google OAuth (Supabase Auth経由)
 - **テスト**: Vitest + @testing-library/react
