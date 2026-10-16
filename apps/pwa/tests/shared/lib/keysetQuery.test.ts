@@ -143,4 +143,28 @@ describe('loadFirstPage', () => {
     expect(fetchPage).toHaveBeenLastCalledWith(null)
     expect(data.pages).toEqual([{ items: ['first'], nextCursor: CURSOR }])
   })
+
+  // キャッシュに「もっと見る」済みの古いページが残っていても、飛んでいるのが先読みなら相乗りする
+  it('複数ページを持つ古いキャッシュでも、先読みが飛んでいる最中のクリックはそれを使い回す', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    const { queryClient, fetchPage, options } = setup()
+    await loadFirstPage(queryClient, options)
+    const observer = new InfiniteQueryObserver(queryClient, options)
+    const unsubscribe = observer.subscribe(() => {})
+    await observer.fetchNextPage()
+    unsubscribe()
+    vi.setSystemTime(Date.now() + 11 * 1000)
+
+    const pending = deferred<Page>()
+    fetchPage.mockImplementationOnce(() => pending.promise)
+    const preload = loadFirstPage(queryClient, options)
+    await vi.waitFor(() => expect(fetchPage).toHaveBeenCalledTimes(3))
+    const enter = loadFirstPage(queryClient, options)
+    pending.resolve({ items: ['first'], nextCursor: CURSOR })
+
+    const firstPageOnly = { pages: [{ items: ['first'], nextCursor: CURSOR }] }
+    await expect(preload).resolves.toMatchObject(firstPageOnly)
+    await expect(enter).resolves.toMatchObject(firstPageOnly)
+    expect(fetchPage).toHaveBeenCalledTimes(3)
+  })
 })
