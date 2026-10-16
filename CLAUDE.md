@@ -73,8 +73,8 @@ gzip 298→239 kB）。計測の詳細は #156 のコメントにある。
 
 ## 重要な設定・パス
 
-- **`@/` エイリアス**: プロジェクトルート（`.`）を指す
-- **`pages/` = routesDirectory**: `app.config.ts` で `tsr.routesDirectory: './pages'` を設定
+- **`@/` エイリアス**: `apps/pwa/src` を指す（`apps/pwa/tsconfig.json` と `apps/pwa/vite.config.ts` の両方で設定）
+- **`pages/` = routesDirectory**: `apps/pwa/vite.config.ts` の `tanstackStart({ router: { routesDirectory: './pages' } })` で設定
 - **ブラウザ Supabase クライアント**: `@supabase/ssr` の `createBrowserClient`（セッションを cookie に保存し SSR 側で読み取れるようにするため）
 
 ```typescript
