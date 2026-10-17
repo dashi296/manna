@@ -4,30 +4,35 @@
 
 詳細計画: [`docs/superpowers/plans/2026-05-19-manna-phase1.md`](docs/superpowers/plans/2026-05-19-manna-phase1.md)
 
-## 現在の状態（2026-09-14 時点）
+## 現在の状態（2026-10-17 時点）
 
 - **Phase 1（PWA）完了**: PR #37 で main にマージ済み
-- 章画面の機能追加が続いている。直近で入ったもの:
-  - 章末尾の前章・次章リンク（#151）
+- 9月後半から 10月は品質の整備が中心だった。直近で入ったもの:
+  - **lint / format の導入と違反 0 件化**（#164。oxlint + oxfmt、`--deny-warnings`）
   - **章画面のスワイプナビゲーション**（#65 / PR #152）。CSS scroll-snap でブラウザにジェスチャを任せる方式。
     **実機（iOS ホーム画面 PWA / Android Chrome）での確認が未了**。チェックリストは #65 のコメントにある
-  - **章タイトルと概要文の表示**（#154 / PR #155）。詩篇の章ラベル（第n篇）の不具合もここで修正
+  - 投稿カードの入れ子リンクの解消（#186 / PR #196）、投稿シートのサイズ指定が効いていなかった不具合（#195 / PR #197）
 - **Phase 2（Chrome 拡張 / Plasmo）は未着手**: 着手前に
   [`docs/superpowers/specs/2026-07-18-phase2-handoff.md`](docs/superpowers/specs/2026-07-18-phase2-handoff.md) を読むこと
 
-### 開いている issue
+### 開いている issue のうち、判断や人手が要るもの
 
-| # | 内容 | 状態 |
+全件は `gh issue list` で見る。ここには「手を動かせば進む」以外のものだけを置く。
+
+| # | 内容 | 何が要るか |
 |---|---|---|
-| #65 | 章画面のスワイプナビゲーション | 実装は本番稼働中。**実機確認だけが残っている** |
-| #157 | ヘッダーの章タイトルが中央に揃っていない | `PageHeader` は10画面で共有。全画面に適用するかの判断が要る |
+| #65 | 章画面のスワイプナビゲーション | 実装は本番稼働中。**実機確認だけが残っている**。同じ機会に、iOS でキーボードを出したときの投稿シート（70dvh 固定、#197）も見る |
+| #198 | 投稿カードの本文を選択・コピーできない | #196 以前からの挙動。直すかどうか、直すならどの方式か（issue に候補 3 つ）の判断 |
+| #85 | フォロー後の再取得が広すぎる | 「#82 と一緒にやる」としていたが #82 は閉じた。やるかどうかの見直し |
+
+`#71` / `#87` / `#175` は本文に「きっかけが来るまで触らない」条件が書いてある。条件が来るまで放置でよい。
 
 ---
 
 ## 技術スタック
 
 - **フロントエンド**: TanStack Start (TypeScript / Vite / SSR)
-- **UI**: shadcn/ui (Radix UI + TailwindCSS v4)
+- **UI**: shadcn/ui (Base UI + TailwindCSS v4)。Radix 版からの移行は #41 で完了
 - **バックエンド / DB**: Supabase (PostgreSQL + Auth + Realtime)
 - **認証**: Google OAuth (Supabase Auth経由)
 - **テスト**: Vitest + @testing-library/react
@@ -68,8 +73,8 @@ gzip 298→239 kB）。計測の詳細は #156 のコメントにある。
 
 ## 重要な設定・パス
 
-- **`@/` エイリアス**: プロジェクトルート（`.`）を指す
-- **`pages/` = routesDirectory**: `app.config.ts` で `tsr.routesDirectory: './pages'` を設定
+- **`@/` エイリアス**: `apps/pwa/src` を指す（`apps/pwa/tsconfig.json` と `apps/pwa/vite.config.ts` の両方で設定）
+- **`pages/` = routesDirectory**: `apps/pwa/vite.config.ts` の `tanstackStart({ router: { routesDirectory: './pages' } })` で設定
 - **ブラウザ Supabase クライアント**: `@supabase/ssr` の `createBrowserClient`（セッションを cookie に保存し SSR 側で読み取れるようにするため）
 
 ```typescript
@@ -80,7 +85,9 @@ export const supabase = createBrowserClient<Database>(
 )
 ```
 
-- **SSR Supabase クライアント**: `@supabase/ssr` の `createServerClient` を `createServerFn` 内で使う（`getRequest().headers` から cookie を読み取り `beforeLoad` で認証チェックを行う）
+- **SSR Supabase クライアント**: `shared/lib/auth.ts` の `createSupabaseServer`（中身は `@supabase/ssr` の `createServerClient`）を
+  `createServerFn` や server route handler から使う。cookie は引数の `Request`、無ければ `getCookieHeader()`
+  （SSR では Start コンテキストのリクエストヘッダ）から読む
 
 ---
 
@@ -103,14 +110,17 @@ CREATE INDEX posts_scripture_verses_gin ON posts USING GIN (scripture_verses);
 
 ### family_relationships は双方向
 
-requester/addressee の区別があるため、両方向を検索する必要がある:
+requester/addressee の区別があるため、両方向を検索する必要がある。`entities/family` の
+`filterFamilyPair` を使う（両列を同じ2人組の `.in()` で絞る）:
 
 ```typescript
-.or(
-  `and(requester_id.eq.${userId},addressee_id.eq.${targetId}),` +
-  `and(requester_id.eq.${targetId},addressee_id.eq.${userId})`
-)
+filterFamilyPair(supabase.from('family_relationships').select('*'), userId, targetId)
+// = .in('requester_id', [userId, targetId]).in('addressee_id', [userId, targetId])
 ```
+
+**値を `.or()` のフィルタ式に文字列補間しない**（#68 / PR #69）。route param のような入力が
+PostgREST の式として解釈される。`CHECK (requester_id <> addressee_id)` と逆方向重複を防ぐ一意
+インデックスがあるので、`.in()` 2段で両方向の検索と等価になる
 
 ### 認証ガード
 
@@ -132,9 +142,11 @@ const needsAuth =
 - **デプロイは CI が行う**: main への push で `.github/workflows/deploy.yml` が走り、Supabase の
   マイグレーション適用 → Cloudflare Workers へのデプロイ、の順で実行される。手元からの
   `cf:deploy` は基本的に不要
-  - `check` ジョブ（typecheck / test / build）が落ちると `deploy` はスキップされる。
+  - `check` ジョブ（lint / fmt:check / typecheck / test / test:scripts / build）が落ちると `deploy` はスキップされる。
     **main が赤いままだと本番に出ない**
   - 認証情報は GitHub Secrets（`CLOUDFLARE_API_TOKEN` ほか）にある
+  - **`deploy` が `project is paused` で落ちたら、本番 Supabase が止まっている**（2026-10 に発生。
+    無料プランの非アクティブ停止と思われるが未確認）。ダッシュボードで復帰させてから `gh run rerun <run-id> --failed` で再実行する
 - **聖典データは git に入っていない**（`supabase/seed-verses.sql` は `.gitignore`）。本番へ入れるときは
   ローカルで取り込んだものを流し込む:
   ```bash
@@ -166,7 +178,7 @@ node scripts/export-verses-seed.mjs
 ```
 
 - `supabase/seed.sql` — コレクション・書のメタデータ（git管理）
-- `supabase/seed-verses.sql` — 節テキスト 84,052行（日本語 42,010 + 英語 42,042。`.gitignore`、ローカルのみ）
+- `supabase/seed-verses.sql` — 節テキスト 84,052行（日本語 42,010 + 英語 42,042）と章見出し（`scripture_chapter_headings`）。`.gitignore`、ローカルのみ
 - `npx supabase db reset` を直接実行すると節データが消えるため、代わりに `bash scripts/db-reset.sh` を使う
 
 ### ローカル Supabase のポート
@@ -178,9 +190,9 @@ Supabase CLI のデフォルト（54321台）は他プロジェクトのロー�
 | API (Kong) | 55321 | Studio | 55323 |
 | DB | 55322 | Inbucket | 55324 |
 | DB shadow | 55320 | Analytics | 55327 |
-| DB pooler | 55329 | Edge inspector | 8183 |
+| DB pooler（無効） | 55329 | Edge inspector | 8183 |
 
-`.env.local` は `.gitignore` 対象のため、clone 後は自分で作成する（ルートと `apps/pwa/` の両方）:
+`.env.local` は `.gitignore` 対象のため、clone 後は `apps/pwa/.env.local` を自分で作成する:
 
 ```
 VITE_SUPABASE_URL=http://127.0.0.1:55321
@@ -196,6 +208,7 @@ VITE_SUPABASE_KEY=<npx supabase status の publishable key>
 | `scripture_collections` | コレクション（モルモン書、旧約聖書など）|
 | `scripture_books` | 書（第1ニーファイ書、創世記など）|
 | `scripture_verses` | 節テキスト（`text`: プレーン、`text_html`: ルビ付き）|
+| `scripture_chapter_headings` | 章タイトルと概要文（#154）|
 
 ---
 
