@@ -253,6 +253,32 @@ describe('プロフィールの loader', () => {
     expect(client.getQueryData(profileKey('u2'))).toEqual(after)
   })
 
+  it('取得中に無効化と再取得が済んでいたら、新しい値を古い結果で上書きしない', async () => {
+    const pending = deferred()
+    const after = { ...profile, isFollowing: true }
+    mockServerFn
+      .mockReturnValueOnce(pending.promise)
+      .mockResolvedValueOnce({ ...initial, profile: after })
+    const client = createQueryClient()
+    client.setQueryData(profileKey('u2'), profile)
+    client.setQueryData(userPostsKey('u2'), { pages: [initial.postsPage], pageParams: [null] })
+    skipTime(11 * 1000)
+    const preload = load(client)
+    await vi.waitFor(() => expect(mockServerFn).toHaveBeenCalledTimes(1))
+    // 表示中の画面でフォローした。invalidateRelationQueries は表示中のクエリを取り直すので、
+    // 先読みの結果が届く前に isInvalidated は下りている
+    await client.invalidateQueries({ queryKey: profileKey('u2'), refetchType: 'none' })
+    await client.fetchQuery({
+      queryKey: profileKey('u2'),
+      queryFn: async () => after,
+      staleTime: 0,
+    })
+    expect(client.getQueryState(profileKey('u2'))?.isInvalidated).toBe(false)
+    pending.resolve(initial)
+    await preload
+    expect(client.getQueryData(profileKey('u2'))).toEqual(after)
+  })
+
   it('同時の 404 は1回の取得を共有する', async () => {
     mockServerFn.mockResolvedValue(null)
     const client = createQueryClient()

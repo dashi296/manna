@@ -165,11 +165,14 @@ function isReusable(queryClient: QueryClient, queryKey: readonly unknown[]) {
 
 // 取得中に無効化（フォロー操作など）が入ったら、この取得の結果は古いかもしれない。
 // setQueryData は isInvalidated を下ろすので、見落とすと古い値が新しい扱いになる。
-// キャッシュのイベントは通知が次のタスクに回されるので、開始時と播種直前の状態を比べる
-function invalidationOf(queryClient: QueryClient, userId: string) {
-  return [profileKey(userId), userPostsKey(userId)].map(
-    (queryKey) => !!queryClient.getQueryState(queryKey)?.isInvalidated,
-  )
+// 表示中のクエリは無効化の直後に取り直され、それが先に済むと isInvalidated は下りて
+// しまうので、データの更新回数も比べる。キャッシュのイベントは通知が次のタスクに
+// 回されるので使わず、開始時と播種直前の状態を比べる
+function snapshot(queryClient: QueryClient, userId: string) {
+  return [profileKey(userId), userPostsKey(userId)].map((queryKey) => {
+    const state = queryClient.getQueryState(queryKey)
+    return { invalidated: !!state?.isInvalidated, updates: state?.dataUpdateCount ?? 0 }
+  })
 }
 
 // #93: 以前は fetchProfileData と fetchUserPosts の1ページ目取得が別々の
@@ -186,11 +189,14 @@ async function fetchAndSeed(queryClient: QueryClient, userId: string): Promise<v
     queryClient.cancelQueries({ queryKey: profileKey(userId) }),
     queryClient.cancelQueries({ queryKey: userPostsKey(userId) }),
   ])
-  const before = invalidationOf(queryClient, userId)
+  const before = snapshot(queryClient, userId)
   const data = await fetchProfileInitial({ data: { userId } })
   if (!data) throw notFound()
   await cancelled
-  if (invalidationOf(queryClient, userId).some((now, i) => now && !before[i])) {
+  const changed = snapshot(queryClient, userId).some(
+    (now, i) => (now.invalidated && !before[i].invalidated) || now.updates !== before[i].updates,
+  )
+  if (changed) {
     return fetchAndSeed(queryClient, userId)
   }
   queryClient.setQueryData(profileQueryOptions(userId).queryKey, data.profile)
