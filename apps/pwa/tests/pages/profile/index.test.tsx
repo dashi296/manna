@@ -229,6 +229,47 @@ describe('プロフィールの loader', () => {
     })
   })
 
+  it.each([
+    ['プロフィール', profileKey('u2')],
+    ['投稿', userPostsKey('u2')],
+  ])('取得中に%sが無効化されたら、その結果を新しいものとして入れない', async (_, queryKey) => {
+    const pending = deferred()
+    const after = { ...profile, isFollowing: true }
+    mockServerFn
+      .mockReturnValueOnce(pending.promise)
+      .mockResolvedValueOnce({ ...initial, profile: after })
+    const client = createQueryClient()
+    client.setQueryData(profileKey('u2'), profile)
+    client.setQueryData(userPostsKey('u2'), { pages: [initial.postsPage], pageParams: [null] })
+    skipTime(11 * 1000)
+    const preload = load(client)
+    await vi.waitFor(() => expect(mockServerFn).toHaveBeenCalledTimes(1))
+    // 先読みの最中にフォロー操作が成功した
+    await client.invalidateQueries({ queryKey, refetchType: 'none' })
+    const enter = load(client)
+    pending.resolve(initial)
+    await Promise.all([preload, enter])
+    expect(mockServerFn).toHaveBeenCalledTimes(2)
+    expect(client.getQueryData(profileKey('u2'))).toEqual(after)
+  })
+
+  it('同時の 404 は1回の取得を共有する', async () => {
+    mockServerFn.mockResolvedValue(null)
+    const client = createQueryClient()
+    const results = await Promise.allSettled([load(client), load(client)])
+    expect(results.map((r) => r.status)).toEqual(['rejected', 'rejected'])
+    expect(mockServerFn).toHaveBeenCalledTimes(1)
+  })
+
+  it('失敗した取得は覚えておかず、次の訪問で取り直す', async () => {
+    mockServerFn.mockRejectedValueOnce(new Error('boom'))
+    const client = createQueryClient()
+    await expect(load(client)).rejects.toThrow('boom')
+    await load(client)
+    expect(mockServerFn).toHaveBeenCalledTimes(2)
+    expect(client.getQueryData(profileKey('u2'))).toEqual(profile)
+  })
+
   it('存在しないユーザーは 404 にする', async () => {
     mockServerFn.mockResolvedValue(null)
     await expect(load(createQueryClient())).rejects.toThrow('not found')

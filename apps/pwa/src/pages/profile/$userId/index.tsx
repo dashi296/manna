@@ -163,23 +163,37 @@ function isReusable(queryClient: QueryClient, queryKey: readonly unknown[]) {
   )
 }
 
+// 取得中に無効化（フォロー操作など）が入ったら、この取得の結果は古いかもしれない。
+// setQueryData は isInvalidated を下ろすので、見落とすと古い値が新しい扱いになる。
+// キャッシュのイベントは通知が次のタスクに回されるので、開始時と播種直前の状態を比べる
+function invalidationOf(queryClient: QueryClient, userId: string) {
+  return [profileKey(userId), userPostsKey(userId)].map(
+    (queryKey) => !!queryClient.getQueryState(queryKey)?.isInvalidated,
+  )
+}
+
 // #93: 以前は fetchProfileData と fetchUserPosts の1ページ目取得が別々の
 // server function 往復になっていた（cookie パース・セッション解決が2回）。
 // fetchProfileInitial 1回にまとめ、両方のクエリキーへ setQueryData で種を
 // 入れる。invalidateRelationQueries 経由の背後再取得は fetchProfileData /
 // fetchUserPosts のまま個別に軽く保つ
-async function fetchAndSeed(queryClient: QueryClient, userId: string) {
+async function fetchAndSeed(queryClient: QueryClient, userId: string): Promise<void> {
   // 両クエリの打ち切りは待たずに先に投げる（プロフィール取得を待たせないため）。
   // フォロー操作や invalidateRelationQueries 由来の再取得が飛んでいる最中の
   // 再訪でも、後から解決したそちらが下の setQueryData を上書きしないよう、
   // 播種の直前で待ち合わせる
-  const cancelProfile = queryClient.cancelQueries({ queryKey: profileKey(userId) })
-  const cancelPosts = queryClient.cancelQueries({ queryKey: userPostsKey(userId) })
+  const cancelled = Promise.all([
+    queryClient.cancelQueries({ queryKey: profileKey(userId) }),
+    queryClient.cancelQueries({ queryKey: userPostsKey(userId) }),
+  ])
+  const before = invalidationOf(queryClient, userId)
   const data = await fetchProfileInitial({ data: { userId } })
   if (!data) throw notFound()
-  await cancelProfile
+  await cancelled
+  if (invalidationOf(queryClient, userId).some((now, i) => now && !before[i])) {
+    return fetchAndSeed(queryClient, userId)
+  }
   queryClient.setQueryData(profileQueryOptions(userId).queryKey, data.profile)
-  await cancelPosts
   queryClient.setQueryData(userPostsQueryOptions(userId).queryKey, {
     pages: [data.postsPage],
     pageParams: [null],
