@@ -1,6 +1,6 @@
 import { createFileRoute, Link, notFound } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
-import { queryOptions, useInfiniteQuery, useQuery } from '@tanstack/react-query'
+import { queryOptions, useInfiniteQuery, useQuery, type QueryClient } from '@tanstack/react-query'
 import { PostCard, POST_SELECT, type PostWithUser } from '@/entities/post'
 import { filterFamilyPair, resolveFamilyStatus } from '@/entities/family'
 import { FollowButton } from '@/features/follow-user'
@@ -145,33 +145,88 @@ const userPostsQueryOptions = (userId: string) =>
     fetchUserPosts({ data: { userId, cursor } }),
   )
 
+// hover の先読みとクリックの間隔を覆う長さ。keysetQuery の FIRST_PAGE_REUSE_MS と揃える（#86）
+const PROFILE_REUSE_MS = 10 * 1000
+
+// loadProfile が始めた取得。先読みの取得中にクリックされたら、二重に投げず相乗りする
+const profileLoads = new WeakMap<QueryClient, Map<string, Promise<void>>>()
+
+// 取り直さずに済むのは、両クエリが揃って新しく、無効化されておらず、何も取得していないときだけ。
+// 取得中なら「もっと見る」か無効化後の再取得なので、下の打ち切りへ回す（#83）
+function isReusable(queryClient: QueryClient, queryKey: readonly unknown[]) {
+  const state = queryClient.getQueryState(queryKey)
+  return (
+    state?.data !== undefined &&
+    !state.isInvalidated &&
+    state.fetchStatus === 'idle' &&
+    Date.now() - state.dataUpdatedAt < PROFILE_REUSE_MS
+  )
+}
+
+// 取得中に無効化（フォロー操作など）が入ったら、この取得の結果は古いかもしれない。
+// setQueryData は isInvalidated を下ろすので、見落とすと古い値が新しい扱いになる。
+// 表示中のクエリは無効化の直後に取り直され、それが先に済むと isInvalidated は下りて
+// しまうので、データの更新回数も比べる。キャッシュのイベントは通知が次のタスクに
+// 回されるので使わず、開始時と播種直前の状態を比べる
+function snapshot(queryClient: QueryClient, userId: string) {
+  return [profileKey(userId), userPostsKey(userId)].map((queryKey) => {
+    const state = queryClient.getQueryState(queryKey)
+    return { invalidated: !!state?.isInvalidated, updates: state?.dataUpdateCount ?? 0 }
+  })
+}
+
+// #93: 以前は fetchProfileData と fetchUserPosts の1ページ目取得が別々の
+// server function 往復になっていた（cookie パース・セッション解決が2回）。
+// fetchProfileInitial 1回にまとめ、両方のクエリキーへ setQueryData で種を
+// 入れる。invalidateRelationQueries 経由の背後再取得は fetchProfileData /
+// fetchUserPosts のまま個別に軽く保つ
+async function fetchAndSeed(queryClient: QueryClient, userId: string): Promise<void> {
+  // 両クエリの打ち切りは待たずに先に投げる（プロフィール取得を待たせないため）。
+  // フォロー操作や invalidateRelationQueries 由来の再取得が飛んでいる最中の
+  // 再訪でも、後から解決したそちらが下の setQueryData を上書きしないよう、
+  // 播種の直前で待ち合わせる
+  const cancelled = Promise.all([
+    queryClient.cancelQueries({ queryKey: profileKey(userId) }),
+    queryClient.cancelQueries({ queryKey: userPostsKey(userId) }),
+  ])
+  const before = snapshot(queryClient, userId)
+  const data = await fetchProfileInitial({ data: { userId } })
+  if (!data) throw notFound()
+  await cancelled
+  const changed = snapshot(queryClient, userId).some(
+    (now, i) => (now.invalidated && !before[i].invalidated) || now.updates !== before[i].updates,
+  )
+  if (changed) {
+    return fetchAndSeed(queryClient, userId)
+  }
+  queryClient.setQueryData(profileQueryOptions(userId).queryKey, data.profile)
+  queryClient.setQueryData(userPostsQueryOptions(userId).queryKey, {
+    pages: [data.postsPage],
+    pageParams: [null],
+  })
+}
+
+function loadProfile(queryClient: QueryClient, userId: string) {
+  if (
+    isReusable(queryClient, profileKey(userId)) &&
+    isReusable(queryClient, userPostsKey(userId))
+  ) {
+    return Promise.resolve()
+  }
+  let loads = profileLoads.get(queryClient)
+  if (!loads) {
+    loads = new Map()
+    profileLoads.set(queryClient, loads)
+  }
+  const inFlight = loads.get(userId)
+  if (inFlight) return inFlight
+  const load = fetchAndSeed(queryClient, userId).finally(() => loads.delete(userId))
+  loads.set(userId, load)
+  return load
+}
+
 export const Route = createFileRoute('/profile/$userId/')({
-  // #93: 以前は fetchProfileData と fetchUserPosts の1ページ目取得が別々の
-  // server function 往復になっていた（cookie パース・セッション解決が2回）。
-  // fetchProfileInitial 1回にまとめ、両方のクエリキーへ setQueryData で種を
-  // 入れる。invalidateRelationQueries 経由の背後再取得は fetchProfileData /
-  // fetchUserPosts のまま個別に軽く保つ
-  loader: async ({ params, context }) => {
-    // 両クエリの打ち切りは待たずに先に投げる（プロフィール取得を待たせないため）。
-    // フォロー操作や invalidateRelationQueries 由来の再取得が飛んでいる最中の
-    // 再訪でも、後から解決したそちらが下の setQueryData を上書きしないよう、
-    // 播種の直前で待ち合わせる
-    const cancelProfile = context.queryClient.cancelQueries({
-      queryKey: profileQueryOptions(params.userId).queryKey,
-    })
-    const cancelPosts = context.queryClient.cancelQueries({
-      queryKey: userPostsQueryOptions(params.userId).queryKey,
-    })
-    const data = await fetchProfileInitial({ data: { userId: params.userId } })
-    if (!data) throw notFound()
-    await cancelProfile
-    context.queryClient.setQueryData(profileQueryOptions(params.userId).queryKey, data.profile)
-    await cancelPosts
-    context.queryClient.setQueryData(userPostsQueryOptions(params.userId).queryKey, {
-      pages: [data.postsPage],
-      pageParams: [null],
-    })
-  },
+  loader: ({ params, context }) => loadProfile(context.queryClient, params.userId),
   component: ProfilePage,
 })
 
