@@ -210,4 +210,63 @@ describe('loadFirstPage', () => {
       pages: [{ items: ['after'] }],
     })
   })
+
+  // 購読者がいてデータがあると、query-core 自身が先読みを打ち切って取り直す。
+  // その取り直しは無効化された状態で始まるので、もう一度取り直してはいけない
+  it('購読者がいてデータがあるときは、query-core の取り直しに任せて二重に取らない', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    const { queryClient, fetchPage, options } = setup()
+    await loadFirstPage(queryClient, options)
+    const observer = new InfiniteQueryObserver(queryClient, options)
+    const unsubscribe = observer.subscribe(() => {})
+    vi.setSystemTime(Date.now() + 11 * 1000)
+
+    const pending = deferred<Page>()
+    fetchPage.mockImplementationOnce(() => pending.promise)
+    fetchPage.mockImplementationOnce(async () => ({ items: ['after'], nextCursor: null }))
+    // 2回目の取り直しが走ったら失敗させ、loader まで伝わることを検知する
+    fetchPage.mockImplementationOnce(async () => {
+      throw new Error('extra fetch')
+    })
+    const preload = loadFirstPage(queryClient, options)
+    await vi.waitFor(() => expect(fetchPage).toHaveBeenCalledTimes(2))
+    await queryClient.invalidateQueries({ queryKey: options.queryKey })
+    // 打ち切られた先読みの取得が後から返っても、取り直しを始めない
+    pending.resolve({ items: ['before'], nextCursor: null })
+
+    await expect(preload).resolves.toMatchObject({ pages: [{ items: ['after'] }] })
+    await new Promise((r) => setTimeout(r, 0))
+    unsubscribe()
+    expect(fetchPage).toHaveBeenCalledTimes(3)
+    expect(queryClient.getQueryData(options.queryKey)).toMatchObject({
+      pages: [{ items: ['after'] }],
+    })
+  })
+
+  it('打ち切られた先読みが取り直しより先に返っても、捨てられる結果のために取り直さない', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    const { queryClient, fetchPage, options } = setup()
+    await loadFirstPage(queryClient, options)
+    const observer = new InfiniteQueryObserver(queryClient, options)
+    const unsubscribe = observer.subscribe(() => {})
+    vi.setSystemTime(Date.now() + 11 * 1000)
+
+    const preloadFetch = deferred<Page>()
+    const refetch = deferred<Page>()
+    fetchPage.mockImplementationOnce(() => preloadFetch.promise)
+    fetchPage.mockImplementationOnce(() => refetch.promise)
+    const preload = loadFirstPage(queryClient, options)
+    await vi.waitFor(() => expect(fetchPage).toHaveBeenCalledTimes(2))
+    const invalidating = queryClient.invalidateQueries({ queryKey: options.queryKey })
+    await vi.waitFor(() => expect(fetchPage).toHaveBeenCalledTimes(3))
+    // query-core の取り直しが飛んでいる（まだ無効化されたまま）うちに、打ち切られた側が返る
+    preloadFetch.resolve({ items: ['before'], nextCursor: null })
+    await new Promise((r) => setTimeout(r, 0))
+    expect(fetchPage).toHaveBeenCalledTimes(3)
+
+    refetch.resolve({ items: ['after'], nextCursor: null })
+    await invalidating
+    await expect(preload).resolves.toMatchObject({ pages: [{ items: ['after'] }] })
+    unsubscribe()
+  })
 })
