@@ -167,4 +167,47 @@ describe('loadFirstPage', () => {
     await expect(enter).resolves.toMatchObject(firstPageOnly)
     expect(fetchPage).toHaveBeenCalledTimes(3)
   })
+
+  // フォロー操作の invalidateRelationQueries が先読みの取得中に来ると、query-core は
+  // 取得の成功時に isInvalidated を下ろすので、変更前の一覧が新しい扱いで残る
+  it('先読みの取得中に無効化されたら、変更前の結果を返さずに取り直す', async () => {
+    const { queryClient, fetchPage, options } = setup()
+    const pending = deferred<Page>()
+    fetchPage.mockImplementationOnce(() => pending.promise)
+    fetchPage.mockImplementationOnce(async () => ({ items: ['after'], nextCursor: null }))
+
+    const preload = loadFirstPage(queryClient, options)
+    await vi.waitFor(() => expect(fetchPage).toHaveBeenCalledTimes(1))
+    await queryClient.invalidateQueries({ queryKey: options.queryKey })
+    const enter = loadFirstPage(queryClient, options)
+    pending.resolve({ items: ['before'], nextCursor: null })
+
+    const afterOnly = { pages: [{ items: ['after'] }] }
+    await expect(preload).resolves.toMatchObject(afterOnly)
+    await expect(enter).resolves.toMatchObject(afterOnly)
+    expect(queryClient.getQueryState(options.queryKey)?.isInvalidated).toBe(false)
+  })
+
+  // 購読者がいてもデータがまだ無いと、query-core は飛んでいる取得を打ち切らずに使い回す
+  it('購読者がいてデータが無いときに無効化されても、変更前の結果を残さない', async () => {
+    const { queryClient, fetchPage, options } = setup()
+    const pending = deferred<Page>()
+    fetchPage.mockImplementationOnce(() => pending.promise)
+    fetchPage.mockImplementationOnce(async () => ({ items: ['after'], nextCursor: null }))
+
+    const preload = loadFirstPage(queryClient, options)
+    await vi.waitFor(() => expect(fetchPage).toHaveBeenCalledTimes(1))
+    const observer = new InfiniteQueryObserver(queryClient, options)
+    const unsubscribe = observer.subscribe(() => {})
+    // 購読者がいると無効化は飛んでいる取得の完了を待つので、ここでは待たない
+    const invalidating = queryClient.invalidateQueries({ queryKey: options.queryKey })
+    pending.resolve({ items: ['before'], nextCursor: null })
+    await invalidating
+
+    await expect(preload).resolves.toMatchObject({ pages: [{ items: ['after'] }] })
+    unsubscribe()
+    expect(queryClient.getQueryData(options.queryKey)).toMatchObject({
+      pages: [{ items: ['after'] }],
+    })
+  })
 })
