@@ -1,8 +1,11 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { routeComponent } from '../../helpers/tanstack'
+import { routeComponent, routeLoader } from '../../helpers/tanstack'
 import { renderWithQueryClient } from '../../helpers/query'
+import { deferred } from '../../helpers/deferred'
+import { createQueryClient } from '@/shared/lib/queryClient'
+import { profileKey, userPostsKey } from '@/entities/user'
 import { cursorAt, loadMoreButton, makePost, postsPage } from '../../helpers/fixtures'
 
 // startMock はモジュール内の createServerFn を区別できないため、fetchProfileData と
@@ -127,5 +130,107 @@ describe('ProfilePage', () => {
     expect(await screen.findByText('古い投稿')).toBeInTheDocument()
     expect(screen.getByText('最初の投稿')).toBeInTheDocument()
     expect(mockServerFn).toHaveBeenCalledWith({ data: { userId: 'u2', cursor } })
+  })
+})
+
+const load = async (queryClient: ReturnType<typeof createQueryClient>) =>
+  routeLoader(await import('@/pages/profile/$userId/index'))({
+    params: { userId: 'u2' },
+    deps: {},
+    context: { queryClient },
+  })
+
+const skipTime = (ms: number) => {
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(Date.now() + ms)
+}
+
+// router は hover の先読みとクリックの両方で loader を呼ぶ（defaultPreloadStaleTime: 0）。
+// 取り直すかどうかは loader が決める（#86）
+describe('プロフィールの loader', () => {
+  const initial = { profile, postsPage: postsPage([makePost({ id: 'p1' })]) }
+
+  beforeEach(() => {
+    mockServerFn.mockReset()
+    mockServerFn.mockResolvedValue(initial)
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('先読みの直後のクリックでは取り直さない', async () => {
+    const client = createQueryClient()
+    await load(client)
+    await load(client)
+    expect(mockServerFn).toHaveBeenCalledTimes(1)
+    expect(client.getQueryData(profileKey('u2'))).toEqual(profile)
+  })
+
+  it('先読みの取得中にクリックしたら、その取得に相乗りする', async () => {
+    const pending = deferred()
+    mockServerFn.mockReturnValueOnce(pending.promise)
+    const client = createQueryClient()
+    const preload = load(client)
+    const enter = load(client)
+    pending.resolve(initial)
+    await Promise.all([preload, enter])
+    expect(mockServerFn).toHaveBeenCalledTimes(1)
+  })
+
+  it('時間が経った訪問では取り直す', async () => {
+    const client = createQueryClient()
+    await load(client)
+    skipTime(11 * 1000)
+    await load(client)
+    expect(mockServerFn).toHaveBeenCalledTimes(2)
+  })
+
+  it.each([
+    ['プロフィール', profileKey('u2')],
+    ['投稿', userPostsKey('u2')],
+  ])('%sが無効化されていれば、直後でも取り直す', async (_, queryKey) => {
+    const client = createQueryClient()
+    await load(client)
+    // フォロー操作などの invalidateRelationQueries に相当する。購読者がいないので再取得は走らない
+    await client.invalidateQueries({ queryKey, refetchType: 'none' })
+    await load(client)
+    expect(mockServerFn).toHaveBeenCalledTimes(2)
+  })
+
+  it('直後でも、取得中のクエリがあればその完了を待たずに取り直す', async () => {
+    const client = createQueryClient()
+    await load(client)
+    // 「もっと見る」や無効化後の再取得が飛んでいる最中の再訪（#83）
+    const pending = deferred()
+    void client.fetchQuery({
+      queryKey: profileKey('u2'),
+      queryFn: () => pending.promise,
+      staleTime: 0,
+    })
+    const outcome = await Promise.race([
+      load(client).then(() => 'resolved'),
+      new Promise((r) => setTimeout(() => r('pending'), 100)),
+    ])
+    expect(outcome).toBe('resolved')
+    expect(mockServerFn).toHaveBeenCalledTimes(2)
+    expect(client.getQueryData(profileKey('u2'))).toEqual(profile)
+    pending.resolve({ ...profile, followerCount: 99 })
+  })
+
+  it('片方のキャッシュしか無ければ取り直す', async () => {
+    const client = createQueryClient()
+    client.setQueryData(profileKey('u2'), profile)
+    await load(client)
+    expect(mockServerFn).toHaveBeenCalledTimes(1)
+    expect(client.getQueryData(userPostsKey('u2'))).toEqual({
+      pages: [initial.postsPage],
+      pageParams: [null],
+    })
+  })
+
+  it('存在しないユーザーは 404 にする', async () => {
+    mockServerFn.mockResolvedValue(null)
+    await expect(load(createQueryClient())).rejects.toThrow('not found')
   })
 })
