@@ -1040,6 +1040,67 @@ describe('ChapterPage', () => {
     })
   })
 
+  it('閉じるときは直前の節のまま退出のアニメーションを始める', async () => {
+    // comment が消えた時点でアンマウントすると、退出のトランジションが途中で切れる（#139）
+    const { useSelectedUserStore } = await import('@/features/select-verse-view')
+    useSelectedUserStore.setState({ selectedUserId: null })
+    loaderData = {
+      ...baseChapterData,
+      chapterCommenters: [{ userId: 'u1', name: '中村さん', avatarUrl: null }],
+      circlePosts: [circlePost('p1', 'u1', '中村さん', [3], '節3のコメント')],
+    }
+    search = { comment: 3 }
+    const { rerender } = render(<ChapterPage />)
+    await screen.findByText('節3のコメント')
+
+    // jsdom には Web Animations が無く、Base UI は退出を待たずにアンマウントする。
+    // 終わらないアニメーションを返して、退出中の状態を観測できるようにする
+    Element.prototype.getAnimations = () => [
+      { finished: new Promise(() => {}) } as unknown as Animation,
+    ]
+    try {
+      search = {}
+      rerender(<ChapterPage />)
+
+      const popup = document.body.querySelector('[data-slot="drawer-content"]')
+      expect(popup).toHaveAttribute('data-ending-style')
+      expect(popup).toHaveTextContent('節3のコメント')
+    } finally {
+      delete (Element.prototype as Partial<Element>).getAnimations
+    }
+  })
+
+  it('章が変わったときは前の章の節で退出を描かない', async () => {
+    // 退出中も直前の節を描くが、章の参照は新しい章のものになる。残すと
+    // 「第2章3節」のような存在しない組み合わせのシートが一瞬出る
+    const { useSelectedUserStore } = await import('@/features/select-verse-view')
+    useSelectedUserStore.setState({ selectedUserId: null })
+    const bookWithTwoChapters = { ...baseChapterData.book, verses: [20, 20] }
+    loaderData = {
+      ...baseChapterData,
+      book: bookWithTwoChapters,
+      chapter: 1,
+      chapterCommenters: [{ userId: 'u1', name: '中村さん', avatarUrl: null }],
+      circlePosts: [circlePost('p1', 'u1', '中村さん', [3], '節3のコメント')],
+    }
+    search = { comment: 3 }
+    const { rerender } = render(<ChapterPage />)
+    await screen.findByText('節3のコメント')
+
+    Element.prototype.getAnimations = () => [
+      { finished: new Promise(() => {}) } as unknown as Animation,
+    ]
+    try {
+      loaderData = { ...baseChapterData, book: bookWithTwoChapters, chapter: 2, circlePosts: [] }
+      search = {}
+      rerender(<ChapterPage />)
+
+      expect(document.body.querySelector('[data-slot="drawer-content"]')).toBeNull()
+    } finally {
+      delete (Element.prototype as Partial<Element>).getAnimations
+    }
+  })
+
   it('シートを開くとその節までスクロールする', async () => {
     const scrollIntoView = vi.fn()
     Element.prototype.scrollIntoView = scrollIntoView

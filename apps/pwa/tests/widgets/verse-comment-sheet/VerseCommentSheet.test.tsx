@@ -1,4 +1,5 @@
 import { afterEach, describe, it, expect, vi } from 'vitest'
+import { useState } from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import {
   createRootRoute,
@@ -199,6 +200,38 @@ describe('VerseCommentSheet', () => {
 
     onHighlight.mockClear()
     rerender(<div />)
+
+    expect(onHighlight).toHaveBeenCalledWith(null)
+  })
+
+  it('マウントしたまま閉じてもハイライトを解除する', async () => {
+    // 退出のアニメーションを見せるため、呼び出し側は閉じた後もしばらくマウントしておく
+    // rerender は router ごと作り直してアンマウントになるため、開閉は内側の state で切り替える
+    const onHighlight = vi.fn()
+    function Harness() {
+      const [open, setOpen] = useState(true)
+      return (
+        <>
+          <button type="button" onClick={() => setOpen(false)}>
+            外から閉じる
+          </button>
+          <VerseCommentSheet
+            open={open}
+            verse={7}
+            label={LABEL}
+            officialUrl={OFFICIAL_URL}
+            posts={posts}
+            onOpenChange={vi.fn()}
+            onHighlight={onHighlight}
+          />
+        </>
+      )
+    }
+    renderInRouter(<Harness />)
+    await screen.findByText('節7 への A の投稿')
+
+    onHighlight.mockClear()
+    fireEvent.click(screen.getByRole('button', { name: '外から閉じる' }))
 
     expect(onHighlight).toHaveBeenCalledWith(null)
   })
