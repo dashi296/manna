@@ -5,13 +5,12 @@ import { XIcon } from 'lucide-react'
 import { cn } from '@/shared/lib/utils'
 import { Button } from '@/shared/ui/button'
 
-type Side = 'top' | 'right' | 'bottom' | 'left'
+// 使っているのは下（モバイル）と右（PC）だけ。上・左は検証していないので持たない（#139）
+type Side = 'right' | 'bottom'
 
 const swipeDirectionForSide = {
-  top: 'up',
   right: 'right',
   bottom: 'down',
-  left: 'left',
 } as const
 
 const SideContext = React.createContext<Side>('bottom')
@@ -50,20 +49,16 @@ function DrawerOverlay({ className, ...props }: DrawerPrimitive.Backdrop.Props) 
 }
 
 const viewportBySide: Record<Side, string> = {
-  top: 'items-start justify-center',
   bottom: 'items-end justify-center',
-  left: 'items-stretch justify-start',
   right: 'items-stretch justify-end',
 }
 
-// 上下シートは負の margin で背景を 3rem だけ画面外へはみ出させる（bleed）。
+// 下シートは負の margin で背景を 3rem だけ画面外へはみ出させる（bleed）。
 // スワイプで行き過ぎたときに画面端へ隙間が出ないようにするためで、
 // はみ出させた分は閉じるときの移動量から引く
 const popupBySide: Record<Side, string> = {
-  top: 'w-full max-h-[calc(85vh+3rem)] border-b -mt-12 pt-[calc(env(safe-area-inset-top,0px)+3rem)] [transform:translateY(var(--drawer-swipe-movement-y))] data-starting-style:[transform:translateY(calc(-100%+3rem-2px))] data-ending-style:[transform:translateY(calc(-100%+3rem-2px))]',
   bottom:
     'w-full max-h-[calc(85vh+3rem)] border-t -mb-12 pb-[calc(env(safe-area-inset-bottom,0px)+3rem)] [transform:translateY(var(--drawer-swipe-movement-y))] data-starting-style:[transform:translateY(calc(100%-3rem+2px))] data-ending-style:[transform:translateY(calc(100%-3rem+2px))]',
-  left: 'h-full w-3/4 sm:max-w-sm border-r [transform:translateX(var(--drawer-swipe-movement-x))] data-starting-style:[transform:translateX(calc(-100%-2px))] data-ending-style:[transform:translateX(calc(-100%-2px))]',
   right:
     'h-full w-3/4 sm:max-w-sm border-l [transform:translateX(var(--drawer-swipe-movement-x))] data-starting-style:[transform:translateX(calc(100%+2px))] data-ending-style:[transform:translateX(calc(100%+2px))]',
 }
