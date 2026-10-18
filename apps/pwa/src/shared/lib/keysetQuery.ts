@@ -60,7 +60,26 @@ export function loadFirstPage<T extends Page>(
     if ((queryClient.getQueryState(options.queryKey)?.fetchStatus ?? 'idle') !== 'idle') {
       await queryClient.cancelQueries({ queryKey: options.queryKey })
     }
-    return queryClient.fetchInfiniteQuery({ ...options, staleTime: FIRST_PAGE_REUSE_MS, pages: 1 })
+    // 取得中にフォロー操作などで無効化されたら、この取得の結果は変更前かもしれない。
+    // query-core は成功時に isInvalidated を下ろすので、下ろされる前（queryFn の中）で取り直す。
+    // 開始時の状態は呼び出しごとに見る。購読者がいると query-core がこの取得を打ち切って
+    // 同じ queryFn で取り直し、その取り直しは無効化された状態で始まるため
+    const isInvalidated = () => !!queryClient.getQueryState(options.queryKey)?.isInvalidated
+    const { queryFn } = options
+    // keysetInfiniteOptions が必ず関数を入れるが、型の上では skipToken / undefined を含む
+    if (typeof queryFn !== 'function') throw new Error('queryFn is required')
+    return queryClient.fetchInfiniteQuery({
+      ...options,
+      staleTime: FIRST_PAGE_REUSE_MS,
+      pages: 1,
+      queryFn: async (context) => {
+        const invalidatedAtStart = isInvalidated()
+        const page = await queryFn(context)
+        // 打ち切られた取得の結果は捨てられるので、取り直さない
+        if (context.signal.aborted || invalidatedAtStart || !isInvalidated()) return page
+        return queryFn(context)
+      },
+    })
   })().finally(() => loads.delete(key))
   loads.set(key, load)
   return load
