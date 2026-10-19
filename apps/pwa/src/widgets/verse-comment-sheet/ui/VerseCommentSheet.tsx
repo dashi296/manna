@@ -3,7 +3,7 @@ import { Copy, ExternalLink } from 'lucide-react'
 import { CompactPostCard, type PostWithUser } from '@/entities/post'
 import { verseHtmlToPlainText } from '@/entities/scripture'
 import { copyText } from '@/shared/lib/clipboard'
-import { SanitizedVerseHtml } from '@/shared/ui'
+import { cn } from '@/shared/lib/utils'
 import { Button } from '@/shared/ui/button'
 import { toast } from '@/shared/ui/sonner'
 import { Drawer, DrawerBody, DrawerContent, DrawerHeader, DrawerTitle } from '@/shared/ui/drawer'
@@ -15,8 +15,6 @@ type Props = {
   label: string
   officialUrl: string
   textHtml?: string
-  textHtmlSecondary?: string
-  secondaryLang?: string
   posts: PostWithUser[]
   onOpenChange: (open: boolean) => void
   onHighlight?: (verses: number[] | null) => void
@@ -30,8 +28,6 @@ export function VerseCommentSheet({
   label,
   officialUrl,
   textHtml,
-  textHtmlSecondary,
-  secondaryLang,
   posts,
   onOpenChange,
   onHighlight,
@@ -75,43 +71,31 @@ export function VerseCommentSheet({
         <DrawerHeader>
           <DrawerTitle>{label}</DrawerTitle>
         </DrawerHeader>
-        <DrawerBody className="flex flex-col gap-3 px-4 pb-4 max-h-[70vh]">
-          <div className="flex flex-col gap-2">
+        {/* 本文は出さない。開くと章がその節までスクロールして塗るので一覧で読める。
+            下シートは章が見える範囲を残す高さで止め、右パネルは章を縦に覆わないので
+            パネルの高さいっぱいまで使う（#206） */}
+        <DrawerBody
+          className={cn(
+            'flex flex-col gap-3 px-4 pb-4',
+            isMobile ? 'max-h-[50dvh]' : 'min-h-0 flex-1',
+          )}
+        >
+          <div className="flex items-center gap-2">
             {textHtml && (
-              <div className="text-sm">
-                <SanitizedVerseHtml className="text-foreground" html={textHtml} />
-                {textHtmlSecondary && (
-                  <SanitizedVerseHtml
-                    html={textHtmlSecondary}
-                    className="block mt-1 text-muted-foreground"
-                    lang={secondaryLang}
-                  />
-                )}
-              </div>
+              <Button type="button" variant="outline" size="sm" className="gap-1" onClick={onCopy}>
+                <Copy size={14} aria-hidden="true" />
+                コピー
+              </Button>
             )}
-            <div className="flex items-center gap-2">
-              {textHtml && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="gap-1"
-                  onClick={onCopy}
-                >
-                  <Copy size={14} aria-hidden="true" />
-                  コピー
-                </Button>
-              )}
-              <a
-                href={officialUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-sm underline text-primary"
-              >
-                公式サイトで読む
-                <ExternalLink size={12} aria-hidden="true" />
-              </a>
-            </div>
+            <a
+              href={officialUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-sm underline text-primary"
+            >
+              公式サイトで読む
+              <ExternalLink size={12} aria-hidden="true" />
+            </a>
           </div>
           {posts.length > 0 && (
             <p className="text-xs font-medium text-muted-foreground">
