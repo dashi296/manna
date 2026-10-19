@@ -892,8 +892,6 @@ function ChapterView({
         label={getScriptureLabel({ ...loc, verses: [sheetVerse] }, book)}
         officialUrl={buildScriptureUrl({ ...loc, verses: [sheetVerse] }, book)}
         textHtml={verseTextMap.get(sheetVerse)}
-        textHtmlSecondary={secondaryTexts.get(sheetVerse)}
-        secondaryLang={SECONDARY_LANGUAGE}
         posts={sheetIndex.get(sheetVerse)?.covered ?? []}
         onOpenChange={(open) => {
           if (!open) closeVerseSheet()

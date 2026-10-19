@@ -31,7 +31,6 @@
           "data-[side=bottom]:h-[70dvh]",
           "grid-cols-[1fr_auto_1fr]",
           "max-h-[50dvh]",
-          "max-h-[70vh]",
           "min-h-[60vh]",
           "pb-[var(--bottom-nav-h)]",
           "pb-[var(--fab-clearance)]",
