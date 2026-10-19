@@ -360,6 +360,8 @@ describe('VerseCommentSheet', () => {
     await waitFor(() => {
       const scroller = document.body.querySelector('[data-slot="drawer-body"]')
       expect(scroller?.className).toContain('flex-1')
+      // flex の子は既定で中身より縮まないので、これが無いとパネルからはみ出してスクロールしない
+      expect(scroller?.className).toContain('min-h-0')
       expect(scroller?.className).not.toContain('max-h-')
     })
   })
