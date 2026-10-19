@@ -624,6 +624,13 @@ function ChapterView({
     requestedComment <= maxVerse
       ? requestedComment
       : undefined
+  // 閉じるアニメーションの間も直前の節を描き続ける。URL から comment が消えた時点で
+  // アンマウントすると、退出のトランジションが途中で切れる（#139）。
+  // 閉じ終えた Popup は Base UI がアンマウントするので、ここで消し直す必要はない
+  const [sheetVerse, setSheetVerse] = useState(commentVerseForScroll)
+  if (commentVerseForScroll !== undefined && commentVerseForScroll !== sheetVerse) {
+    setSheetVerse(commentVerseForScroll)
+  }
   // シートが開いている間だけ塗る。カードに触れていないときは、シートに出ている
   // 全コメントが指す節をまとめて塗る
   const highlightedVerses = useMemo(() => {
@@ -873,19 +880,21 @@ function ChapterView({
     </div>
   )
 
-  // 投稿シートはモーダルなので、開いている間は非モーダルの節シートを描かない。
+  // 投稿シートはモーダルなので、開いている間は非モーダルの節シートを閉じる。
   // FAB から投稿シートを開いたときに裏へ節シートが残るのをこの条件で防ぐ
   const activeVerseSheet =
-    commentVerseForScroll !== undefined && !sheetOpen ? (
+    sheetVerse !== undefined ? (
       <VerseCommentSheet
-        open
-        verse={commentVerseForScroll}
-        label={getScriptureLabel({ ...loc, verses: [commentVerseForScroll] }, book)}
-        officialUrl={buildScriptureUrl({ ...loc, verses: [commentVerseForScroll] }, book)}
-        textHtml={verseTextMap.get(commentVerseForScroll)}
-        textHtmlSecondary={secondaryTexts.get(commentVerseForScroll)}
+        // 別の章へ移ったら、前の章の節番号で退出を描かずに閉じた状態から始め直す
+        key={`verse-sheet:${collection}/${book.id}/${chapter}`}
+        open={commentVerseForScroll !== undefined && !sheetOpen}
+        verse={sheetVerse}
+        label={getScriptureLabel({ ...loc, verses: [sheetVerse] }, book)}
+        officialUrl={buildScriptureUrl({ ...loc, verses: [sheetVerse] }, book)}
+        textHtml={verseTextMap.get(sheetVerse)}
+        textHtmlSecondary={secondaryTexts.get(sheetVerse)}
         secondaryLang={SECONDARY_LANGUAGE}
-        posts={sheetIndex.get(commentVerseForScroll)?.covered ?? []}
+        posts={sheetIndex.get(sheetVerse)?.covered ?? []}
         onOpenChange={(open) => {
           if (!open) closeVerseSheet()
         }}

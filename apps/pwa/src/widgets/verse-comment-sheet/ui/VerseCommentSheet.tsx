@@ -40,13 +40,17 @@ export function VerseCommentSheet({
 }: Props) {
   const isMobile = useIsMobile()
 
-  // アンマウント時に塗りが残らないようにする。onHighlight は毎描画で作り直される
-  // ことがあるため、ref 経由で読んでクリーンアップの再実行を避ける
+  // 閉じたとき・アンマウント時に塗りが残らないようにする。閉じた後もマウントしたまま
+  // 退出アニメーションを見せる使い方があるため、open の変化でも解除する。
+  // onHighlight は毎描画で作り直されることがあるため、ref 経由で読んでクリーンアップの再実行を避ける
   const highlightRef = useRef(onHighlight)
   useEffect(() => {
     highlightRef.current = onHighlight
   })
-  useEffect(() => () => highlightRef.current?.(null), [])
+  useEffect(() => {
+    if (!open) return
+    return () => highlightRef.current?.(null)
+  }, [open])
 
   const onCopy = async () => {
     if (!textHtml) return

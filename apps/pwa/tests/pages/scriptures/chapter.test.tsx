@@ -53,6 +53,22 @@ const headerComposeTrigger = () => {
   if (!found) throw new Error('ヘッダー内の投稿トリガーが見つからない')
   return found
 }
+// jsdom には Web Animations が無く、Base UI は退出を待たずにアンマウントする。
+// 終わらないアニメーションを返して、退出中の状態を観測できるようにする。
+// 将来 jsdom が実装したときに本物を消さないよう、元の定義を戻す
+async function withPendingAnimations(run: () => void | Promise<void>) {
+  const original = Object.getOwnPropertyDescriptor(Element.prototype, 'getAnimations')
+  Element.prototype.getAnimations = () => [
+    { finished: new Promise(() => {}) } as unknown as Animation,
+  ]
+  try {
+    await run()
+  } finally {
+    if (original) Object.defineProperty(Element.prototype, 'getAnimations', original)
+    else delete (Element.prototype as Partial<Element>).getAnimations
+  }
+}
+
 const fabComposeTrigger = () => {
   const found = composeTriggers().find((b) => b.className.includes('fixed'))
   if (!found) throw new Error('FAB の投稿トリガーが見つからない')
@@ -858,6 +874,34 @@ describe('ChapterPage', () => {
     expect(document.body.querySelector('[data-slot="drawer-content"]')).toBeNull()
   })
 
+  it('投稿シートが開くときは、節シートを打ち切らずに退出させる', async () => {
+    // 投稿シートの裏で節シートが即座に消えると、退出のトランジションが途中で切れる（#139）
+    const { useSelectedUserStore } = await import('@/features/select-verse-view')
+    useSelectedUserStore.setState({ selectedUserId: null })
+    loaderData = {
+      ...baseChapterData,
+      chapterCommenters: [{ userId: 'u1', name: '中村さん', avatarUrl: null }],
+      circlePosts: [circlePost('p1', 'u1', '中村さん', [3], '節3のコメント')],
+    }
+    search = { comment: 3 }
+    const user = userEvent.setup()
+    render(<ChapterPage />)
+    await screen.findByText('節3のコメント')
+
+    await user.click(headerComposeTrigger())
+    const item = await screen.findByRole('menuitem', { name: /章全体に投稿/ })
+    await withPendingAnimations(async () => {
+      await user.click(item)
+
+      await waitFor(() => {
+        expect(document.body.querySelector('[data-slot="sheet-content"]')).not.toBeNull()
+      })
+      const popup = document.body.querySelector('[data-slot="drawer-content"]')
+      expect(popup).toHaveAttribute('data-ending-style')
+      expect(popup).toHaveTextContent('節3のコメント')
+    })
+  })
+
   it('「この節に投稿する」を連打しても history.back は1回しか走らない', async () => {
     // ガードが無いと、節シートが閉じ切る前の連打のたびに closeVerseSheet が
     // history.back() を呼び、章より前の履歴まで戻ってしまう
@@ -1037,6 +1081,55 @@ describe('ChapterPage', () => {
 
     await waitFor(() => {
       expect(container.querySelectorAll('[data-highlighted="true"]')).toHaveLength(0)
+    })
+  })
+
+  it('閉じるときは直前の節のまま退出のアニメーションを始める', async () => {
+    // comment が消えた時点でアンマウントすると、退出のトランジションが途中で切れる（#139）
+    const { useSelectedUserStore } = await import('@/features/select-verse-view')
+    useSelectedUserStore.setState({ selectedUserId: null })
+    loaderData = {
+      ...baseChapterData,
+      chapterCommenters: [{ userId: 'u1', name: '中村さん', avatarUrl: null }],
+      circlePosts: [circlePost('p1', 'u1', '中村さん', [3], '節3のコメント')],
+    }
+    search = { comment: 3 }
+    const { rerender } = render(<ChapterPage />)
+    await screen.findByText('節3のコメント')
+
+    await withPendingAnimations(() => {
+      search = {}
+      rerender(<ChapterPage />)
+
+      const popup = document.body.querySelector('[data-slot="drawer-content"]')
+      expect(popup).toHaveAttribute('data-ending-style')
+      expect(popup).toHaveTextContent('節3のコメント')
+    })
+  })
+
+  it('章が変わったときは前の章の節で退出を描かない', async () => {
+    // 退出中も直前の節を描くが、章の参照は新しい章のものになる。残すと
+    // 「第2章3節」のような存在しない組み合わせのシートが一瞬出る
+    const { useSelectedUserStore } = await import('@/features/select-verse-view')
+    useSelectedUserStore.setState({ selectedUserId: null })
+    const bookWithTwoChapters = { ...baseChapterData.book, verses: [20, 20] }
+    loaderData = {
+      ...baseChapterData,
+      book: bookWithTwoChapters,
+      chapter: 1,
+      chapterCommenters: [{ userId: 'u1', name: '中村さん', avatarUrl: null }],
+      circlePosts: [circlePost('p1', 'u1', '中村さん', [3], '節3のコメント')],
+    }
+    search = { comment: 3 }
+    const { rerender } = render(<ChapterPage />)
+    await screen.findByText('節3のコメント')
+
+    await withPendingAnimations(() => {
+      loaderData = { ...baseChapterData, book: bookWithTwoChapters, chapter: 2, circlePosts: [] }
+      search = {}
+      rerender(<ChapterPage />)
+
+      expect(document.body.querySelector('[data-slot="drawer-content"]')).toBeNull()
     })
   })
 
