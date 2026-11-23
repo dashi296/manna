@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import { renderToString } from 'react-dom/server'
 import { ScriptureText, SanitizedVerseHtml } from '@/shared/ui/ScriptureText'
 
 describe('ScriptureText', () => {
@@ -79,6 +80,25 @@ describe('ScriptureText', () => {
     )
     expect(container.querySelectorAll('span.font-scripture')).toHaveLength(2)
     expect(container.querySelector('[lang="en"]')?.classList.contains('font-scripture')).toBe(true)
+  })
+
+  // jsdom の render はマウント後の effect まで走らせるので、SSR の出力はこちらで確かめる（#205）
+  it('サーバーで描画した HTML に本文とルビが入る', () => {
+    const html = renderToString(
+      <ScriptureText
+        verse={1}
+        textHtml="<ruby><rb>善</rb><rt>よ</rt></ruby>い"
+        textHtmlSecondary="And it came to pass"
+        secondaryLang="en"
+      />,
+    )
+    expect(html).toContain('<ruby><rb>善</rb><rt>よ</rt></ruby>い')
+    expect(html).toContain('And it came to pass')
+  })
+
+  it('サーバーで描画した HTML にも許可外のタグを出さない', () => {
+    const html = renderToString(<SanitizedVerseHtml html='<img src=x onerror="alert(1)">' />)
+    expect(html).not.toContain('<img')
   })
 
   it('SanitizedVerseHtml に渡した className と明朝体クラスが併存する', () => {

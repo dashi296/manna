@@ -1,19 +1,6 @@
-import { useEffect, useRef, type CSSProperties } from 'react'
-import DOMPurify from 'dompurify'
+import { type CSSProperties } from 'react'
+import { sanitizeVerseHtml } from '@/shared/lib/sanitizeVerseHtml'
 import { cn } from '@/shared/lib/utils'
-
-const PURIFY_CONFIG = {
-  ALLOWED_TAGS: ['ruby', 'rb', 'rt'],
-  ALLOWED_ATTR: [],
-}
-
-// DOMPurify needs a real DOM `window` to sanitize against. This app's SSR/edge
-// runtime (Cloudflare Workers via TanStack Start) has no DOM at all, so
-// `sanitizeVerseHtml` must only ever run in the browser — e.g. from a
-// `useEffect` after mount, never during a server render.
-function sanitizeVerseHtml(textHtml: string): string {
-  return DOMPurify.sanitize(textHtml, PURIFY_CONFIG)
-}
 
 type SanitizedVerseHtmlProps = {
   html: string
@@ -22,20 +9,16 @@ type SanitizedVerseHtmlProps = {
   lang?: string
 }
 
-// Renders sanitized `text_html` by injecting it imperatively after mount
-// (client-only), instead of `dangerouslySetInnerHTML`, so the raw HTML is
-// never touched during SSR — avoiding both a server crash (no DOM to
-// sanitize against) and ever serving unsanitized markup.
+// サーバーとクライアントで同じ文字列になるので、本文が SSR の HTML に入りハイドレーションでずれない（#205）
 export function SanitizedVerseHtml({ html, className, style, lang }: SanitizedVerseHtmlProps) {
-  const ref = useRef<HTMLSpanElement>(null)
-
-  useEffect(() => {
-    if (ref.current) {
-      ref.current.innerHTML = sanitizeVerseHtml(html)
-    }
-  }, [html])
-
-  return <span ref={ref} className={cn('font-scripture', className)} style={style} lang={lang} />
+  return (
+    <span
+      className={cn('font-scripture', className)}
+      style={style}
+      lang={lang}
+      dangerouslySetInnerHTML={{ __html: sanitizeVerseHtml(html) }}
+    />
+  )
 }
 
 type Props = {
