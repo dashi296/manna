@@ -324,8 +324,10 @@ describe('VerseCommentSheet', () => {
     expect(screen.queryByText('節7 への A の投稿')).toBeNull()
   })
 
-  it('内側の投稿リスト container に max-h と overflow-y-auto を持つ', async () => {
-    const { container } = renderInRouter(
+  it('モバイル幅では内側の投稿リストの高さを抑え、章が見える範囲を残す', async () => {
+    // コメントが多くてもシートが画面の半分で止まり、塗った節を一覧で読める（#206）
+    Object.defineProperty(window, 'innerWidth', { writable: true, value: 390 })
+    renderInRouter(
       <VerseCommentSheet
         open={true}
         verse={7}
@@ -336,11 +338,31 @@ describe('VerseCommentSheet', () => {
       />,
     )
     await waitFor(() => {
-      const scroller = container.ownerDocument.body.querySelector(
-        '[data-slot="drawer-content"] .max-h-\\[70vh\\]',
-      )
-      expect(scroller).not.toBeNull()
+      const scroller = document.body.querySelector('[data-slot="drawer-body"]')
+      expect(scroller?.className).toContain('max-h-[50dvh]')
       expect(scroller?.className).toContain('overflow-y-auto')
+    })
+  })
+
+  it('デスクトップ幅では内側の投稿リストがパネルの高さいっぱいまで伸びる', async () => {
+    // 右パネルは章を縦に覆わないので、高さを抑える理由がない
+    Object.defineProperty(window, 'innerWidth', { writable: true, value: 1440 })
+    renderInRouter(
+      <VerseCommentSheet
+        open={true}
+        verse={7}
+        label={LABEL}
+        officialUrl={OFFICIAL_URL}
+        posts={posts}
+        onOpenChange={vi.fn()}
+      />,
+    )
+    await waitFor(() => {
+      const scroller = document.body.querySelector('[data-slot="drawer-body"]')
+      expect(scroller?.className).toContain('flex-1')
+      // flex の子は既定で中身より縮まないので、これが無いとパネルからはみ出してスクロールしない
+      expect(scroller?.className).toContain('min-h-0')
+      expect(scroller?.className).not.toContain('max-h-')
     })
   })
 })
@@ -355,10 +377,12 @@ describe('VerseCommentSheet の節の面', () => {
     onOpenChange: () => {},
   }
 
-  it('節本文を出す', async () => {
+  it('節本文は出さない（一覧に出ているので、シートの高さを投稿に回す）', async () => {
     renderInRouter(<VerseCommentSheet {...base} textHtml="わたしニーファイは" />)
 
-    expect(await screen.findByText('わたしニーファイは')).toBeInTheDocument()
+    // 表示しなくてもコピーはできる（表示ではなく textHtml からコピーする）
+    expect(await screen.findByRole('button', { name: 'コピー' })).toBeInTheDocument()
+    expect(screen.queryByText('わたしニーファイは')).toBeNull()
   })
 
   it('参照＋本文をクリップボードに入れる', async () => {
