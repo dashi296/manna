@@ -9,7 +9,7 @@
 - **Phase 1（PWA）完了**: PR #37 で main にマージ済み
 - 9月後半から 11月は品質の整備が中心だった。直近で入ったもの:
   - **章ページの本文を SSR の HTML に入れた**（#205 / PR #208）。DOMPurify をやめ、DOM 不要の
-    `shared/lib/sanitizeVerseHtml.ts`（ruby / rb / rt だけを固定文字列で出し直し、他はエスケープ）に置き換えた。
+    `shared/lib/sanitizeVerseHtml.ts`（ruby / rb / rt は属性を落として固定文字列で出し直し、許可外のタグは除去し、残りの文字はエスケープ）に置き換えた。
     本番の章ページは Lighthouse モバイルで CLS 0.973 → 0、スコア 46〜58 → 91〜95
   - **節コメントのシートから本文の表示を外した**（#206 / PR #207）。スマホでは中身の上限が `50dvh`、PC の右パネルは高さいっぱい
   - **lint / format の導入と違反 0 件化**（#164。oxlint + oxfmt、`--deny-warnings`）
