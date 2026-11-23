@@ -71,9 +71,7 @@ export function VerseCommentSheet({
         <DrawerHeader>
           <DrawerTitle>{label}</DrawerTitle>
         </DrawerHeader>
-        {/* 本文は出さない。開くと章がその節までスクロールして塗るので一覧で読める。
-            下シートは章が見える範囲を残す高さで止め、右パネルは章を縦に覆わないので
-            パネルの高さいっぱいまで使う（#206） */}
+        {/* 本文は章の一覧で読めるので出さず、下シートは章が見える高さで止める。右パネルは章を覆わないのでいっぱいまで使う（#206） */}
         <DrawerBody
           className={cn(
             'flex flex-col gap-3 px-4 pb-4',
