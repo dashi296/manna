@@ -555,9 +555,19 @@ const STICKY_HEADER_PX = 64
 const RESTORE_MAX_FRAMES = 15
 const RESTORE_STILL_FRAMES = 3
 
-// 章の幅が変わると折り返しが変わり、読んでいた節がずれる。上端の節を覚えておき、幅が変わったら同じ位置へ戻す。
+// 章の幅が変わると折り返しが変わり、読んでいた節がずれる。上端の節を覚えておき、余白が付け外しされたら同じ位置へ戻す。
 // 章送りの横スクロール（chapter-scroller）が overflow-anchor: none なので、ブラウザのスクロールアンカーは効かない
-function useKeepTopVerse(widthKey: boolean) {
+function useKeepTopVerse({
+  padded,
+  isMobile,
+  targetVerse,
+  chapterKey,
+}: {
+  padded: boolean
+  isMobile: boolean
+  targetVerse: number | undefined
+  chapterKey: string
+}) {
   const anchor = useRef<{ verse: string; top: number } | null>(null)
   useEffect(() => {
     let frame = 0
@@ -582,37 +592,46 @@ function useKeepTopVerse(widthKey: boolean) {
     }
   }, [])
 
-  const isFirst = useRef(true)
+  const prev = useRef({ padded, isMobile, targetVerse, chapterKey })
   useLayoutEffect(() => {
-    if (isFirst.current) {
-      isFirst.current = false
+    const before = prev.current
+    prev.current = { padded, isMobile, targetVerse, chapterKey }
+    if (chapterKey !== before.chapterKey) {
+      anchor.current = null
       return
     }
+    if (padded === before.padded) return
+    // スマホでは lg:pr-96 が効かず幅は変わらない（ハイドレーションで判定が切り替わる場合も含む）。
+    // 新しい節を選んで開いたときは、その節へのスクロールに任せる
+    if (isMobile !== before.isMobile) return
+    if (targetVerse !== undefined && targetVerse !== before.targetVerse) return
+
     const saved = anchor.current
     if (!saved) return
     const li = document.querySelector(`li[data-verse="${saved.verse}"]`)
     if (!li) return
+    let expectedY = window.scrollY
     const restore = () => {
       const drift = li.getBoundingClientRect().top - saved.top
       if (Math.abs(drift) >= 1) window.scrollBy(0, drift)
+      expectedY = window.scrollY
       return drift
     }
     restore()
     // 画面外の節は content-visibility で前の幅の高さを覚えており、次のフレーム以降で測り直されて
-    // 上の節が縮む。動きが止まるまで追いかける
+    // 上の節が縮む。動きが止まるまで追いかけるが、利用者がスクロールしたらそちらを優先する
     let frame = 0
     let frames = 0
     let still = 0
     const follow = () => {
+      if (Math.abs(window.scrollY - expectedY) >= 1) return
       still = Math.abs(restore()) < 1 ? still + 1 : 0
       if (++frames < RESTORE_MAX_FRAMES && still < RESTORE_STILL_FRAMES)
         frame = requestAnimationFrame(follow)
     }
     frame = requestAnimationFrame(follow)
     return () => cancelAnimationFrame(frame)
-    // widthKey は本体では読まないが、変わったときに位置を合わせ直すための意図的なトリガ依存
-    // oxlint-disable-next-line react/exhaustive-effect-dependencies
-  }, [widthKey])
+  }, [padded, isMobile, targetVerse, chapterKey])
 }
 
 function ChapterView({
@@ -710,7 +729,12 @@ function ChapterView({
 
   const isMobile = useIsMobile()
   const versePanelOpen = !isMobile && commentVerseForScroll !== undefined && !sheetOpen
-  useKeepTopVerse(versePanelOpen)
+  useKeepTopVerse({
+    padded: versePanelOpen,
+    isMobile,
+    targetVerse: commentVerseForScroll,
+    chapterKey: `${collection}/${book.id}/${chapter}`,
+  })
 
   const scrolledVerse = useRef<number | undefined>(undefined)
   const isMounted = useRef(false)
