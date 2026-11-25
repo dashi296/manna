@@ -1,4 +1,4 @@
-import { memo, useRef, type MouseEvent } from 'react'
+import { memo, useEffect, useRef, type MouseEvent } from 'react'
 import type { Components } from 'react-markdown'
 import { Link, useRouter } from '@tanstack/react-router'
 import { toScriptureRef, type PostWithUser } from '../model'
@@ -24,6 +24,16 @@ const MARKDOWN_COMPONENTS: Components = {
 // TanStack Router の defaultPreloadDelay と同じ。カードの上を通り過ぎただけでは読まない
 const PRELOAD_DELAY_MS = 50
 
+// Firefox は Ctrl / Cmd で範囲を足せるので、先頭の範囲だけでは足りない
+function hasSelectionIn(node: Node) {
+  const selection = window.getSelection()
+  if (!selection || selection.isCollapsed) return false
+  for (let i = 0; i < selection.rangeCount; i++) {
+    if (selection.getRangeAt(i).intersectsNode(node)) return true
+  }
+  return false
+}
+
 type Props = { post: PostWithUser }
 
 // 「もっと見る」で一覧が伸びるため、押すたびに既存カード全部の markdown を
@@ -43,13 +53,7 @@ export const PostCard = memo(function PostCard({ post }: Props) {
   // 覆いでカード全面を押せるようにすると本文を選択できない（#198）。クリックは日付のリンクへ渡す
   const openPost = (e: MouseEvent<HTMLElement>) => {
     if (!(e.target instanceof Element) || e.target.closest('a, button')) return
-    const selection = window.getSelection()
-    if (
-      selection &&
-      !selection.isCollapsed &&
-      selection.getRangeAt(0).intersectsNode(e.currentTarget)
-    )
-      return
+    if (hasSelectionIn(e.currentTarget)) return
     const link = dateLinkRef.current
     if (!link) return
     // 合成したクリックでは、修飾キーを付けてもブラウザが新しいタブで開かない
@@ -68,6 +72,7 @@ export const PostCard = memo(function PostCard({ post }: Props) {
     preloadTimer.current = setTimeout(preloadPost, PRELOAD_DELAY_MS)
   }
   const cancelPreload = () => clearTimeout(preloadTimer.current)
+  useEffect(() => () => clearTimeout(preloadTimer.current), [])
 
   return (
     // キーボードと読み上げでは日付のリンクで開ける。クリックは指やマウスの近道でしかない

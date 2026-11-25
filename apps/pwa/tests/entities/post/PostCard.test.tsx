@@ -29,6 +29,12 @@ const basePost: PostWithUser = {
   users: { display_name: 'テスト太郎', avatar_url: null },
 }
 
+function rangeOf(node: Node) {
+  const r = document.createRange()
+  r.selectNodeContents(node)
+  return r
+}
+
 // 投稿詳細へのリンクが押されたかを数える（遷移はさせない）
 function openClicks() {
   const opened = vi.fn()
@@ -123,6 +129,28 @@ describe('PostCard', () => {
       expect(opened).toHaveBeenCalledTimes(1)
     })
 
+    it('選択の範囲が複数あり、2 つ目以降がこのカードにあるときも開かない', () => {
+      render(
+        <>
+          <p>カードの外の文</p>
+          <PostCard post={basePost} />
+        </>,
+      )
+      const opened = openClicks()
+      const ranges = [
+        rangeOf(screen.getByText('カードの外の文')),
+        rangeOf(screen.getByText('これは試験投稿です。')),
+      ]
+      // jsdom は範囲を 1 つしか持てないので、Firefox の複数範囲の選択を作り込む
+      vi.spyOn(window, 'getSelection').mockReturnValue({
+        isCollapsed: false,
+        rangeCount: ranges.length,
+        getRangeAt: (i: number) => ranges[i],
+      } as unknown as Selection)
+      fireEvent.click(screen.getByText('これは試験投稿です。'))
+      expect(opened).not.toHaveBeenCalled()
+    })
+
     it('中のリンクを押したときは、そのリンクだけが働く', () => {
       const post = { ...basePost, content: '参考: [リンク](https://example.com/a)' }
       render(<PostCard post={post} />)
@@ -171,6 +199,15 @@ describe('PostCard', () => {
         render(<PostCard post={basePost} />)
         fireEvent.mouseEnter(screen.getByRole('article'))
         fireEvent.mouseLeave(screen.getByRole('article'))
+        vi.advanceTimersByTime(100)
+        expect(preloadRoute).not.toHaveBeenCalled()
+      })
+
+      it('待っている間にカードが消えたら先読みしない', () => {
+        vi.useFakeTimers()
+        const { unmount } = render(<PostCard post={basePost} />)
+        fireEvent.mouseEnter(screen.getByRole('article'))
+        unmount()
         vi.advanceTimersByTime(100)
         expect(preloadRoute).not.toHaveBeenCalled()
       })
