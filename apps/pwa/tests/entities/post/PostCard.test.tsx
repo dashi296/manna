@@ -2,7 +2,18 @@ import { afterEach, describe, it, expect, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { PostCard, type PostWithUser } from '@/entities/post'
 
-vi.mock('@tanstack/react-router', async () => (await import('../../helpers/tanstack')).routerMock())
+const preloadRoute = vi.hoisted(() => vi.fn(() => Promise.resolve()))
+vi.mock('@tanstack/react-router', async () =>
+  (await import('../../helpers/tanstack')).routerMock(
+    undefined,
+    undefined,
+    undefined,
+    {},
+    {
+      preloadRoute,
+    },
+  ),
+)
 
 const basePost: PostWithUser = {
   id: 'post-1',
@@ -78,7 +89,10 @@ describe('PostCard', () => {
   })
 
   describe('カードのどこを押しても投稿を開き、本文は選択できる（#198）', () => {
-    afterEach(() => vi.restoreAllMocks())
+    afterEach(() => {
+      vi.restoreAllMocks()
+      window.getSelection()?.removeAllRanges()
+    })
 
     it('本文を押すと投稿詳細へのリンクを押したことになる', () => {
       render(<PostCard post={basePost} />)
@@ -87,14 +101,26 @@ describe('PostCard', () => {
       expect(opened).toHaveBeenCalledTimes(1)
     })
 
-    it('本文を選択した直後のクリックでは開かない', () => {
+    it('このカードの本文を選択した直後のクリックでは開かない', () => {
       render(<PostCard post={basePost} />)
       const opened = openClicks()
-      vi.spyOn(window, 'getSelection').mockReturnValue({
-        toString: () => '試験',
-      } as Selection)
-      fireEvent.click(screen.getByText('これは試験投稿です。'))
+      const text = screen.getByText('これは試験投稿です。')
+      window.getSelection()!.selectAllChildren(text)
+      fireEvent.click(text)
       expect(opened).not.toHaveBeenCalled()
+    })
+
+    it('カードの外に選択が残っていても、カードを押せば開く', () => {
+      render(
+        <>
+          <p>カードの外の文</p>
+          <PostCard post={basePost} />
+        </>,
+      )
+      const opened = openClicks()
+      window.getSelection()!.selectAllChildren(screen.getByText('カードの外の文'))
+      fireEvent.click(screen.getByText('これは試験投稿です。'))
+      expect(opened).toHaveBeenCalledTimes(1)
     })
 
     it('中のリンクを押したときは、そのリンクだけが働く', () => {
@@ -125,10 +151,35 @@ describe('PostCard', () => {
       },
     )
 
-    it('本文を覆う要素を置かない', () => {
-      render(<PostCard post={basePost} />)
-      // 覆いがあると、その下の本文はドラッグでも長押しでも選択できない
-      expect(screen.getByRole('link', { name: /テスト太郎/ })).not.toHaveClass('post-card-open')
+    describe('カード全体で投稿詳細を先読みする', () => {
+      afterEach(() => {
+        vi.useRealTimers()
+        preloadRoute.mockClear()
+      })
+
+      it('マウスを乗せて少し待つと先読みする', () => {
+        vi.useFakeTimers()
+        render(<PostCard post={basePost} />)
+        fireEvent.mouseEnter(screen.getByRole('article'))
+        expect(preloadRoute).not.toHaveBeenCalled()
+        vi.advanceTimersByTime(50)
+        expect(preloadRoute).toHaveBeenCalledWith({ to: '/posts/$id', params: { id: 'post-1' } })
+      })
+
+      it('すぐに離れたら先読みしない', () => {
+        vi.useFakeTimers()
+        render(<PostCard post={basePost} />)
+        fireEvent.mouseEnter(screen.getByRole('article'))
+        fireEvent.mouseLeave(screen.getByRole('article'))
+        vi.advanceTimersByTime(100)
+        expect(preloadRoute).not.toHaveBeenCalled()
+      })
+
+      it('指で触れたらすぐに先読みする', () => {
+        render(<PostCard post={basePost} />)
+        fireEvent.touchStart(screen.getByRole('article'))
+        expect(preloadRoute).toHaveBeenCalledTimes(1)
+      })
     })
   })
 
