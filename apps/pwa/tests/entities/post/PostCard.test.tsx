@@ -1,5 +1,5 @@
-import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { afterEach, describe, it, expect, vi } from 'vitest'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { PostCard, type PostWithUser } from '@/entities/post'
 
 vi.mock('@tanstack/react-router', async () => (await import('../../helpers/tanstack')).routerMock())
@@ -16,6 +16,16 @@ const basePost: PostWithUser = {
   scripture_verses: [7],
   user_id: 'user-1',
   users: { display_name: 'テスト太郎', avatar_url: null },
+}
+
+// 投稿詳細へのリンクが押されたかを数える（遷移はさせない）
+function openClicks() {
+  const opened = vi.fn()
+  screen.getByRole('link', { name: /テスト太郎/ }).addEventListener('click', (e) => {
+    e.preventDefault()
+    opened()
+  })
+  return opened
 }
 
 describe('PostCard', () => {
@@ -67,15 +77,59 @@ describe('PostCard', () => {
     expect(link).toHaveAccessibleName(`テスト太郎 の投稿（${link.textContent?.trim()}）`)
   })
 
-  it('日付のリンクがカード全面を覆い、中のリンクはその上に出る', () => {
-    const post = { ...basePost, content: '参考: [リンク](https://example.com/a)' }
-    const { container } = render(<PostCard post={post} />)
-    // jsdom では ::after のヒット判定を見られないので、成立に要るクラスの組を確かめる
-    expect(container.querySelector('article')).toHaveClass('relative', 'isolate')
-    expect(screen.getByRole('link', { name: /テスト太郎/ })).toHaveClass('post-card-open')
-    for (const name of [/第1ニーファイ書/, 'リンク']) {
-      expect(screen.getByRole('link', { name })).toHaveClass('relative', 'z-10')
-    }
+  describe('カードのどこを押しても投稿を開き、本文は選択できる（#198）', () => {
+    afterEach(() => vi.restoreAllMocks())
+
+    it('本文を押すと投稿詳細へのリンクを押したことになる', () => {
+      render(<PostCard post={basePost} />)
+      const opened = openClicks()
+      fireEvent.click(screen.getByText('これは試験投稿です。'))
+      expect(opened).toHaveBeenCalledTimes(1)
+    })
+
+    it('本文を選択した直後のクリックでは開かない', () => {
+      render(<PostCard post={basePost} />)
+      const opened = openClicks()
+      vi.spyOn(window, 'getSelection').mockReturnValue({
+        toString: () => '試験',
+      } as Selection)
+      fireEvent.click(screen.getByText('これは試験投稿です。'))
+      expect(opened).not.toHaveBeenCalled()
+    })
+
+    it('中のリンクを押したときは、そのリンクだけが働く', () => {
+      const post = { ...basePost, content: '参考: [リンク](https://example.com/a)' }
+      render(<PostCard post={post} />)
+      const opened = openClicks()
+      for (const name of [/第1ニーファイ書/, 'リンク']) {
+        const link = screen.getByRole('link', { name })
+        link.addEventListener('click', (e) => e.preventDefault())
+        fireEvent.click(link)
+      }
+      expect(opened).not.toHaveBeenCalled()
+    })
+
+    it.each(['metaKey', 'ctrlKey', 'shiftKey'])(
+      '%s を押したままのクリックは新しいタブで開く',
+      (key) => {
+        render(<PostCard post={basePost} />)
+        const opened = openClicks()
+        const open = vi.spyOn(window, 'open').mockReturnValue(null)
+        fireEvent.click(screen.getByText('これは試験投稿です。'), { [key]: true })
+        expect(open).toHaveBeenCalledWith(
+          expect.stringContaining('/posts/post-1'),
+          '_blank',
+          'noopener',
+        )
+        expect(opened).not.toHaveBeenCalled()
+      },
+    )
+
+    it('本文を覆う要素を置かない', () => {
+      render(<PostCard post={basePost} />)
+      // 覆いがあると、その下の本文はドラッグでも長押しでも選択できない
+      expect(screen.getByRole('link', { name: /テスト太郎/ })).not.toHaveClass('post-card-open')
+    })
   })
 
   it('対話要素を入れ子にしない', () => {
