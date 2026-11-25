@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import {
   createFileRoute,
   Link,
@@ -50,6 +50,7 @@ import {
 import { VerseCommentSheet } from '@/widgets/verse-comment-sheet'
 import { ChapterPager, type ChapterTexts } from '@/features/swipe-chapter-navigation'
 import { getCircleUserIds } from '@/entities/user'
+import { useIsMobile } from '@/shared/hooks/use-mobile'
 import type { AvatarStackItem } from '@/shared/ui'
 import { useBookmarkStore } from '@/entities/bookmark'
 import { BookmarkButton } from '@/features/toggle-bookmark'
@@ -548,6 +549,91 @@ function refToParams(ref: ChapterRef) {
   return { collection: ref.collection, book: ref.book, chapter: String(ref.chapter) }
 }
 
+// 節の scroll-mt-16 と同じ。貼り付くヘッダーの下に隠れた節は上端として数えない
+const STICKY_HEADER_PX = 64
+// 測り直しはふつう 1〜2 フレームで終わる。追いかけ続けると利用者のスクロールと張り合う
+const RESTORE_MAX_FRAMES = 15
+const RESTORE_STILL_FRAMES = 3
+
+// 章の幅が変わると折り返しが変わり、読んでいた節がずれる。上端の節を覚えておき、余白が付け外しされたら同じ位置へ戻す。
+// 章送りの横スクロール（chapter-scroller）が overflow-anchor: none なので、ブラウザのスクロールアンカーは効かない
+function useKeepTopVerse({
+  padded,
+  isMobile,
+  targetVerse,
+  chapterKey,
+}: {
+  padded: boolean
+  isMobile: boolean
+  targetVerse: number | undefined
+  chapterKey: string
+}) {
+  const anchor = useRef<{ verse: string; top: number } | null>(null)
+  useEffect(() => {
+    let frame = 0
+    const record = () => {
+      frame = 0
+      for (const li of document.querySelectorAll<HTMLElement>('li[data-verse]')) {
+        const { top, bottom } = li.getBoundingClientRect()
+        if (bottom > STICKY_HEADER_PX) {
+          anchor.current = { verse: li.dataset.verse ?? '', top }
+          return
+        }
+      }
+    }
+    const onScroll = () => {
+      if (!frame) frame = requestAnimationFrame(record)
+    }
+    record()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      cancelAnimationFrame(frame)
+    }
+  }, [])
+
+  const prev = useRef({ padded, isMobile, targetVerse, chapterKey })
+  useLayoutEffect(() => {
+    const before = prev.current
+    prev.current = { padded, isMobile, targetVerse, chapterKey }
+    if (chapterKey !== before.chapterKey) {
+      anchor.current = null
+      return
+    }
+    if (padded === before.padded) return
+    // スマホでは lg:pr-96 が効かず幅は変わらない（ハイドレーションで判定が切り替わる場合も含む）。
+    // 新しい節を選んで開いたときは、その節へのスクロールに任せる
+    if (isMobile !== before.isMobile) return
+    if (targetVerse !== undefined && targetVerse !== before.targetVerse) return
+
+    const saved = anchor.current
+    if (!saved) return
+    const li = document.querySelector(`li[data-verse="${saved.verse}"]`)
+    if (!li) return
+    let expectedY = window.scrollY
+    const restore = () => {
+      const drift = li.getBoundingClientRect().top - saved.top
+      if (Math.abs(drift) >= 1) window.scrollBy(0, drift)
+      expectedY = window.scrollY
+      return drift
+    }
+    restore()
+    // 画面外の節は content-visibility で前の幅の高さを覚えており、次のフレーム以降で測り直されて
+    // 上の節が縮む。動きが止まるまで追いかけるが、利用者がスクロールしたらそちらを優先する
+    let frame = 0
+    let frames = 0
+    let still = 0
+    const follow = () => {
+      if (Math.abs(window.scrollY - expectedY) >= 1) return
+      still = Math.abs(restore()) < 1 ? still + 1 : 0
+      if (++frames < RESTORE_MAX_FRAMES && still < RESTORE_STILL_FRAMES)
+        frame = requestAnimationFrame(follow)
+    }
+    frame = requestAnimationFrame(follow)
+    return () => cancelAnimationFrame(frame)
+  }, [padded, isMobile, targetVerse, chapterKey])
+}
+
 function ChapterView({
   book,
   chapter,
@@ -640,6 +726,15 @@ function ChapterView({
     const verses = covered.flatMap((p) => p.scripture_verses ?? [])
     return new Set(verses.length ? verses : [commentVerseForScroll])
   }, [commentVerseForScroll, sheetHighlight, sheetIndex])
+
+  const isMobile = useIsMobile()
+  const versePanelOpen = !isMobile && commentVerseForScroll !== undefined && !sheetOpen
+  useKeepTopVerse({
+    padded: versePanelOpen,
+    isMobile,
+    targetVerse: commentVerseForScroll,
+    chapterKey: `${collection}/${book.id}/${chapter}`,
+  })
 
   const scrolledVerse = useRef<number | undefined>(undefined)
   const isMounted = useRef(false)
@@ -903,7 +998,8 @@ function ChapterView({
     ) : null
 
   return (
-    <div>
+    // PC の右パネルは章の上に重なるので、開いている間はその幅だけ章を左へ寄せる（#139）
+    <div data-testid="chapter-view" className={versePanelOpen ? 'lg:pr-96' : undefined}>
       {mode === 'select' ? selectionHeader : chapterHeader}
       {composeFab}
       {/* 章が変わったら中央のパネルから始め直すため、章参照で作り直す */}

@@ -209,6 +209,49 @@ const circlePost = (
     users: { display_name: name, avatar_url: null },
   }) as PostWithUser
 
+const chapterView = () => screen.getByTestId('chapter-view')
+
+// jsdom にはレイアウトが無いので、節 1 を上端より上、節 2 を上端の節として置き、スクロール量に応じて動かす
+function mockVerseLayout(verse2Top: number) {
+  const state = { layoutTop: verse2Top, scrolled: 0, userScrollY: 0 }
+  const rect = vi
+    .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+    .mockImplementation(function (this: HTMLElement) {
+      const verse = this.dataset.verse
+      const top = state.layoutTop - state.scrolled
+      if (verse === '1') return { top: -200, bottom: 40 } as DOMRect
+      if (verse === '2') return { top, bottom: top + 100 } as DOMRect
+      return { top: 0, bottom: 0 } as DOMRect
+    })
+  const scrollBy = vi.spyOn(window, 'scrollBy').mockImplementation(((_x: number, y: number) => {
+    state.scrolled += y
+  }) as typeof window.scrollBy)
+  const scrollY = vi
+    .spyOn(window, 'scrollY', 'get')
+    .mockImplementation(() => state.scrolled + state.userScrollY)
+  return {
+    state,
+    scrollBy,
+    restore: () => {
+      rect.mockRestore()
+      scrollBy.mockRestore()
+      scrollY.mockRestore()
+    },
+  }
+}
+
+async function recordTopVerse() {
+  window.dispatchEvent(new Event('scroll'))
+  await new Promise((r) => requestAnimationFrame(r))
+}
+
+const nextFrames = (n: number) =>
+  new Promise<void>((resolve) => {
+    const step = (left: number) =>
+      left === 0 ? resolve() : requestAnimationFrame(() => step(left - 1))
+    step(n)
+  })
+
 describe('ChapterPage', () => {
   beforeEach(async () => {
     loaderData = baseChapterData
@@ -872,6 +915,190 @@ describe('ChapterPage', () => {
       expect(document.body.querySelector('[data-slot="sheet-content"]')).not.toBeNull()
     })
     expect(document.body.querySelector('[data-slot="drawer-content"]')).toBeNull()
+  })
+
+  describe('PC の右パネルが開いている間は、章をパネルの幅だけ左へ寄せる（#139）', () => {
+    it('節シートが開いていれば寄せる', async () => {
+      search = { comment: 2 }
+      render(<ChapterPage />)
+      await screen.findByText('第1ニーファイ書 1:2')
+      expect(chapterView()).toHaveClass('lg:pr-96')
+    })
+
+    it('節シートが閉じていれば寄せない', async () => {
+      search = {}
+      render(<ChapterPage />)
+      await screen.findByText('一節の本文')
+      expect(chapterView()).not.toHaveClass('lg:pr-96')
+    })
+
+    it('スマホでは下シートなので寄せない', async () => {
+      Object.defineProperty(window, 'innerWidth', { writable: true, value: 390 })
+      search = { comment: 2 }
+      render(<ChapterPage />)
+      await screen.findByText('第1ニーファイ書 1:2')
+      expect(chapterView()).not.toHaveClass('lg:pr-96')
+    })
+
+    it('投稿シートが開いて節シートが隠れたら寄せない', async () => {
+      search = { comment: 2 }
+      const user = userEvent.setup()
+      render(<ChapterPage />)
+      await screen.findByText('第1ニーファイ書 1:2')
+      await user.click(headerComposeTrigger())
+      await user.click(await screen.findByRole('menuitem', { name: /章全体に投稿/ }))
+      await waitFor(() => expect(chapterView()).not.toHaveClass('lg:pr-96'))
+    })
+
+    it('幅が変わっても、画面の上端にあった節を同じ位置に保つ', async () => {
+      // jsdom にはレイアウトが無いので、節 2 の位置を幅に応じて変える
+      let verse2Top = 120
+      const rect = vi
+        .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+        .mockImplementation(function (this: HTMLElement) {
+          const verse = this.dataset.verse
+          if (verse === '1') return { top: -200, bottom: 40 } as DOMRect
+          if (verse === '2') return { top: verse2Top, bottom: verse2Top + 100 } as DOMRect
+          return { top: 0, bottom: 0 } as DOMRect
+        })
+      const scrollBy = vi.spyOn(window, 'scrollBy').mockImplementation(() => {})
+      try {
+        search = { comment: 2 }
+        const { rerender } = render(<ChapterPage />)
+        await screen.findByText('第1ニーファイ書 1:2')
+        window.dispatchEvent(new Event('scroll'))
+        await new Promise((r) => requestAnimationFrame(r))
+        scrollBy.mockClear()
+
+        // パネルが閉じて折り返しが変わり、節 2 が 300px 下へずれる
+        verse2Top = 420
+        search = {}
+        rerender(<ChapterPage />)
+
+        await waitFor(() => expect(scrollBy).toHaveBeenCalledWith(0, 300))
+      } finally {
+        rect.mockRestore()
+        scrollBy.mockRestore()
+      }
+    })
+
+    it('幅が変わった後に上の節が測り直されても、追いかけて位置を保つ', async () => {
+      // 画面外の節は content-visibility で前の幅の高さを覚えており、1 フレーム遅れて縮む
+      let layoutTop = 120
+      let scrolled = 0
+      const rect = vi
+        .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+        .mockImplementation(function (this: HTMLElement) {
+          const verse = this.dataset.verse
+          const top = layoutTop - scrolled
+          if (verse === '1') return { top: -200, bottom: 40 } as DOMRect
+          if (verse === '2') return { top, bottom: top + 100 } as DOMRect
+          return { top: 0, bottom: 0 } as DOMRect
+        })
+      const scrollBy = vi.spyOn(window, 'scrollBy').mockImplementation(((_x: number, y: number) => {
+        scrolled += y
+      }) as typeof window.scrollBy)
+      try {
+        search = { comment: 2 }
+        const { rerender } = render(<ChapterPage />)
+        await screen.findByText('第1ニーファイ書 1:2')
+        window.dispatchEvent(new Event('scroll'))
+        await new Promise((r) => requestAnimationFrame(r))
+
+        layoutTop = 420
+        search = {}
+        rerender(<ChapterPage />)
+        await waitFor(() => expect(layoutTop - scrolled).toBe(120))
+
+        // 次のフレームで上の節が縮み、節 2 が 144px 上へずれる
+        layoutTop -= 144
+        await waitFor(() => expect(layoutTop - scrolled).toBe(120))
+      } finally {
+        rect.mockRestore()
+        scrollBy.mockRestore()
+      }
+    })
+
+    it('閉じた状態から節を選んで開くときは、その節へのスクロールに任せて位置を戻さない', async () => {
+      const layout = mockVerseLayout(120)
+      try {
+        search = {}
+        const { rerender } = render(<ChapterPage />)
+        await screen.findByText('一節の本文')
+        await recordTopVerse()
+
+        layout.state.layoutTop = 420
+        search = { comment: 2 }
+        rerender(<ChapterPage />)
+        await screen.findByText('第1ニーファイ書 1:2')
+        await nextFrames(5)
+        expect(layout.scrollBy).not.toHaveBeenCalled()
+      } finally {
+        layout.restore()
+      }
+    })
+
+    it('スマホとデスクトップの判定が切り替わったときは位置を戻さない', async () => {
+      // SSR はデスクトップ扱いなので、スマホで直リンクを開くとハイドレーションで切り替わる
+      const layout = mockVerseLayout(120)
+      try {
+        search = { comment: 2 }
+        const { rerender } = render(<ChapterPage />)
+        await screen.findByText('第1ニーファイ書 1:2')
+        await recordTopVerse()
+
+        layout.state.layoutTop = 420
+        Object.defineProperty(window, 'innerWidth', { writable: true, value: 390 })
+        rerender(<ChapterPage />)
+        await nextFrames(5)
+        expect(layout.scrollBy).not.toHaveBeenCalled()
+      } finally {
+        layout.restore()
+      }
+    })
+
+    it('開いたまま別の章へ移ったときは、前の章の節の位置へ合わせない', async () => {
+      const layout = mockVerseLayout(120)
+      try {
+        const book = { ...baseChapterData.book, verses: [20, 20] }
+        loaderData = { ...baseChapterData, book }
+        search = { comment: 2 }
+        const { rerender } = render(<ChapterPage />)
+        await screen.findByText('第1ニーファイ書 1:2')
+        await recordTopVerse()
+
+        layout.state.layoutTop = 420
+        loaderData = { ...baseChapterData, book, chapter: 2 }
+        search = {}
+        rerender(<ChapterPage />)
+        await nextFrames(5)
+        expect(layout.scrollBy).not.toHaveBeenCalled()
+      } finally {
+        layout.restore()
+      }
+    })
+
+    it('位置を合わせている途中で利用者がスクロールしたら、追いかけるのをやめる', async () => {
+      const layout = mockVerseLayout(120)
+      try {
+        search = { comment: 2 }
+        const { rerender } = render(<ChapterPage />)
+        await screen.findByText('第1ニーファイ書 1:2')
+        await recordTopVerse()
+
+        layout.state.layoutTop = 420
+        search = {}
+        rerender(<ChapterPage />)
+        await waitFor(() => expect(layout.scrollBy).toHaveBeenCalledTimes(1))
+
+        layout.state.userScrollY = 250
+        layout.state.layoutTop -= 144
+        await nextFrames(5)
+        expect(layout.scrollBy).toHaveBeenCalledTimes(1)
+      } finally {
+        layout.restore()
+      }
+    })
   })
 
   it('投稿シートが開くときは、節シートを打ち切らずに退出させる', async () => {
