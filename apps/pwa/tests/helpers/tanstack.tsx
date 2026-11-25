@@ -13,6 +13,7 @@ export function routerMock(
     invalidate?: () => void
     canGoBack?: () => boolean
     back?: () => void
+    preloadRoute?: (opts: unknown) => Promise<unknown>
   } = {},
 ) {
   return {
@@ -64,6 +65,7 @@ export function routerMock(
     useNavigate: () => navigate,
     useRouter: () => ({
       invalidate: router.invalidate ?? (() => {}),
+      preloadRoute: router.preloadRoute ?? (() => Promise.resolve()),
       history: {
         canGoBack: router.canGoBack ?? (() => true),
         back: router.back ?? (() => {}),

@@ -1,8 +1,19 @@
-import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { afterEach, describe, it, expect, vi } from 'vitest'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { PostCard, type PostWithUser } from '@/entities/post'
 
-vi.mock('@tanstack/react-router', async () => (await import('../../helpers/tanstack')).routerMock())
+const preloadRoute = vi.hoisted(() => vi.fn(() => Promise.resolve()))
+vi.mock('@tanstack/react-router', async () =>
+  (await import('../../helpers/tanstack')).routerMock(
+    undefined,
+    undefined,
+    undefined,
+    {},
+    {
+      preloadRoute,
+    },
+  ),
+)
 
 const basePost: PostWithUser = {
   id: 'post-1',
@@ -16,6 +27,22 @@ const basePost: PostWithUser = {
   scripture_verses: [7],
   user_id: 'user-1',
   users: { display_name: 'テスト太郎', avatar_url: null },
+}
+
+function rangeOf(node: Node) {
+  const r = document.createRange()
+  r.selectNodeContents(node)
+  return r
+}
+
+// 投稿詳細へのリンクが押されたかを数える（遷移はさせない）
+function openClicks() {
+  const opened = vi.fn()
+  screen.getByRole('link', { name: /テスト太郎/ }).addEventListener('click', (e) => {
+    e.preventDefault()
+    opened()
+  })
+  return opened
 }
 
 describe('PostCard', () => {
@@ -67,15 +94,130 @@ describe('PostCard', () => {
     expect(link).toHaveAccessibleName(`テスト太郎 の投稿（${link.textContent?.trim()}）`)
   })
 
-  it('日付のリンクがカード全面を覆い、中のリンクはその上に出る', () => {
-    const post = { ...basePost, content: '参考: [リンク](https://example.com/a)' }
-    const { container } = render(<PostCard post={post} />)
-    // jsdom では ::after のヒット判定を見られないので、成立に要るクラスの組を確かめる
-    expect(container.querySelector('article')).toHaveClass('relative', 'isolate')
-    expect(screen.getByRole('link', { name: /テスト太郎/ })).toHaveClass('post-card-open')
-    for (const name of [/第1ニーファイ書/, 'リンク']) {
-      expect(screen.getByRole('link', { name })).toHaveClass('relative', 'z-10')
-    }
+  describe('カードのどこを押しても投稿を開き、本文は選択できる（#198）', () => {
+    afterEach(() => {
+      vi.restoreAllMocks()
+      window.getSelection()?.removeAllRanges()
+    })
+
+    it('本文を押すと投稿詳細へのリンクを押したことになる', () => {
+      render(<PostCard post={basePost} />)
+      const opened = openClicks()
+      fireEvent.click(screen.getByText('これは試験投稿です。'))
+      expect(opened).toHaveBeenCalledTimes(1)
+    })
+
+    it('このカードの本文を選択した直後のクリックでは開かない', () => {
+      render(<PostCard post={basePost} />)
+      const opened = openClicks()
+      const text = screen.getByText('これは試験投稿です。')
+      window.getSelection()!.selectAllChildren(text)
+      fireEvent.click(text)
+      expect(opened).not.toHaveBeenCalled()
+    })
+
+    it('カードの外に選択が残っていても、カードを押せば開く', () => {
+      render(
+        <>
+          <p>カードの外の文</p>
+          <PostCard post={basePost} />
+        </>,
+      )
+      const opened = openClicks()
+      window.getSelection()!.selectAllChildren(screen.getByText('カードの外の文'))
+      fireEvent.click(screen.getByText('これは試験投稿です。'))
+      expect(opened).toHaveBeenCalledTimes(1)
+    })
+
+    it('選択の範囲が複数あり、2 つ目以降がこのカードにあるときも開かない', () => {
+      render(
+        <>
+          <p>カードの外の文</p>
+          <PostCard post={basePost} />
+        </>,
+      )
+      const opened = openClicks()
+      const ranges = [
+        rangeOf(screen.getByText('カードの外の文')),
+        rangeOf(screen.getByText('これは試験投稿です。')),
+      ]
+      // jsdom は範囲を 1 つしか持てないので、Firefox の複数範囲の選択を作り込む
+      vi.spyOn(window, 'getSelection').mockReturnValue({
+        isCollapsed: false,
+        rangeCount: ranges.length,
+        getRangeAt: (i: number) => ranges[i],
+      } as unknown as Selection)
+      fireEvent.click(screen.getByText('これは試験投稿です。'))
+      expect(opened).not.toHaveBeenCalled()
+    })
+
+    it('中のリンクを押したときは、そのリンクだけが働く', () => {
+      const post = { ...basePost, content: '参考: [リンク](https://example.com/a)' }
+      render(<PostCard post={post} />)
+      const opened = openClicks()
+      for (const name of [/第1ニーファイ書/, 'リンク']) {
+        const link = screen.getByRole('link', { name })
+        link.addEventListener('click', (e) => e.preventDefault())
+        fireEvent.click(link)
+      }
+      expect(opened).not.toHaveBeenCalled()
+    })
+
+    it.each(['metaKey', 'ctrlKey', 'shiftKey'])(
+      '%s を押したままのクリックは新しいタブで開く',
+      (key) => {
+        render(<PostCard post={basePost} />)
+        const opened = openClicks()
+        const open = vi.spyOn(window, 'open').mockReturnValue(null)
+        fireEvent.click(screen.getByText('これは試験投稿です。'), { [key]: true })
+        expect(open).toHaveBeenCalledWith(
+          expect.stringContaining('/posts/post-1'),
+          '_blank',
+          'noopener',
+        )
+        expect(opened).not.toHaveBeenCalled()
+      },
+    )
+
+    describe('カード全体で投稿詳細を先読みする', () => {
+      afterEach(() => {
+        vi.useRealTimers()
+        preloadRoute.mockClear()
+      })
+
+      it('マウスを乗せて少し待つと先読みする', () => {
+        vi.useFakeTimers()
+        render(<PostCard post={basePost} />)
+        fireEvent.mouseEnter(screen.getByRole('article'))
+        expect(preloadRoute).not.toHaveBeenCalled()
+        vi.advanceTimersByTime(50)
+        expect(preloadRoute).toHaveBeenCalledWith({ to: '/posts/$id', params: { id: 'post-1' } })
+      })
+
+      it('すぐに離れたら先読みしない', () => {
+        vi.useFakeTimers()
+        render(<PostCard post={basePost} />)
+        fireEvent.mouseEnter(screen.getByRole('article'))
+        fireEvent.mouseLeave(screen.getByRole('article'))
+        vi.advanceTimersByTime(100)
+        expect(preloadRoute).not.toHaveBeenCalled()
+      })
+
+      it('待っている間にカードが消えたら先読みしない', () => {
+        vi.useFakeTimers()
+        const { unmount } = render(<PostCard post={basePost} />)
+        fireEvent.mouseEnter(screen.getByRole('article'))
+        unmount()
+        vi.advanceTimersByTime(100)
+        expect(preloadRoute).not.toHaveBeenCalled()
+      })
+
+      it('指で触れたらすぐに先読みする', () => {
+        render(<PostCard post={basePost} />)
+        fireEvent.touchStart(screen.getByRole('article'))
+        expect(preloadRoute).toHaveBeenCalledTimes(1)
+      })
+    })
   })
 
   it('対話要素を入れ子にしない', () => {

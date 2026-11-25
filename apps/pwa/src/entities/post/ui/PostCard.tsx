@@ -1,6 +1,6 @@
-import { memo } from 'react'
+import { memo, useEffect, useRef, type MouseEvent } from 'react'
 import type { Components } from 'react-markdown'
-import { Link } from '@tanstack/react-router'
+import { Link, useRouter } from '@tanstack/react-router'
 import { toScriptureRef, type PostWithUser } from '../model'
 import { findBook, getScriptureLabel, buildScriptureUrl } from '@/shared/lib/scriptureUtils'
 import { resolveUserIdentity } from '@/shared/lib/constants'
@@ -14,11 +14,24 @@ const MARKDOWN_COMPONENTS: Components = {
       href={href ?? '#'}
       target="_blank"
       rel="noopener noreferrer"
-      className="relative z-10 underline text-primary"
+      className="underline text-primary"
     >
       {children}
     </a>
   ),
+}
+
+// TanStack Router の defaultPreloadDelay と同じ。カードの上を通り過ぎただけでは読まない
+const PRELOAD_DELAY_MS = 50
+
+// Firefox は Ctrl / Cmd で範囲を足せるので、先頭の範囲だけでは足りない
+function hasSelectionIn(node: Node) {
+  const selection = window.getSelection()
+  if (!selection || selection.isCollapsed) return false
+  for (let i = 0; i < selection.rangeCount; i++) {
+    if (selection.getRangeAt(i).intersectsNode(node)) return true
+  }
+  return false
 }
 
 type Props = { post: PostWithUser }
@@ -33,24 +46,55 @@ export const PostCard = memo(function PostCard({ post }: Props) {
   const scriptureLabel = scriptureRef ? getScriptureLabel(scriptureRef, scriptureBook) : null
   const scriptureUrl = scriptureRef ? buildScriptureUrl(scriptureRef, scriptureBook) : null
   const postedAt = formatDate(post.created_at)
+  const dateLinkRef = useRef<HTMLAnchorElement>(null)
+  const router = useRouter()
+  const preloadTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
+
+  // 覆いでカード全面を押せるようにすると本文を選択できない（#198）。クリックは日付のリンクへ渡す
+  const openPost = (e: MouseEvent<HTMLElement>) => {
+    if (!(e.target instanceof Element) || e.target.closest('a, button')) return
+    if (hasSelectionIn(e.currentTarget)) return
+    const link = dateLinkRef.current
+    if (!link) return
+    // 合成したクリックでは、修飾キーを付けてもブラウザが新しいタブで開かない
+    if (e.metaKey || e.ctrlKey || e.shiftKey) {
+      window.open(link.href, '_blank', 'noopener')
+      return
+    }
+    link.click()
+  }
+
+  // 日付のリンクの先読み（defaultPreload: 'intent'）はリンクの上でしか働かないので、カード全体で同じことをする
+  const preloadPost = () => {
+    router.preloadRoute({ to: '/posts/$id', params: { id: post.id } }).catch(() => {})
+  }
+  const schedulePreload = () => {
+    preloadTimer.current = setTimeout(preloadPost, PRELOAD_DELAY_MS)
+  }
+  const cancelPreload = () => clearTimeout(preloadTimer.current)
+  useEffect(() => () => clearTimeout(preloadTimer.current), [])
 
   return (
-    // カード全体を <a> で包むと、中のリンクが入れ子の対話要素になり、
-    // 外側のリンク自体もアクセシブル名を失う（#186）。日付だけを本物のリンクにして、
-    // その ::after でカード全面を覆う。中のリンクは z-index で上に出す。
-    // isolate が無いと、その z-index が sticky ヘッダー（同じ z-10）と張り合い、
-    // スクロールで重なったときにカードのリンクが前面へ出る
-    <article className="relative isolate px-4 py-4 border-b border-border">
+    // キーボードと読み上げでは日付のリンクで開ける。クリックは指やマウスの近道でしかない
+    // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions
+    <article
+      onClick={openPost}
+      onMouseEnter={schedulePreload}
+      onMouseLeave={cancelPreload}
+      onTouchStart={preloadPost}
+      className="cursor-pointer px-4 py-4 border-b border-border"
+    >
       <div className="flex items-start gap-3 mb-2">
         <UserAvatar name={displayName} url={avatarUrl} size="sm" />
         <div className="flex-1 min-w-0">
           <div className="flex items-baseline justify-between gap-2">
             <span className="text-sm font-semibold truncate text-foreground">{displayName}</span>
             <Link
+              ref={dateLinkRef}
               to="/posts/$id"
               params={{ id: post.id }}
               aria-label={`${displayName} の投稿（${postedAt}）`}
-              className="post-card-open text-xs shrink-0 text-muted-foreground"
+              className="text-xs shrink-0 text-muted-foreground"
             >
               <time dateTime={post.created_at}>{postedAt}</time>
             </Link>
@@ -60,14 +104,14 @@ export const PostCard = memo(function PostCard({ post }: Props) {
               href={scriptureUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="relative z-10 inline-flex items-center mt-0.5 rounded-full border border-chip-line bg-chip px-2 py-0.5 text-2xs font-medium text-secondary"
+              className="inline-flex items-center mt-0.5 rounded-full border border-chip-line bg-chip px-2 py-0.5 text-2xs font-medium text-secondary"
             >
               <span aria-hidden="true">📖</span> {scriptureLabel}
             </a>
           )}
         </div>
       </div>
-      <div className="ml-12 text-foreground">
+      <div className="ml-12 cursor-text text-foreground">
         <MarkdownRenderer content={post.content} components={MARKDOWN_COMPONENTS} />
       </div>
     </article>
